@@ -15,6 +15,7 @@ This repository hosts the architecture, domain models, specifications, and imple
 The complete, unabridged regulatory standard issued by Bangladesh Bank has been converted and cataloged into our documentation structure:
 
 - **Full Regulatory Specification (416 Controls & Features):** [`governance/documentation/may132024brpd12e.md`](governance/documentation/may132024brpd12e.md)
+- **Enterprise Implementation Roadmap:** [`governance/ROADMAP.md`](governance/ROADMAP.md)
 
 ### Key Modules Covered
 
