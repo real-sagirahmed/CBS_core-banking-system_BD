@@ -14,7 +14,7 @@ This repository hosts the architecture, domain models, specifications, and imple
 
 The complete, unabridged regulatory standard issued by Bangladesh Bank has been converted and cataloged into our documentation structure:
 
-- **Full Regulatory Specification (416 Controls & Features):** [`.AGENTS/documentation/may132024brpd12e.md`](.AGENTS/documentation/may132024brpd12e.md)
+- **Full Regulatory Specification (416 Controls & Features):** [`governance/documentation/may132024brpd12e.md`](governance/documentation/may132024brpd12e.md)
 
 ### Key Modules Covered
 
@@ -48,15 +48,39 @@ The complete, unabridged regulatory standard issued by Bangladesh Bank has been 
 
 ```text
 CBS_core-banking-system_BD/
-├── .AGENTS/
-│   ├── documentation/      # Regulatory standards & compliance docs
-│   │   └── may132024brpd12e.md
-│   ├── manual/             # Standard Operating Procedures & guides
-│   └── rules/              # System invariants & architectural decision locks
-├── .gitignore              # Production .NET / C# gitignore
-├── LICENSE                 # Project License
-├── README.md               # Repository overview
-└── build_cbs_documentation.py # PDF to MD documentation extraction pipeline
+├── governance/
+│   ├── documentation/             # Regulatory standards & compliance specs
+│   │   └── may132024brpd12e.md    # Bangladesh Bank BRPD Circular 12/2024
+│   ├── manual/                    # Standard Operating Procedures & runbooks
+│   │   ├── 01_BRANCH_TELLER_OPERATIONS_SOP.md
+│   │   ├── 02_EOD_BOD_OPERATIONS_RUNBOOK.md
+│   │   ├── 03_CUSTOMER_ONBOARDING_KYC_MANUAL.md
+│   │   ├── 04_CREDIT_DISBURSEMENT_RECOVERY_MANUAL.md
+│   │   ├── 05_TRADE_FINANCE_OPERATIONS_MANUAL.md
+│   │   ├── 06_RECONCILIATION_DISPUTE_RUNBOOK.md
+│   │   └── 07_SYSTEM_ADMIN_GOVERNANCE_MANUAL.md
+│   └── rules/                     # Non-negotiable system invariants & decision locks
+│       ├── 00_SYSTEM_INVARIANTS.md
+│       ├── 01_GENERAL_BANKING_RULES.md
+│       ├── 02_DEPOSIT_ACCOUNT_RULES.md
+│       ├── 03_LENDING_CREDIT_RULES.md
+│       ├── 04_TRADE_FINANCE_TBML_RULES.md
+│       ├── 05_TREASURY_ALM_RULES.md
+│       ├── 06_SECURITY_ACCESS_CONTROL_RULES.md
+│       └── 07_SHARIAH_COMPLIANCE_RULES.md
+├── src/
+│   ├── CBS.Domain/                # Pure domain entities, value objects & invariants
+│   ├── CBS.Application/           # Use cases, CQRS & Maker-Checker interceptors
+│   ├── CBS.Infrastructure/        # EF Core, persistence, security & integrations
+│   └── CBS.Api/                   # ASP.NET Core APIs & channel gateways
+├── tests/
+│   ├── CBS.Domain.UnitTests/      # Domain & invariant unit test locks
+│   └── CBS.ArchitectureTests/    # NetArchTest architectural boundary locks
+├── CBS.sln                        # .NET 9 solution
+├── .gitignore                     # Production .NET gitignore
+├── LICENSE                        # MIT License
+├── README.md                      # Repository overview
+└── build_cbs_documentation.py     # PDF to MD documentation pipeline
 ```
 
 ---

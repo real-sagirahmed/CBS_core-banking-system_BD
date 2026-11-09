@@ -3,7 +3,7 @@ import re
 import os
 
 pdf_path = r"D:\CBS_core-banking-system_bd\may132024brpd12e.pdf"
-output_md_path = r"D:\CBS_core-banking-system_bd\may132024brpd12e.md"
+output_md_path = r"D:\CBS_core-banking-system_bd\governance\documentation\may132024brpd12e.md"
 
 doc = fitz.open(pdf_path)
 
