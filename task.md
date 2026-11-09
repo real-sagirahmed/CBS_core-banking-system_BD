@@ -21,8 +21,8 @@
 | **Phase 4** | Payment Rails, Clearing & Channel Gateway | Module 1.4, 1.5, 7 | **DONE & VERIFIED** | 3 Playwright API Suites Passing |
 | **Phase 5** | Lending, CAD & Islamic Finance | Module 4 & Shariah | **DONE & VERIFIED** | 3 Playwright API Suites Passing (10 Unit + 3 E2E Tests) |
 | **Phase 6** | Trade Finance & TBML Detection | Module 5 | **DONE & VERIFIED** | 3 Playwright API Suites Passing (13 Unit + 3 E2E Tests) |
-| **Phase 7** | Treasury & ALM Engine | Module 6 | **IN PROGRESS** | Planned (Blotter, CRR/SLR Monitoring, FX Deals) |
-| **Phase 8** | Security, Audit & Central Bank Reporting | Module 9, 10, 11 | **TODO** | Planned (IAM, Audit Journal, CTR/STR) |
+| **Phase 7** | Treasury & ALM Engine | Module 6 | **DONE & VERIFIED** | 3 Playwright API Suites Passing (10 Unit + 3 E2E Tests) |
+| **Phase 8** | Security, Audit & Central Bank Reporting | Module 9, 10, 11 | **IN PROGRESS** | Planned (IAM, Audit Journal, CTR/STR) |
 | **Phase 9** | AI Knowledge Engine, Gemini & TBML | Google Gemini / RAG | **TODO** | Planned (RAG Grounding & Prompt Evals) |
 
 ---
@@ -103,27 +103,51 @@
 
 ---
 
-## 5. Active Phase: Phase 7 — Treasury & ALM Engine (Asset Liability Management)
+## 5. Phase 7 Deliverables: Treasury & ALM Engine (DONE)
+
+- [x] **Milestone 7.1: Foreign Exchange & Money Market Deal Processing Engine**
+  - [x] Front-Office deal capture: FX Spot, Forward, Swap contracts (`BRPD 6.1.1, 6.5.1`).
+  - [x] Money Market Deal Capture: Call Money, Term Placements, Term Borrowings, Commercial Papers (`BRPD 6.1.2`).
+  - [x] Three-tier segregation: Front-office deal capture $\rightarrow$ Mid-office limit/risk verification $\rightarrow$ Back-office settlement processing (`BRPD 6.5.1-ii`).
+- [x] **Milestone 7.2: Statutory Liquidity & Reserve Management (CRR & SLR)**
+  - [x] Net Demand and Time Liabilities (NDTL) daily position calculation (`BRPD 6.2`).
+  - [x] Cash Reserve Ratio (CRR): Daily bi-weekly average monitoring ($4.00\%$ bi-weekly average, $3.50\%$ daily minimum with Bangladesh Bank) (`BRPD 6.2`).
+  - [x] Statutory Liquidity Ratio (SLR): Daily unencumbered approved securities & excess cash monitoring ($13.00\%$ Conventional / $5.50\%$ Islamic) (`BRPD 6.2`).
+- [x] **Milestone 7.3: Treasury Blotter & Asset-Liability Management (ALM)**
+  - [x] Structural liquidity gap profiling across all 6 regulatory maturity buckets (1-14 days, 15-28 days, 29-90 days, 91-180 days, 181-365 days, over 1 year) (`BRPD 6.3`).
+  - [x] Prudential Alert triggering when short-term net negative deficit exceeds $10\%$ of outflows in 1-14 days bucket (`BRPD 6.3`).
+- [x] **Milestone 7.4: Application Services, CQRS & Persistence**
+  - [x] `ITreasuryRepository` with thread-safe in-memory concurrent persistence.
+  - [x] Commands, queries, and DTOs: `CaptureTreasuryDealCommand`, `VerifyMidOfficeDealCommand`, `SettleBackOfficeDealCommand`, `EvaluateCrrSlrCommand`, `EvaluateLiquidityGapCommand`.
+  - [x] Minimal API endpoints: `/api/v1/treasury/deals/capture`, `/verify-mid-office`, `/settle-back-office`, `/{dealReference}`, `/alm/crr-slr/evaluate`, `/alm/liquidity-gap/evaluate`.
+- [x] **Milestone 7.5: Automated Verification Suite (Domain Unit Tests & Playwright E2E)**
+  - [x] 10 pure domain unit tests in `TreasuryTests.cs` (131 total domain unit tests).
+  - [x] 3 automated Playwright E2E integration test suites in `TreasuryPlaywrightTests.cs` (35 total Playwright E2E tests).
+
+---
+
+## 6. Active Phase: Phase 8 — Security, Audit & Central Bank Reporting Engine
 
 ### Milestones & Deliverables Breakdown
 
-- [ ] **Milestone 7.1: Foreign Exchange & Money Market Deal Processing Engine**
-  - [ ] Front-Office deal capture: FX Spot, Forward, Swap contracts (`BRPD 6.1.1, 6.5.1`).
-  - [ ] Money Market Deal Capture: Call Money, Term Placements, Term Borrowings, Commercial Papers (`BRPD 6.1.2`).
-  - [ ] Three-tier segregation: Front-office deal capture $\rightarrow$ Mid-office limit/risk verification $\rightarrow$ Back-office settlement processing (`BRPD 6.5.1-ii`).
-- [ ] **Milestone 7.2: Statutory Liquidity & Reserve Management (CRR & SLR)**
-  - [ ] Net Demand and Time Liabilities (NDTL) daily position calculation (`BRPD 6.2`).
-  - [ ] Cash Reserve Ratio (CRR): Daily bi-weekly average monitoring ($4.00\%$ bi-weekly average, $3.50\%$ daily minimum with Bangladesh Bank) (`BRPD 6.2`).
-  - [ ] Statutory Liquidity Ratio (SLR): Daily unencumbered approved securities & excess cash monitoring ($13.00\%$ Conventional / $5.50\%$ Islamic) (`BRPD 6.2`).
-- [ ] **Milestone 7.3: Treasury Blotter & Asset-Liability Management (ALM)**
-  - [ ] Real-time Nostro account cash flow laddering and currency position blotter (`BRPD 6.4`).
-  - [ ] Structural liquidity gap profiling (time buckets: 1-14 days, 15-28 days, 29-90 days, 91-180 days, 181-365 days, over 1 year) (`BRPD 6.3`).
-- [ ] **Milestone 7.4: Application Services, CQRS & Persistence**
-  - [ ] `ITreasuryRepository` and in-memory persistence.
-  - [ ] Commands, queries, handlers, and endpoints for FX deals, Money Market, and CRR/SLR position.
-- [ ] **Milestone 7.5: Automated Verification Suite (Domain Unit Tests & Playwright E2E)**
-  - [ ] Pure invariant unit tests in `TreasuryTests.cs`.
-  - [ ] Automated Playwright E2E integration test suite in `TreasuryPlaywrightTests.cs`.
+- [ ] **Milestone 8.1: Role-Based Access Control (RBAC) & Dual-Control Engine**
+  - [ ] Fine-grained permission model: Branch Teller, CAD Officer, Trade Services Maker, Trade Services Checker, Treasury Dealer, Risk Officer, Compliance Auditor, System Admin (`BRPD 9.1.1`).
+  - [ ] Hard gate prohibiting self-authorization across all banking workflows (`MakerCheckerAudit`, `BRPD 10.3.5-x`).
+  - [ ] Session security: Concurrent login prevention, session idle timeout, and password complexity enforcement (`BRPD 9.3`).
+- [ ] **Milestone 8.2: Immutable Audit Journal & CAATs Engine**
+  - [ ] Immutable Audit Log entry: Timestamp UTC, User CIF/Id, Action Type, Entity Name, Entity Id, Before State JSON, After State JSON, Workstation IP, Terminal ID (`BRPD 10.1, 10.3.5`).
+  - [ ] Tamper-evident cryptographic hash chain linking consecutive audit journal entries (`BRPD 10.3.5-vii`).
+  - [ ] CAATs (Computer Assisted Audit Techniques) regulatory data extraction interface for internal and central bank inspectors (`BRPD 10.3`).
+- [ ] **Milestone 8.3: BFIU AML/CFT Regulatory Reporting (CTR & STR)**
+  - [ ] Cash Transaction Report (CTR): Daily automated aggregation engine detecting any customer aggregate cash transactions $\ge 1,000,000$ BDT across all accounts in a single calendar day (`BRPD 11.1, BFIU Circular 26`).
+  - [ ] Suspicious Transaction Report (STR/SAR): Rule-based detection engine for transaction structuring (smurfing just below 1M BDT), sudden velocity spikes exceeding customer Transaction Profile (TP) monthly limits (`BRPD 11.2`).
+  - [ ] Regulatory XML/JSON export conforming to goAML / BFIU schema standards.
+- [ ] **Milestone 8.4: Application Services, CQRS & Persistence**
+  - [ ] `IAuditRepository`, `IComplianceReportingRepository` with thread-safe persistence.
+  - [ ] Commands, queries, handlers, and endpoints for audit logging, CAATs extraction, CTR generation, and STR alerting.
+- [ ] **Milestone 8.5: Automated Verification Suite (Domain Unit Tests & Playwright E2E)**
+  - [ ] Pure invariant unit tests in `SecurityAuditComplianceTests.cs`.
+  - [ ] Automated Playwright E2E integration test suite in `SecurityAuditCompliancePlaywrightTests.cs`.
 
 ---
 
@@ -167,6 +191,13 @@
 | `ShippingGuaranteeOriginalBlReleaseInvariant` | `BRPD 5.1.2-vii` | Release/Cancellation of Shipping Guarantee strictly requires surrender of original Bill of Lading. | Playwright E2E (`TradeFinancePlaywrightTests.cs`) |
 | `ExpStatutory120DayOverdueInvariant` | `BRPD 5.2.10` | Unrealized export proceeds $> 120$ days automatically marked Overdue and reported to Bangladesh Bank. | Playwright E2E (`TradeFinancePlaywrightTests.cs`) |
 | `TbmlPriceVarianceAlertInvariant` | `BRPD 5.4.1, 5.7.6` | Unit price variance $> \pm 15\%$ against global commodity benchmark triggers TBML over/under-invoicing alert. | Playwright E2E (`TradeFinancePlaywrightTests.cs`) |
+| `TreasuryValueDateBeforeDealDateInvariant` | `BRPD 6.5.1` | Treasury trade settlement value date cannot be earlier than deal date. | xUnit Unit Test (`TreasuryTests.cs`) |
+| `TreasuryMidOfficeDealerSegregationInvariant` | `BRPD 6.5.1-ii, 10.3.5-x` | Front-office dealer strictly prohibited from performing mid-office limit/risk verification. | Playwright E2E (`TreasuryPlaywrightTests.cs`) |
+| `TreasuryBackOfficeSettlementWithoutMidOfficeInvariant` | `BRPD 6.5.1-ii, 6.5.4-ii` | Back-office settlement strictly prohibited before mid-office verification sign-off. | xUnit Unit Test (`TreasuryTests.cs`) |
+| `TreasuryBackOfficeDealerSegregationInvariant` | `BRPD 6.5.4-i, 10.3.5-x` | Dealer and mid-office risk officers strictly prohibited from executing back-office settlement. | Playwright E2E (`TreasuryPlaywrightTests.cs`) |
+| `CrrDailyMinimumShortfallInvariant` | `BRPD 6.2` | Cash Reserve Ratio falling below 3.50% daily minimum triggers regulatory CRR shortfall. | Playwright E2E (`TreasuryPlaywrightTests.cs`) |
+| `SlrConventionalAndIslamicRatioInvariant` | `BRPD 6.2` | Statutory Liquidity Ratio (13.00% Conventional, 5.50% Islamic) unencumbered securities deficit triggers SLR shortfall. | Playwright E2E (`TreasuryPlaywrightTests.cs`) |
+| `PrudentialLiquidityGapDeficitInvariant` | `BRPD 6.3` | Net negative liquidity gap $> 10\%$ of outflows in 1-14 days bucket triggers prudential ALM alert. | Playwright E2E (`TreasuryPlaywrightTests.cs`) |
 | `CleanArchitectureBoundary` | Software Engineering Standard | Domain has 0 dependencies; Application does not reference Infrastructure. | NetArchTest (`CleanArchitectureTests.cs`) |
 
 ---
@@ -186,3 +217,4 @@
 | 2026-11-09 07:50 | Phase 4 | Implemented Payment Rails & Clearing Gateway: `RoutingNumber` (9 digits), `MicrLine` (E-13B standard), `ChequeClearingItem` (High Value $\ge 500k$ vs Regular Value, BB return codes 01/02/05), `BeftnBatchItem` (outward/inward credit/debit), `RtgsTransaction` (ISO 20022 pacs.008, 100k BDT threshold, BB settlement), API endpoints, and Playwright E2E suite (`PaymentRailsPlaywrightTests.cs`). | `f7d6330` | 125/125 tests passed (98 Unit, 1 Arch, 26 Playwright) |
 | 2026-11-09 08:00 | Phase 5 | Implemented Lending, Credit Administration & Islamic Finance: `LoanAccount` Aggregate, `CollateralAsset` (FSV/MV/DP), 3-Tier CAD duty segregation hard gate, Bai-Murabaha direct vendor disbursement lock, Quard-e-Hasana $0.00\%$ interest, statutory repayment waterfall, asset classification (Standard/SMA/SS/DF/BL) with automatic interest suspense, API endpoints, and Playwright E2E suite (`LendingPlaywrightTests.cs`). | `efe7326` | 138/138 tests passed (108 Unit, 1 Arch, 29 Playwright) |
 | 2026-11-09 08:15 | Phase 6 | Implemented International Trade Finance & TBML Engine: `DocumentaryCredit` Aggregate, `ShippingGuarantee` (100% cash margin & BL surrender release), `ExpRegulatoryTracking` (120-day realization monitor & BB overdue reporting), `TbmlScreeningResult` (over/under-invoicing $\pm 15\%$ & sanctioned port route detection), SWIFT Category 7 MT700 message generator, `ITradeFinanceRepository`, API endpoints, and Playwright E2E suite (`TradeFinancePlaywrightTests.cs`). | `b2c7adc` | 154/154 tests passed (121 Unit, 1 Arch, 32 Playwright) |
+| 2026-11-09 08:25 | Phase 7 | Implemented Treasury & ALM Engine: `TreasuryDeal` Aggregate, 3-tier Front-Mid-Back duty segregation hard gates, `CrrSlrPosition` (CRR 3.5% daily min & 13%/5.5% Conventional/Islamic SLR shortfall detection), `LiquidityGapProfile` (6 regulatory maturity buckets & 1-14 days deficit alert), `ITreasuryRepository`, API endpoints, and Playwright E2E suite (`TreasuryPlaywrightTests.cs`). | Pending Commit | 167/167 tests passed (131 Unit, 1 Arch, 35 Playwright) |

@@ -22,12 +22,15 @@ using CBS.Application.PaymentRails.Commands.Rtgs;
 using CBS.Application.PaymentRails.DTOs;
 using CBS.Application.TradeFinance.Commands;
 using CBS.Application.TradeFinance.DTOs;
+using CBS.Application.Treasury.Commands;
+using CBS.Application.Treasury.DTOs;
 using CBS.Domain.Accounts;
 using CBS.Domain.BranchCash;
 using CBS.Domain.Exceptions;
 using CBS.Domain.Lending;
 using CBS.Domain.PaymentRails;
 using CBS.Domain.TradeFinance;
+using CBS.Domain.Treasury;
 using CBS.Domain.ValueObjects;
 using CBS.Infrastructure.Gateways;
 using CBS.Infrastructure.Persistence;
@@ -54,6 +57,7 @@ public partial class Program
         builder.Services.AddSingleton<IRtgsRepository, InMemoryRtgsRepository>();
         builder.Services.AddSingleton<ILoanAccountRepository, InMemoryLoanAccountRepository>();
         builder.Services.AddSingleton<ITradeFinanceRepository, InMemoryTradeFinanceRepository>();
+        builder.Services.AddSingleton<ITreasuryRepository, InMemoryTreasuryRepository>();
         builder.Services.AddSingleton<IElectionCommissionGateway, MockElectionCommissionGateway>();
         builder.Services.AddSingleton<ISanctionScreeningService, MockSanctionScreeningService>();
 
@@ -75,6 +79,7 @@ public partial class Program
         builder.Services.AddTransient<RtgsCommandHandler>();
         builder.Services.AddTransient<LendingCommandHandler>();
         builder.Services.AddTransient<TradeFinanceCommandHandler>();
+        builder.Services.AddTransient<TreasuryCommandHandler>();
 
         builder.Services.ConfigureHttpJsonOptions(options =>
         {
@@ -1083,6 +1088,146 @@ public partial class Program
             {
                 var command = new ScreenTbmlCommand(request);
                 var result = await handler.HandleScreenTbmlAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        // --- TREASURY & ALM APIS (BRPD Circular 12 Module 6) ---
+        var treasuryApi = app.MapGroup("/api/v1/treasury");
+
+        treasuryApi.MapPost("/deals/capture", async (
+            CaptureTreasuryDealRequest request,
+            TreasuryCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new CaptureTreasuryDealCommand(request);
+                var result = await handler.HandleCaptureAsync(command, ct);
+                return Results.Created($"/api/v1/treasury/deals/{result.DealReference}", result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        treasuryApi.MapPost("/deals/verify-mid-office", async (
+            VerifyMidOfficeDealRequest request,
+            TreasuryCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new VerifyMidOfficeDealCommand(request);
+                var result = await handler.HandleVerifyMidOfficeAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        treasuryApi.MapPost("/deals/settle-back-office", async (
+            SettleBackOfficeDealRequest request,
+            TreasuryCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new SettleBackOfficeDealCommand(request);
+                var result = await handler.HandleSettleBackOfficeAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        treasuryApi.MapGet("/deals/{dealReference}", async (
+            string dealReference,
+            ITreasuryRepository repository,
+            CancellationToken ct) =>
+        {
+            var deal = await repository.GetDealByReferenceAsync(dealReference, ct);
+            if (deal is null)
+                return Results.NotFound(new { error = $"Treasury Deal '{dealReference}' not found." });
+
+            var response = new TreasuryDealResponse(
+                deal.DealReference,
+                deal.Type.ToString(),
+                deal.Direction.ToString(),
+                deal.CounterpartyBankBic,
+                deal.CounterpartyName,
+                deal.PrimaryAmount.Amount,
+                deal.PrimaryAmount.Currency.Code,
+                deal.SecondaryAmount.Amount,
+                deal.SecondaryAmount.Currency.Code,
+                deal.ExchangeRate,
+                deal.InterestRate,
+                deal.DealDate,
+                deal.ValueDate,
+                deal.Status.ToString(),
+                deal.FrontOfficeDealerUserId,
+                deal.MidOfficeRiskOfficerUserId,
+                deal.BackOfficeSettlementUserId,
+                deal.SettledAtUtc);
+
+            return Results.Ok(response);
+        });
+
+        treasuryApi.MapPost("/alm/crr-slr/evaluate", async (
+            EvaluateCrrSlrRequest request,
+            TreasuryCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new EvaluateCrrSlrCommand(request);
+                var result = await handler.HandleEvaluateCrrSlrAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        treasuryApi.MapPost("/alm/liquidity-gap/evaluate", async (
+            EvaluateLiquidityGapRequest request,
+            TreasuryCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new EvaluateLiquidityGapCommand(request);
+                var result = await handler.HandleEvaluateLiquidityGapAsync(command, ct);
                 return Results.Ok(result);
             }
             catch (Exception ex)
