@@ -50,6 +50,8 @@ public sealed record Money
     }
 
     public static Money Zero(Currency currency) => new(0m, currency);
+    public static Money Bdt(decimal amount) => new(amount, Currency.BDT);
+    public static Money Usd(decimal amount) => new(amount, Currency.USD);
 
     public static Money operator +(Money left, Money right)
     {
