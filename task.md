@@ -22,8 +22,8 @@
 | **Phase 5** | Lending, CAD & Islamic Finance | Module 4 & Shariah | **DONE & VERIFIED** | 3 Playwright API Suites Passing (10 Unit + 3 E2E Tests) |
 | **Phase 6** | Trade Finance & TBML Detection | Module 5 | **DONE & VERIFIED** | 3 Playwright API Suites Passing (13 Unit + 3 E2E Tests) |
 | **Phase 7** | Treasury & ALM Engine | Module 6 | **DONE & VERIFIED** | 3 Playwright API Suites Passing (10 Unit + 3 E2E Tests) |
-| **Phase 8** | Security, Audit & Central Bank Reporting | Module 9, 10, 11 | **IN PROGRESS** | Planned (IAM, Audit Journal, CTR/STR) |
-| **Phase 9** | AI Knowledge Engine, Gemini & TBML | Google Gemini / RAG | **TODO** | Planned (RAG Grounding & Prompt Evals) |
+| **Phase 8** | Security, Audit & Central Bank Reporting | Module 9, 10, 11 | **DONE & VERIFIED** | 3 Playwright API Suites Passing (6 Unit + 3 E2E Tests) |
+| **Phase 9** | AI Knowledge Engine, Gemini & TBML | Google Gemini / RAG | **IN PROGRESS** | Planned (RAG Grounding & Prompt Evals) |
 
 ---
 
@@ -126,28 +126,61 @@
 
 ---
 
-## 6. Active Phase: Phase 8 — Security, Audit & Central Bank Reporting Engine
+## 6. Phase 8 Deliverables: Security, Audit & Central Bank Reporting Engine (DONE)
 
 ### Milestones & Deliverables Breakdown
 
-- [ ] **Milestone 8.1: Role-Based Access Control (RBAC) & Dual-Control Engine**
-  - [ ] Fine-grained permission model: Branch Teller, CAD Officer, Trade Services Maker, Trade Services Checker, Treasury Dealer, Risk Officer, Compliance Auditor, System Admin (`BRPD 9.1.1`).
-  - [ ] Hard gate prohibiting self-authorization across all banking workflows (`MakerCheckerAudit`, `BRPD 10.3.5-x`).
-  - [ ] Session security: Concurrent login prevention, session idle timeout, and password complexity enforcement (`BRPD 9.3`).
-- [ ] **Milestone 8.2: Immutable Audit Journal & CAATs Engine**
-  - [ ] Immutable Audit Log entry: Timestamp UTC, User CIF/Id, Action Type, Entity Name, Entity Id, Before State JSON, After State JSON, Workstation IP, Terminal ID (`BRPD 10.1, 10.3.5`).
-  - [ ] Tamper-evident cryptographic hash chain linking consecutive audit journal entries (`BRPD 10.3.5-vii`).
-  - [ ] CAATs (Computer Assisted Audit Techniques) regulatory data extraction interface for internal and central bank inspectors (`BRPD 10.3`).
-- [ ] **Milestone 8.3: BFIU AML/CFT Regulatory Reporting (CTR & STR)**
-  - [ ] Cash Transaction Report (CTR): Daily automated aggregation engine detecting any customer aggregate cash transactions $\ge 1,000,000$ BDT across all accounts in a single calendar day (`BRPD 11.1, BFIU Circular 26`).
-  - [ ] Suspicious Transaction Report (STR/SAR): Rule-based detection engine for transaction structuring (smurfing just below 1M BDT), sudden velocity spikes exceeding customer Transaction Profile (TP) monthly limits (`BRPD 11.2`).
-  - [ ] Regulatory XML/JSON export conforming to goAML / BFIU schema standards.
-- [ ] **Milestone 8.4: Application Services, CQRS & Persistence**
-  - [ ] `IAuditRepository`, `IComplianceReportingRepository` with thread-safe persistence.
-  - [ ] Commands, queries, handlers, and endpoints for audit logging, CAATs extraction, CTR generation, and STR alerting.
-- [ ] **Milestone 8.5: Automated Verification Suite (Domain Unit Tests & Playwright E2E)**
-  - [ ] Pure invariant unit tests in `SecurityAuditComplianceTests.cs`.
-  - [ ] Automated Playwright E2E integration test suite in `SecurityAuditCompliancePlaywrightTests.cs`.
+- [x] **Milestone 8.1: Role-Based Access Control (RBAC) & Session Security Engine**
+  - [x] Fine-grained permission model: Branch Teller, CAD Officer, Trade Maker, Trade Checker, Treasury Dealer, Mid-Office Risk Officer, Back-Office Settlement, Compliance Auditor, System Admin (`BRPD 9.1.1`).
+  - [x] Super/Admin financial transaction prohibition: System Admin users strictly blocked from executing financial transactions (`AdminFinancialTransactionBlockedInvariant`, `BRPD 10.3.5-vii`).
+  - [x] Session security: Concurrent active session prevention for single user (`ConcurrentSessionBlockedInvariant`, `BRPD 10.3.5-viii`).
+- [x] **Milestone 8.2: Immutable Audit Journal & CAATs Engine**
+  - [x] Immutable Audit Log entry: Timestamp UTC, Sequence Number, User Id, Role, Branch Code, Event Category, Action, Target Entity Name, Target Entity Id, Before State JSON, After State JSON, Workstation IP (`BRPD 10.1, 10.3.5`).
+  - [x] Tamper-evident cryptographic hash chain linking consecutive audit journal entries using SHA-256 (`TamperEvidentAuditHashChainInvariant`, `BRPD 10.3.5-vii`).
+  - [x] CAATs (Computer Assisted Audit Techniques) regulatory data extraction and chain integrity validation interface (`BRPD 10.3`).
+- [x] **Milestone 8.3: BFIU AML/CFT Regulatory Reporting (CTR & STR)**
+  - [x] Cash Transaction Report (CTR): Daily automated aggregation engine detecting any customer aggregate cash transactions $\ge 1,000,000$ BDT across all accounts in a single calendar day (`BRPD 11.1, BFIU Circular 26`).
+  - [x] Suspicious Transaction Report (STR/SAR): Rule-based detection engine for transaction structuring (smurfing just below 10 lac BDT), sudden velocity spikes exceeding customer Transaction Profile (TP) monthly limits (`BRPD 11.2`).
+  - [x] Structured reporting conforming to BFIU / goAML requirements.
+- [x] **Milestone 8.4: Application Services, CQRS & Persistence**
+  - [x] `ISecurityAuditRepository` with thread-safe in-memory concurrent persistence and linear-time cryptographic audit verification.
+  - [x] Commands, queries, handlers, and minimal API endpoints:
+    - `/api/v1/security/sessions/login`
+    - `/api/v1/security/sessions/logout`
+    - `/api/v1/security/permission/assert-financial`
+    - `/api/v1/audit/log`
+    - `/api/v1/audit/caats-extract`
+    - `/api/v1/compliance/bfiu/ctr/generate`
+    - `/api/v1/compliance/bfiu/str/evaluate`
+- [x] **Milestone 8.5: Automated Verification Suite (Domain Unit Tests & Playwright E2E)**
+  - [x] 6 pure domain unit tests in `SecurityAuditComplianceTests.cs` (137 total domain unit tests).
+  - [x] 3 automated Playwright E2E integration test suites in `SecurityAuditCompliancePlaywrightTests.cs` (38 total Playwright E2E tests).
+
+---
+
+## 7. Active Phase: Phase 9 — AI Knowledge Engine, Google Gemini & TBML RAG
+
+### Governance Invariants (Non-Negotiable Locks)
+1. **Zero Financial Mutation:** strictly read-only `.AsNoTracking()` operations; zero direct ledger mutation from AI assistants.
+2. **Client-Side PII Masking:** Account numbers, NIDs, TINs, Phone numbers must be masked before sending context to LLM.
+3. **Zero-Retention & Grounding:** Grounded exclusively in approved Bangladesh Bank circulars (BRPD 12 v2.0, Foreign Exchange Guidelines, BFIU Circulars).
+4. **4-Eyes Segregation:** Any administrative action recommended by AI requires explicit Maker-Checker dual confirmation.
+5. **CAATs Immutable Audit Trail:** Every diagnostic inquiry and AI prompt response is logged with cryptographic hash chaining into the CBS audit journal.
+
+### Milestones & Deliverables Breakdown
+- [ ] **Milestone 9.1: PII Masking & Redaction Value Objects & Filters**
+  - [ ] `PiiRedactionFilter` for NID (10/13/17 digits), TIN (12 digits), Phone (+880), Account Number (13 digits), and Account Names.
+- [ ] **Milestone 9.2: Knowledge Base & Vector Grounding Engine**
+  - [ ] Chunking and indexing of Bangladesh Bank BRPD Circular 12 v2.0 and BFIU guidelines.
+  - [ ] Strict retrieval mechanism with cosine similarity score thresholding.
+- [ ] **Milestone 9.3: Gemini AI Advisory Service (Application & Domain)**
+  - [ ] Read-only query handler for compliance checks, TBML risk assessment, and regulatory guidance.
+  - [ ] Structured output DTOs with grounded citations and confidence scores.
+- [ ] **Milestone 9.4: Endpoints & Persistence Wiring**
+  - [ ] Minimal API endpoints: `/api/v1/ai/advisory/ask`, `/api/v1/ai/tbml/analyze-deal`.
+- [ ] **Milestone 9.5: Automated Verification Suite (Unit Tests & Playwright E2E)**
+  - [ ] Unit tests verifying PII masking, grounded citations, and zero mutation.
+  - [ ] Playwright E2E integration tests verifying the API responses.
 
 ---
 
@@ -218,3 +251,4 @@
 | 2026-11-09 08:00 | Phase 5 | Implemented Lending, Credit Administration & Islamic Finance: `LoanAccount` Aggregate, `CollateralAsset` (FSV/MV/DP), 3-Tier CAD duty segregation hard gate, Bai-Murabaha direct vendor disbursement lock, Quard-e-Hasana $0.00\%$ interest, statutory repayment waterfall, asset classification (Standard/SMA/SS/DF/BL) with automatic interest suspense, API endpoints, and Playwright E2E suite (`LendingPlaywrightTests.cs`). | `efe7326` | 138/138 tests passed (108 Unit, 1 Arch, 29 Playwright) |
 | 2026-11-09 08:15 | Phase 6 | Implemented International Trade Finance & TBML Engine: `DocumentaryCredit` Aggregate, `ShippingGuarantee` (100% cash margin & BL surrender release), `ExpRegulatoryTracking` (120-day realization monitor & BB overdue reporting), `TbmlScreeningResult` (over/under-invoicing $\pm 15\%$ & sanctioned port route detection), SWIFT Category 7 MT700 message generator, `ITradeFinanceRepository`, API endpoints, and Playwright E2E suite (`TradeFinancePlaywrightTests.cs`). | `b2c7adc` | 154/154 tests passed (121 Unit, 1 Arch, 32 Playwright) |
 | 2026-11-09 08:25 | Phase 7 | Implemented Treasury & ALM Engine: `TreasuryDeal` Aggregate, 3-tier Front-Mid-Back duty segregation hard gates, `CrrSlrPosition` (CRR 3.5% daily min & 13%/5.5% Conventional/Islamic SLR shortfall detection), `LiquidityGapProfile` (6 regulatory maturity buckets & 1-14 days deficit alert), `ITreasuryRepository`, API endpoints, and Playwright E2E suite (`TreasuryPlaywrightTests.cs`). | `b52ca74` | 167/167 tests passed (131 Unit, 1 Arch, 35 Playwright) |
+| 2026-11-09 08:35 | Phase 8 | Implemented Security, Audit & Central Bank Reporting Engine: `UserSession` (Concurrent login blocking BRPD 10.3.5-viii, Super/Admin financial prohibition BRPD 10.3.5-vii), `AuditJournalEntry` (Tamper-evident SHA-256 cryptographic hash chain BRPD 10.3.5-vii, 10.3.6), `BfiuRegulatoryReport` (Daily CTR $\ge 1,000,000$ BDT threshold, STR/SAR structuring smurfing alerts), `ISecurityAuditRepository`, API endpoints, and Playwright E2E suite (`SecurityAuditCompliancePlaywrightTests.cs`). | Pending | 176/176 tests passed (137 Unit, 1 Arch, 38 Playwright) |

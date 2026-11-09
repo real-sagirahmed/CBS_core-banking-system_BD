@@ -20,6 +20,8 @@ using CBS.Application.PaymentRails.Commands.PresentCheque;
 using CBS.Application.PaymentRails.Commands.ProcessInwardCheque;
 using CBS.Application.PaymentRails.Commands.Rtgs;
 using CBS.Application.PaymentRails.DTOs;
+using CBS.Application.SecurityAudit.Commands;
+using CBS.Application.SecurityAudit.DTOs;
 using CBS.Application.TradeFinance.Commands;
 using CBS.Application.TradeFinance.DTOs;
 using CBS.Application.Treasury.Commands;
@@ -29,6 +31,7 @@ using CBS.Domain.BranchCash;
 using CBS.Domain.Exceptions;
 using CBS.Domain.Lending;
 using CBS.Domain.PaymentRails;
+using CBS.Domain.SecurityAudit;
 using CBS.Domain.TradeFinance;
 using CBS.Domain.Treasury;
 using CBS.Domain.ValueObjects;
@@ -58,6 +61,7 @@ public partial class Program
         builder.Services.AddSingleton<ILoanAccountRepository, InMemoryLoanAccountRepository>();
         builder.Services.AddSingleton<ITradeFinanceRepository, InMemoryTradeFinanceRepository>();
         builder.Services.AddSingleton<ITreasuryRepository, InMemoryTreasuryRepository>();
+        builder.Services.AddSingleton<ISecurityAuditRepository, InMemorySecurityAuditRepository>();
         builder.Services.AddSingleton<IElectionCommissionGateway, MockElectionCommissionGateway>();
         builder.Services.AddSingleton<ISanctionScreeningService, MockSanctionScreeningService>();
 
@@ -80,6 +84,7 @@ public partial class Program
         builder.Services.AddTransient<LendingCommandHandler>();
         builder.Services.AddTransient<TradeFinanceCommandHandler>();
         builder.Services.AddTransient<TreasuryCommandHandler>();
+        builder.Services.AddTransient<SecurityAuditCommandHandler>();
 
         builder.Services.ConfigureHttpJsonOptions(options =>
         {
@@ -1228,6 +1233,147 @@ public partial class Program
             {
                 var command = new EvaluateLiquidityGapCommand(request);
                 var result = await handler.HandleEvaluateLiquidityGapAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        // --- SECURITY, AUDIT & COMPLIANCE APIS (BRPD 10.3.5, 10.3.6, 11.1, 11.2) ---
+        var securityApi = app.MapGroup("/api/v1/security");
+        var auditApi = app.MapGroup("/api/v1/audit");
+        var complianceApi = app.MapGroup("/api/v1/compliance");
+
+        securityApi.MapPost("/sessions/login", async (
+            LoginSessionRequest request,
+            SecurityAuditCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new LoginSessionCommand(request);
+                var result = await handler.HandleLoginAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        securityApi.MapPost("/sessions/logout", async (
+            LogoutSessionRequest request,
+            SecurityAuditCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new LogoutSessionCommand(request);
+                var result = await handler.HandleLogoutAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        securityApi.MapPost("/permission/assert-financial", async (
+            AssertFinancialPermissionRequest request,
+            SecurityAuditCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new AssertFinancialPermissionCommand(request);
+                await handler.HandleAssertFinancialPermissionAsync(command, ct);
+                return Results.Ok(new { message = "Financial permission authorized." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        auditApi.MapPost("/log", async (
+            LogAuditEntryRequest request,
+            SecurityAuditCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new LogAuditEntryCommand(request);
+                var result = await handler.HandleLogAuditAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        auditApi.MapGet("/caats-extract", async (
+            DateTime? fromUtc,
+            DateTime? toUtc,
+            SecurityAuditCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new GetCaatsAuditExtractCommand(fromUtc, toUtc);
+                var result = await handler.HandleCaatsExtractAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        complianceApi.MapPost("/bfiu/ctr/generate", async (
+            GenerateCtrReportRequest request,
+            SecurityAuditCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new GenerateCtrReportCommand(request);
+                var result = await handler.HandleGenerateCtrAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        complianceApi.MapPost("/bfiu/str/evaluate", async (
+            EvaluateStrAlertsRequest request,
+            SecurityAuditCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new EvaluateStrAlertsCommand(request);
+                var result = await handler.HandleEvaluateStrAsync(command, ct);
                 return Results.Ok(result);
             }
             catch (Exception ex)
