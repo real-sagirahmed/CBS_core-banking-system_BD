@@ -19,8 +19,8 @@
 | **Phase 2** | General Banking & Core Accounting Engine | Module 1 & 3 | **DONE & VERIFIED** | 3 Playwright API + Unit Suites Passing |
 | **Phase 3** | Branch Cash & Teller Operations | Module 1.7, 2, 3.10-3.13 | **DONE & VERIFIED** | 3 Playwright API Suites Passing |
 | **Phase 4** | Payment Rails, Clearing & Channel Gateway | Module 1.4, 1.5, 7 | **DONE & VERIFIED** | 3 Playwright API Suites Passing |
-| **Phase 5** | Lending, CAD & Islamic Finance | Module 4 & Shariah | **IN PROGRESS** | Planned (CAD Segregation, Amortization, Bai-Murabaha) |
-| **Phase 6** | Trade Finance & TBML Detection | Module 5 | **TODO** | Planned (LC Lifecycle, EXP Tracking) |
+| **Phase 5** | Lending, CAD & Islamic Finance | Module 4 & Shariah | **DONE & VERIFIED** | 3 Playwright API Suites Passing (10 Unit + 3 E2E Tests) |
+| **Phase 6** | Trade Finance & TBML Detection | Module 5 | **IN PROGRESS** | Planned (LC Lifecycle, EXP Tracking, TBML) |
 | **Phase 7** | Treasury & ALM Engine | Module 6 | **TODO** | Planned (Blotter, CRR/SLR Monitoring) |
 | **Phase 8** | Security, Audit & Central Bank Reporting | Module 9, 10, 11 | **TODO** | Planned (IAM, Audit Journal, CTR/STR) |
 | **Phase 9** | AI Knowledge Engine, Gemini & TBML | Google Gemini / RAG | **TODO** | Planned (RAG Grounding & Prompt Evals) |
@@ -55,29 +55,53 @@
 
 ---
 
-## 3. Active Phase: Phase 5 — Lending, Credit Administration & Islamic Finance
+## 3. Phase 5 Deliverables: Lending, Credit Administration & Islamic Finance (DONE)
+
+- [x] **Milestone 5.1: Credit Administration & CAD Duty Segregation Engine**
+  - [x] Three-tier segregation: CRM/Branch initiates proposal $\rightarrow$ Sanction/Credit Committee approves $\rightarrow$ Credit Administration Department (CAD) vets collateral, legal documentation, and loads limit into system $\rightarrow$ Branch disburses (`BRPD 4.1.3-i, 4.1.5-i`).
+  - [x] Hard gate prohibiting loan disbursement without verified CAD documentation checklist sign-off (`CadChecklistNotVettedInvariant`).
+  - [x] Collateral Asset Registry with Forced Sale Value (FSV), Market Value (MV), Haircut margin, and Drawing Power (DP) enforcement (`BRPD 4.1.3, 4.1.6`).
+- [x] **Milestone 5.2: Loan Facilities, Accrual & Regulatory Recovery Waterfall**
+  - [x] Facility Types: Continuous Loan (CC/OD), Term Loan, Demand Loan (`BRPD 4.1`).
+  - [x] Regulatory recovery waterfall (`BRPD 4.2.11-iii`):
+    $$\text{Charges} \rightarrow \text{Penal Interest} \rightarrow \text{Overdue Interest} \rightarrow \text{Regular Interest} \rightarrow \text{Principal}$$
+  - [x] Daily interest accrual and compounding schedule (`BRPD 4.1.7-i`).
+- [x] **Milestone 5.3: Islamic Banking Financing (Shariah Invariants)**
+  - [x] Bai-Murabaha supplier payment lock: Direct Pay Order/RTGS issuance to verified goods suppliers; strictly zero cash disbursement or credit to customer account (`BRPD 4.1.5-iv`).
+  - [x] Quard-e-Hasana contracts: Strict $0.00\%$ interest/profit invariant (`BRPD 4.3.4-i`).
+  - [x] Shariah default compensation: Credited to charity/suspense ledger, strictly prohibited from recognition as bank P&L income (`BRPD 4.1.9-iii`).
+- [x] **Milestone 5.4: Asset Classification (CL) & Provisioning Engine**
+  - [x] Automated Days Past Due (DPD) evaluation: Standard ($<60$), SMA ($60-179$), SS ($180-269$), DF ($270-359$), Bad/Loss ($\ge 360$) (`BRPD 4.1.11, 4.2.27`).
+  - [x] Automatic interest suspension: Cessation of interest accrual into income once an account is classified; transfer to Interest Suspense account (`BRPD 3.9.2-i, 4.1.11-iii`).
+- [x] **Milestone 5.5: Application Services, CQRS & Playwright E2E Suite**
+  - [x] Domain aggregates, commands, handlers, endpoints (`/api/v1/lending/accounts`, `/vet-cad`, `/disburse`, `/repayment`, `/evaluate-classification`).
+  - [x] 10 unit tests in `LendingTests.cs` and 3 automated Playwright E2E integration tests in `LendingPlaywrightTests.cs`.
+
+---
+
+## 4. Active Phase: Phase 6 — International Trade Finance & TBML Engine
 
 ### Milestones & Deliverables Breakdown
 
-- [ ] **Milestone 5.1: Credit Administration & CAD Duty Segregation Engine**
-  - [ ] Three-tier segregation: CRM/Branch initiates proposal $\rightarrow$ Sanction/Credit Committee approves $\rightarrow$ Credit Administration Department (CAD) vets collateral, legal documentation, and loads limit into system $\rightarrow$ Branch disburses (`BRPD 4.1.3-i, 4.1.5-i`).
-  - [ ] Hard gate prohibiting loan disbursement without verified CAD documentation checklist sign-off (`CadChecklistNotVettedInvariant`).
-  - [ ] Collateral Asset Registry with Forced Sale Value (FSV), Market Value (MV), and Drawing Power (DP) enforcement (`BRPD 4.1.3, 4.1.6`).
-- [ ] **Milestone 5.2: Loan Facilities, Accrual & Regulatory Recovery Waterfall**
-  - [ ] Facility Types: Continuous Loan (CC/OD), Term Loan, Demand Loan (`BRPD 4.1`).
-  - [ ] Term loan amortization schedule generator (Reducing balance method, 360/365-day basis) (`BRPD 4.2.4`).
-  - [ ] Regulatory recovery waterfall (`BRPD 4.2.11-iii`):
-    $$\text{Charges} \rightarrow \text{Penal Interest} \rightarrow \text{Overdue Interest} \rightarrow \text{Regular Interest} \rightarrow \text{Principal}$$
-  - [ ] Daily interest accrual and compounding schedule (`BRPD 4.1.7-i`).
-- [ ] **Milestone 5.3: Islamic Banking Financing (Shariah Invariants)**
-  - [ ] Bai-Murabaha supplier payment lock: Direct Pay Order/RTGS issuance to verified goods suppliers; strictly zero cash disbursement or credit to customer account (`BRPD 4.1.5-iv`).
-  - [ ] Quard-e-Hasana contracts: Strict $0.00\%$ interest/profit invariant (`BRPD 4.3.4-i`).
-  - [ ] Shariah default compensation: Credited to charity/suspense ledger, strictly prohibited from recognition as bank P&L income (`BRPD 4.1.9-iii`).
-- [ ] **Milestone 5.4: Asset Classification (CL) & Provisioning Engine**
-  - [ ] Automated Days Past Due (DPD) evaluation: Standard, SMA (Special Mention Account), SS (Sub-Standard), DF (Doubtful), Bad/Loss (`BRPD 4.1.11, 4.2.27`).
-  - [ ] Automatic interest suspension: Cessation of interest accrual into income once an account is classified; transfer to Interest Suspense account (`BRPD 3.9.2-i, 4.1.11-iii`).
-- [ ] **Milestone 5.5: Application Services, CQRS & Playwright E2E Suite**
-  - [ ] Domain aggregates, commands, handlers, endpoints, and automated Playwright E2E lending tests.
+- [ ] **Milestone 6.1: Import Documentary Credit (LC) Lifecycle Engine**
+  - [ ] Pre-issuance sanction screening against OFAC/UN/EU and Bangladesh Bank CIB defaulter checklist (`BRPD 5.0, 5.1.1-xlii`).
+  - [ ] Importer IRC (Import Registration Certificate) validity and HS Code authorization gate (`BRPD 5.1.1-v`).
+  - [ ] SWIFT MT700 (Issue of a Documentary Credit) generation engine adhering strictly to SWIFT Category 7 Standards (`BRPD 5.1.8-i`).
+  - [ ] Shipping Guarantee (SG) / Delivery Order issuance engine with mandatory 100% cash margin lock and automated guarantee cancellation upon original Bill of Lading (BL) surrender (`BRPD 5.1.2`).
+- [ ] **Milestone 6.2: Export Credit & Regulatory Tracking Engine**
+  - [ ] EXP Regulatory Form Tracking: Central Bank 120-day realization deadline monitor with automated statutory overdue notification (`BRPD 5.2.1-vi, 5.2.5-i`).
+  - [ ] Back-to-Back (B2B) Inland/Foreign LC opening: Strict ceiling validation against Master Export LC / Sales Contract value ($e.g. \le 75\%-80\%$) (`BRPD 5.2.2-i`).
+  - [ ] Export Development Fund (EDF) refinancing and loan tagging (`BRPD 5.2.4-iv`).
+- [ ] **Milestone 6.3: Trade-Based Money Laundering (TBML) Detection Engine**
+  - [ ] Unit price anomaly detection: Over-invoicing and under-invoicing variance checking against commodity global reference price bands ($\pm 15\%$ tolerance) (`BRPD 5.4.1`).
+  - [ ] Dual-use goods classification and high-risk / sanctioned transshipment port route screening (`BRPD 5.4.2`).
+- [ ] **Milestone 6.4: Application Services, CQRS & In-Memory Persistence**
+  - [ ] `ITradeFinanceRepository` and repository implementation.
+  - [ ] Commands, queries, and DTOs for LC issuance, SG release, EXP realization, and TBML screening.
+  - [ ] Minimal API endpoints: `/api/v1/trade/lc/issue`, `/api/v1/trade/shipping-guarantee/issue`, `/api/v1/trade/shipping-guarantee/release-bl`, `/api/v1/trade/exp/track`, `/api/v1/trade/tbml/screen`.
+- [ ] **Milestone 6.5: Automated Verification Suite (Domain Unit Tests & Playwright E2E)**
+  - [ ] Pure invariant unit tests in `TradeFinanceTests.cs`.
+  - [ ] Playwright E2E integration test suite in `TradeFinancePlaywrightTests.cs`.
 
 ---
 
@@ -105,6 +129,13 @@
 | `PostDatedChequeReturnInvariant` | `BRPD 1.5.3 Code 05` | Cheque presented before issue date returned as Post-Dated Cheque. | Playwright E2E (`PaymentRailsPlaywrightTests.cs`) |
 | `DraweeAccountInsufficientFundsReturnInvariant` | `BRPD 1.5.3 Code 01` | Inward clearing cheque returned if drawer account has insufficient balance. | Playwright E2E (`PaymentRailsPlaywrightTests.cs`) |
 | `RtgsMinimumThresholdInvariant` | `BRPD 1.5.5` | Customer RTGS (pacs.008) transfer requires minimum 100,000 BDT. | Playwright E2E (`PaymentRailsPlaywrightTests.cs`) |
+| `CadChecklistNotVettedInvariant` | `BRPD 4.1.3-i, 4.1.5-i` | Disbursement prohibited without verified CAD documentation vetting. | Playwright E2E (`LendingPlaywrightTests.cs`) |
+| `MakerCheckerCadSeparationInvariant` | `BRPD 4.1.5-i, 10.3.5-x` | Disbursing branch officer strictly prohibited from vetting CAD checklist ($\text{Maker} \neq \text{CAD}$). | Playwright E2E (`LendingPlaywrightTests.cs`) |
+| `DrawingPowerExceededInvariant` | `BRPD 4.1.6-iii` | Disbursement cannot exceed collateral drawing power ($MV \times (1 - \text{Margin})$). | xUnit Unit Test (`LendingTests.cs`) |
+| `MurabahaDirectVendorDisbursementInvariant` | `BRPD 4.1.5-iv` | Islamic Bai-Murabaha disbursement must be direct to verified goods vendor via PO/RTGS; customer direct payout prohibited. | Playwright E2E (`LendingPlaywrightTests.cs`) |
+| `QuardNonZeroInterestInvariant` | `BRPD 4.3.4-i` | Islamic Quard-e-Hasana contracts strictly prohibited from charging interest or profit ($0.00\%$). | xUnit Unit Test (`LendingTests.cs`) |
+| `StatutoryRecoveryWaterfallInvariant` | `BRPD 4.2.11-iii` | Repayments strictly cascade: Charges $\rightarrow$ Penal $\rightarrow$ Overdue $\rightarrow$ Regular $\rightarrow$ Principal. | xUnit Unit Test (`LendingTests.cs`) |
+| `AssetClassificationSuspenseInvariant` | `BRPD 3.9.2-i, 4.1.11` | SS/DF/BL classified loan interest accrual ceases to P&L income and diverts to Interest Suspense. | xUnit Unit Test (`LendingTests.cs`) |
 | `CleanArchitectureBoundary` | Software Engineering Standard | Domain has 0 dependencies; Application does not reference Infrastructure. | NetArchTest (`CleanArchitectureTests.cs`) |
 
 ---
@@ -122,3 +153,4 @@
 | 2026-11-09 07:25 | Phase 2 | Implemented General Banking & Core Accounting: `DepositAccount` (Modulus 11, Dormancy engine, 10-Yr statutory inoperative transfer, NBR tax & excise duty, hovering recovery), `BranchOperatingDay` (EOD pending voucher hard gate, BOD), `ExchangeRate`, `OrganizationalUnit`, API endpoints, and Playwright E2E suite (`GeneralBankingPlaywrightTests.cs`). | `bf27870` | 76/76 tests passed (55 Unit, 1 Arch, 20 Playwright) |
 | 2026-11-09 07:40 | Phase 3 | Implemented Branch Cash & Teller Operations: `TellerDrawer` (vault-to-teller balancing, cashier posting limits, EOD discrepancy suspense), `CashDenominationBundle` (11 legal tender denominations), `WalkInCustomerDetails` (CDD $\ge 50,000$ BDT), `RemittanceInstrument` (PO/DD tiered commission, 15% NBR statutory VAT, stop payment, liquidation), `SecurityStationeryInventory` (joint custody), API endpoints, and Playwright E2E suite (`BranchCashPlaywrightTests.cs`). | `ef22c23` | 108/108 tests passed (84 Unit, 1 Arch, 23 Playwright) |
 | 2026-11-09 07:50 | Phase 4 | Implemented Payment Rails & Clearing Gateway: `RoutingNumber` (9 digits), `MicrLine` (E-13B standard), `ChequeClearingItem` (High Value $\ge 500k$ vs Regular Value, BB return codes 01/02/05), `BeftnBatchItem` (outward/inward credit/debit), `RtgsTransaction` (ISO 20022 pacs.008, 100k BDT threshold, BB settlement), API endpoints, and Playwright E2E suite (`PaymentRailsPlaywrightTests.cs`). | `f7d6330` | 125/125 tests passed (98 Unit, 1 Arch, 26 Playwright) |
+| 2026-11-09 08:00 | Phase 5 | Implemented Lending, Credit Administration & Islamic Finance: `LoanAccount` Aggregate, `CollateralAsset` (FSV/MV/DP), 3-Tier CAD duty segregation hard gate, Bai-Murabaha direct vendor disbursement lock, Quard-e-Hasana $0.00\%$ interest, statutory repayment waterfall, asset classification (Standard/SMA/SS/DF/BL) with automatic interest suspense, API endpoints, and Playwright E2E suite (`LendingPlaywrightTests.cs`). | Pending Commit | 138/138 tests passed (108 Unit, 1 Arch, 29 Playwright) |

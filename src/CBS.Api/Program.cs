@@ -13,6 +13,8 @@ using CBS.Application.Customers.Commands.CreateCustomerDraft;
 using CBS.Application.Customers.Commands.VerifyCustomer;
 using CBS.Application.Customers.DTOs;
 using CBS.Application.GeneralBanking.Commands.RunBranchEodBatch;
+using CBS.Application.Lending.Commands;
+using CBS.Application.Lending.DTOs;
 using CBS.Application.PaymentRails.Commands.InitiateBeftn;
 using CBS.Application.PaymentRails.Commands.PresentCheque;
 using CBS.Application.PaymentRails.Commands.ProcessInwardCheque;
@@ -21,6 +23,7 @@ using CBS.Application.PaymentRails.DTOs;
 using CBS.Domain.Accounts;
 using CBS.Domain.BranchCash;
 using CBS.Domain.Exceptions;
+using CBS.Domain.Lending;
 using CBS.Domain.PaymentRails;
 using CBS.Domain.ValueObjects;
 using CBS.Infrastructure.Gateways;
@@ -46,6 +49,7 @@ public partial class Program
         builder.Services.AddSingleton<IChequeClearingRepository, InMemoryChequeClearingRepository>();
         builder.Services.AddSingleton<IBeftnRepository, InMemoryBeftnRepository>();
         builder.Services.AddSingleton<IRtgsRepository, InMemoryRtgsRepository>();
+        builder.Services.AddSingleton<ILoanAccountRepository, InMemoryLoanAccountRepository>();
         builder.Services.AddSingleton<IElectionCommissionGateway, MockElectionCommissionGateway>();
         builder.Services.AddSingleton<ISanctionScreeningService, MockSanctionScreeningService>();
 
@@ -65,6 +69,7 @@ public partial class Program
         builder.Services.AddTransient<ProcessInwardChequeClearingCommandHandler>();
         builder.Services.AddTransient<InitiateBeftnTransferCommandHandler>();
         builder.Services.AddTransient<RtgsCommandHandler>();
+        builder.Services.AddTransient<LendingCommandHandler>();
 
         builder.Services.ConfigureHttpJsonOptions(options =>
         {
@@ -696,6 +701,154 @@ public partial class Program
             if (tx is null) return Results.NotFound();
 
             return Results.Ok(RtgsCommandHandler.MapToDto(tx));
+        });
+
+        // --- LENDING & CREDIT FACILITIES APIS (PHASE 5) ---
+        var lendingApi = app.MapGroup("/api/v1/lending");
+
+        lendingApi.MapPost("/accounts", async (
+            CreateLoanAccountRequest request,
+            HttpContext httpContext,
+            LendingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            string approverUserId = httpContext.Request.Headers["X-Approver-Id"].FirstOrDefault() ?? "CREDIT_COMMITTEE_01";
+
+            try
+            {
+                var command = new CreateLoanAccountCommand(request, approverUserId);
+                var result = await handler.HandleCreateAsync(command, ct);
+                return Results.Created($"/api/v1/lending/accounts/{result.AccountNumber}", result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        lendingApi.MapGet("/accounts/{accountNumber}", async (
+            string accountNumber,
+            ILoanAccountRepository repo,
+            CancellationToken ct) =>
+        {
+            var loan = await repo.GetByAccountNumberAsync(AccountNumber.From(accountNumber), ct);
+            if (loan is null) return Results.NotFound();
+
+            return Results.Ok(LendingCommandHandler.MapToDto(loan));
+        });
+
+        lendingApi.MapPost("/accounts/vet-cad", async (
+            VetCadChecklistRequest request,
+            HttpContext httpContext,
+            LendingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            string cadOfficerUserId = httpContext.Request.Headers["X-Cad-Officer-Id"].FirstOrDefault() ?? "CAD_OFFICER_01";
+
+            try
+            {
+                var command = new VetCadChecklistCommand(request, cadOfficerUserId);
+                var result = await handler.HandleVetCadAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        lendingApi.MapPost("/accounts/disburse", async (
+            DisburseLoanRequest request,
+            HttpContext httpContext,
+            LendingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            string disbursingOfficerUserId = httpContext.Request.Headers["X-Disbursing-Officer-Id"].FirstOrDefault() ?? "BRANCH_DISBURSER_01";
+
+            try
+            {
+                var command = new DisburseLoanCommand(request, disbursingOfficerUserId);
+                var result = await handler.HandleDisburseAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        lendingApi.MapPost("/accounts/repayment", async (
+            ProcessLoanRepaymentRequest request,
+            LendingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new ProcessLoanRepaymentCommand(request);
+                var result = await handler.HandleRepaymentAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        lendingApi.MapPost("/accounts/evaluate-classification", async (
+            EvaluateLoanClassificationRequest request,
+            LendingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new EvaluateLoanClassificationCommand(request);
+                var result = await handler.HandleClassificationAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
         });
 
         return app;
