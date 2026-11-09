@@ -23,7 +23,7 @@
 | **Phase 6** | Trade Finance & TBML Detection | Module 5 | **DONE & VERIFIED** | 3 Playwright API Suites Passing (13 Unit + 3 E2E Tests) |
 | **Phase 7** | Treasury & ALM Engine | Module 6 | **DONE & VERIFIED** | 3 Playwright API Suites Passing (10 Unit + 3 E2E Tests) |
 | **Phase 8** | Security, Audit & Central Bank Reporting | Module 9, 10, 11 | **DONE & VERIFIED** | 3 Playwright API Suites Passing (6 Unit + 3 E2E Tests) |
-| **Phase 9** | AI Knowledge Engine, Gemini & TBML | Google Gemini / RAG | **IN PROGRESS** | Planned (RAG Grounding & Prompt Evals) |
+| **Phase 9** | AI Knowledge Engine, Gemini & TBML | Google Gemini / RAG | **DONE & VERIFIED** | 3 Playwright API Suites Passing (8 Unit + 3 E2E Tests) |
 
 ---
 
@@ -168,19 +168,21 @@
 5. **CAATs Immutable Audit Trail:** Every diagnostic inquiry and AI prompt response is logged with cryptographic hash chaining into the CBS audit journal.
 
 ### Milestones & Deliverables Breakdown
-- [ ] **Milestone 9.1: PII Masking & Redaction Value Objects & Filters**
-  - [ ] `PiiRedactionFilter` for NID (10/13/17 digits), TIN (12 digits), Phone (+880), Account Number (13 digits), and Account Names.
-- [ ] **Milestone 9.2: Knowledge Base & Vector Grounding Engine**
-  - [ ] Chunking and indexing of Bangladesh Bank BRPD Circular 12 v2.0 and BFIU guidelines.
-  - [ ] Strict retrieval mechanism with cosine similarity score thresholding.
-- [ ] **Milestone 9.3: Gemini AI Advisory Service (Application & Domain)**
-  - [ ] Read-only query handler for compliance checks, TBML risk assessment, and regulatory guidance.
-  - [ ] Structured output DTOs with grounded citations and confidence scores.
-- [ ] **Milestone 9.4: Endpoints & Persistence Wiring**
-  - [ ] Minimal API endpoints: `/api/v1/ai/advisory/ask`, `/api/v1/ai/tbml/analyze-deal`.
-- [ ] **Milestone 9.5: Automated Verification Suite (Unit Tests & Playwright E2E)**
-  - [ ] Unit tests verifying PII masking, grounded citations, and zero mutation.
-  - [ ] Playwright E2E integration tests verifying the API responses.
+- [x] **Milestone 9.1: Client-Side Deterministic PII Sanitizer & Redaction Engine**
+  - [x] `PiiSanitizer` with regex masking for NID (10/13/17 digits), e-TIN (12 digits), Phone (+880), 13-digit CBS Account Number, and Email addresses (`BRPD 9.1.1-xxv, 10.1.3`).
+- [x] **Milestone 9.2: Regulatory Knowledge Base & Grounding Vector Store**
+  - [x] Indexed knowledge base across Bangladesh Bank BRPD Circular 12 v2.0 (Modules 1 to 11).
+  - [x] Hybrid semantic retrieval scoring with exact section titles, excerpts, and relevance score thresholding.
+- [x] **Milestone 9.3: Gemini AI Advisory Service (Application & Domain)**
+  - [x] Read-only decision support for compliance, CAD guidelines, Shariah rules, and TBML screening.
+  - [x] Zero Financial Mutation Lock: strictly throws exception on any ledger mutation or voucher posting intent (`BRPD 1.3.5, 10.3.5-vii`).
+  - [x] Structured output DTOs with grounded citations and confidence scores.
+- [x] **Milestone 9.4: Endpoints & CAATs Audit Persistence Wiring**
+  - [x] Minimal API endpoints: `/api/v1/ai/advisory/ask`, `/api/v1/ai/advisory/{queryId}`, `/api/v1/ai/tbml/analyze`, `/api/v1/ai/tools/pii-sanitize`.
+  - [x] Immutable CAATs audit journal logging for every AI model interaction (`BRPD 10.3.6`).
+- [x] **Milestone 9.5: Automated Verification Suite (Unit Tests & Playwright E2E)**
+  - [x] 8 pure domain unit tests in `AiIntelligenceTests.cs` (145 total domain unit tests).
+  - [x] 3 automated Playwright E2E integration test suites in `AiIntelligencePlaywrightTests.cs` (41 total Playwright E2E tests).
 
 ---
 
@@ -231,6 +233,14 @@
 | `CrrDailyMinimumShortfallInvariant` | `BRPD 6.2` | Cash Reserve Ratio falling below 3.50% daily minimum triggers regulatory CRR shortfall. | Playwright E2E (`TreasuryPlaywrightTests.cs`) |
 | `SlrConventionalAndIslamicRatioInvariant` | `BRPD 6.2` | Statutory Liquidity Ratio (13.00% Conventional, 5.50% Islamic) unencumbered securities deficit triggers SLR shortfall. | Playwright E2E (`TreasuryPlaywrightTests.cs`) |
 | `PrudentialLiquidityGapDeficitInvariant` | `BRPD 6.3` | Net negative liquidity gap $> 10\%$ of outflows in 1-14 days bucket triggers prudential ALM alert. | Playwright E2E (`TreasuryPlaywrightTests.cs`) |
+| `ConcurrentSessionBlockedInvariant` | `BRPD 10.3.5-viii` | Multiple or concurrent active logins for single user strictly prohibited. | Playwright E2E (`SecurityAuditCompliancePlaywrightTests.cs`) |
+| `AdminFinancialTransactionBlockedInvariant` | `BRPD 10.3.5-vii` | Super/Admin users strictly banned from performing or authorizing financial transactions. | Playwright E2E (`SecurityAuditCompliancePlaywrightTests.cs`) |
+| `TamperEvidentAuditHashChainInvariant` | `BRPD 10.3.5-vii, 10.3.6` | Audit journal entries cryptographically linked via SHA-256 for linear-time CAATs verification. | Playwright E2E (`SecurityAuditCompliancePlaywrightTests.cs`) |
+| `BfiuCtrThresholdInvariant` | `BRPD 11.1, BFIU Cir 26` | Mandatory daily reporting for customer aggregate cash transactions $\ge 1,000,000$ BDT. | Playwright E2E (`SecurityAuditCompliancePlaywrightTests.cs`) |
+| `ZeroFinancialMutationLock` | `BRPD 1.3.5, 10.3.5-vii` | AI Assistants strictly prohibited from mutating financial ledgers or posting vouchers. | Playwright E2E (`AiIntelligencePlaywrightTests.cs`) |
+| `PiiSanitizationLock` | `BRPD 9.1.1-xxv, 10.1.3` | Client-side deterministic redaction of NID, TIN, Account, and Phone before prompt egress. | Playwright E2E (`AiIntelligencePlaywrightTests.cs`) |
+| `TbmlSemanticVarianceLock` | `BRPD 5.4.1, 5.7.6` | Unit price variance $> \pm 15\%$ triggers human review alert; $> 25\%$ escalates to BFIU. | Playwright E2E (`AiIntelligencePlaywrightTests.cs`) |
+| `AiMandatoryMakerCheckerLock` | `BRPD 1.3.18, 10.3.5-x` | All AI-generated advisory recommendations require human Maker-Checker sign-off. | Playwright E2E (`AiIntelligencePlaywrightTests.cs`) |
 | `CleanArchitectureBoundary` | Software Engineering Standard | Domain has 0 dependencies; Application does not reference Infrastructure. | NetArchTest (`CleanArchitectureTests.cs`) |
 
 ---
@@ -251,4 +261,5 @@
 | 2026-11-09 08:00 | Phase 5 | Implemented Lending, Credit Administration & Islamic Finance: `LoanAccount` Aggregate, `CollateralAsset` (FSV/MV/DP), 3-Tier CAD duty segregation hard gate, Bai-Murabaha direct vendor disbursement lock, Quard-e-Hasana $0.00\%$ interest, statutory repayment waterfall, asset classification (Standard/SMA/SS/DF/BL) with automatic interest suspense, API endpoints, and Playwright E2E suite (`LendingPlaywrightTests.cs`). | `efe7326` | 138/138 tests passed (108 Unit, 1 Arch, 29 Playwright) |
 | 2026-11-09 08:15 | Phase 6 | Implemented International Trade Finance & TBML Engine: `DocumentaryCredit` Aggregate, `ShippingGuarantee` (100% cash margin & BL surrender release), `ExpRegulatoryTracking` (120-day realization monitor & BB overdue reporting), `TbmlScreeningResult` (over/under-invoicing $\pm 15\%$ & sanctioned port route detection), SWIFT Category 7 MT700 message generator, `ITradeFinanceRepository`, API endpoints, and Playwright E2E suite (`TradeFinancePlaywrightTests.cs`). | `b2c7adc` | 154/154 tests passed (121 Unit, 1 Arch, 32 Playwright) |
 | 2026-11-09 08:25 | Phase 7 | Implemented Treasury & ALM Engine: `TreasuryDeal` Aggregate, 3-tier Front-Mid-Back duty segregation hard gates, `CrrSlrPosition` (CRR 3.5% daily min & 13%/5.5% Conventional/Islamic SLR shortfall detection), `LiquidityGapProfile` (6 regulatory maturity buckets & 1-14 days deficit alert), `ITreasuryRepository`, API endpoints, and Playwright E2E suite (`TreasuryPlaywrightTests.cs`). | `b52ca74` | 167/167 tests passed (131 Unit, 1 Arch, 35 Playwright) |
-| 2026-11-09 08:35 | Phase 8 | Implemented Security, Audit & Central Bank Reporting Engine: `UserSession` (Concurrent login blocking BRPD 10.3.5-viii, Super/Admin financial prohibition BRPD 10.3.5-vii), `AuditJournalEntry` (Tamper-evident SHA-256 cryptographic hash chain BRPD 10.3.5-vii, 10.3.6), `BfiuRegulatoryReport` (Daily CTR $\ge 1,000,000$ BDT threshold, STR/SAR structuring smurfing alerts), `ISecurityAuditRepository`, API endpoints, and Playwright E2E suite (`SecurityAuditCompliancePlaywrightTests.cs`). | Pending | 176/176 tests passed (137 Unit, 1 Arch, 38 Playwright) |
+| 2026-11-09 08:35 | Phase 8 | Implemented Security, Audit & Central Bank Reporting Engine: `UserSession` (Concurrent login blocking BRPD 10.3.5-viii, Super/Admin financial prohibition BRPD 10.3.5-vii), `AuditJournalEntry` (Tamper-evident SHA-256 cryptographic hash chain BRPD 10.3.5-vii, 10.3.6), `BfiuRegulatoryReport` (Daily CTR $\ge 1,000,000$ BDT threshold, STR/SAR structuring smurfing alerts), `ISecurityAuditRepository`, API endpoints, and Playwright E2E suite (`SecurityAuditCompliancePlaywrightTests.cs`). | `a0fdc6e` | 176/176 tests passed (137 Unit, 1 Arch, 38 Playwright) |
+| 2026-11-09 08:45 | Phase 9 | Implemented AI Knowledge Engine, Google Gemini & TBML RAG: `PiiSanitizer` (NID/TIN/ACCT/Phone client-side redaction), Zero Financial Mutation Invariant lock, `RegulatoryKnowledgeDocument` hybrid store, `GeminiAiService` grounded advisory, `TbmlSemanticAssessment` (+/- 15% and 25% thresholds), CAATs immutable audit logging, API endpoints, and Playwright E2E suite (`AiIntelligencePlaywrightTests.cs`). | Pending | 187/187 tests passed (145 Unit, 1 Arch, 41 Playwright) |

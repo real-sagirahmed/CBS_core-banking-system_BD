@@ -1,6 +1,8 @@
 using CBS.Application.Accounts.Commands.OpenDepositAccount;
 using CBS.Application.Accounts.Commands.PostTransaction;
 using CBS.Application.Accounts.DTOs;
+using CBS.Application.AiIntelligence.Commands;
+using CBS.Application.AiIntelligence.DTOs;
 using CBS.Application.BranchCash.Commands.CloseTellerDrawer;
 using CBS.Application.BranchCash.Commands.IssueRemittanceInstrument;
 using CBS.Application.BranchCash.Commands.LiquidateRemittanceInstrument;
@@ -30,11 +32,13 @@ using CBS.Domain.Accounts;
 using CBS.Domain.BranchCash;
 using CBS.Domain.Exceptions;
 using CBS.Domain.Lending;
+using CBS.Domain.AiIntelligence;
 using CBS.Domain.PaymentRails;
 using CBS.Domain.SecurityAudit;
 using CBS.Domain.TradeFinance;
 using CBS.Domain.Treasury;
 using CBS.Domain.ValueObjects;
+using CBS.Infrastructure.AiIntelligence;
 using CBS.Infrastructure.Gateways;
 using CBS.Infrastructure.Persistence;
 using CBS.Infrastructure.Security;
@@ -62,6 +66,8 @@ public partial class Program
         builder.Services.AddSingleton<ITradeFinanceRepository, InMemoryTradeFinanceRepository>();
         builder.Services.AddSingleton<ITreasuryRepository, InMemoryTreasuryRepository>();
         builder.Services.AddSingleton<ISecurityAuditRepository, InMemorySecurityAuditRepository>();
+        builder.Services.AddSingleton<IAiKnowledgeRepository, InMemoryAiKnowledgeRepository>();
+        builder.Services.AddSingleton<IGeminiAiService, GeminiAiService>();
         builder.Services.AddSingleton<IElectionCommissionGateway, MockElectionCommissionGateway>();
         builder.Services.AddSingleton<ISanctionScreeningService, MockSanctionScreeningService>();
 
@@ -85,6 +91,7 @@ public partial class Program
         builder.Services.AddTransient<TradeFinanceCommandHandler>();
         builder.Services.AddTransient<TreasuryCommandHandler>();
         builder.Services.AddTransient<SecurityAuditCommandHandler>();
+        builder.Services.AddTransient<AiIntelligenceCommandHandler>();
 
         builder.Services.ConfigureHttpJsonOptions(options =>
         {
@@ -1380,6 +1387,79 @@ public partial class Program
             {
                 return Results.BadRequest(new { error = ex.Message });
             }
+        });
+
+        // --- AI KNOWLEDGE ENGINE & GEMINI ADVISORY APIS (BRPD 1.3.5, 9.1.1, 10.1, 10.3) ---
+        var aiApi = app.MapGroup("/api/v1/ai");
+
+        aiApi.MapPost("/advisory/ask", async (
+            AskAiAdvisoryRequest request,
+            AiIntelligenceCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new AskAiAdvisoryCommand(request);
+                var result = await handler.HandleAskAdvisoryAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        aiApi.MapPost("/tbml/analyze", async (
+            AnalyzeTbmlRequest request,
+            AiIntelligenceCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new AnalyzeTbmlCommand(request);
+                var result = await handler.HandleAnalyzeTbmlAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        aiApi.MapGet("/advisory/{queryId}", async (
+            string queryId,
+            IAiKnowledgeRepository aiRepo,
+            CancellationToken ct) =>
+        {
+            var query = await aiRepo.GetAdvisoryQueryByIdAsync(queryId, ct);
+            if (query is null)
+                return Results.NotFound(new { error = $"AI Advisory Query '{queryId}' not found." });
+
+            var response = new AiAdvisoryResponse(
+                query.QueryId,
+                query.OfficerUserId,
+                query.Category.ToString(),
+                query.SanitizedQueryText,
+                query.AdvisoryResponse,
+                query.Citations.Select(c => new GroundedCitationDto(c.CircularReference, c.SectionTitle, c.RelevantExcerpt, c.RelevanceScore)).ToList(),
+                query.ConfidenceScore,
+                query.RequiresMakerCheckerReview,
+                query.CreatedAtUtc);
+
+            return Results.Ok(response);
+        });
+
+        aiApi.MapPost("/tools/pii-sanitize", (
+            PiiSanitizeRequest request,
+            AiIntelligenceCommandHandler handler) =>
+        {
+            var command = new PiiSanitizeCommand(request);
+            var result = handler.HandlePiiSanitizeAsync(command);
+            return Results.Ok(result.Result);
         });
 
         return app;
