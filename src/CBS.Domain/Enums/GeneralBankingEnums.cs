@@ -41,3 +41,30 @@ public enum MakerCheckerStatus
     Approved = 3,
     Rejected = 4
 }
+
+public enum DepositProductType
+{
+    CurrentAccount = 1,
+    SavingsAccount = 2,
+    SpecialNoticeDeposit = 3,
+    FixedDepositReceipt = 4,
+    MonthlySavingsScheme = 5
+}
+
+public enum AccountOperatingStatus
+{
+    Active = 1,
+    Dormant = 2,
+    BlockedDebit = 3,
+    BlockedCredit = 4,
+    Frozen = 5,
+    Unclaimed10YearTransferred = 6,
+    Closed = 7
+}
+
+public enum DayStatus
+{
+    Open = 1,
+    EodBatchRunning = 2,
+    Closed = 3
+}

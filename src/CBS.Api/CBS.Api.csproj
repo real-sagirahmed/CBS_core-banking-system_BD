@@ -5,6 +5,10 @@
     <ProjectReference Include="..\CBS.Application\CBS.Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Update="wwwroot\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>

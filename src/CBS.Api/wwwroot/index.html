@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <meta name="description" content="S7 Core Banking System (CBS) — Bangladesh Bank BRPD Circular 12 v2.0 Compliant Platform">
+  <title>S7 CBS — Core Banking System (Bangladesh Bank BRPD Circular 12)</title>
+
+  <!-- Typography: Inter for UI & Monospace for CIF/Account IDs -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- App Shell -->
+  <div class="app-container">
+
+    <!-- 1. TOP NAVBAR -->
+    <header class="top-navbar" role="banner">
+      <div class="nav-left">
+        <!-- Hamburger Button for Mobile / Tablet (< 1024px) -->
+        <button id="hamburger-btn" class="hamburger-btn" aria-label="Toggle Navigation Menu" aria-expanded="false">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+
+        <!-- S7 Signature Brand Logo -->
+        <a href="#" class="brand-logo-wrap" onclick="cbsApp.switchView('view-dashboard'); return false;">
+          <div class="brand-icon">S7</div>
+          <div class="brand-text">
+            <span class="brand-title" data-i18n="brand.name">S7 CBS Core Banking</span>
+            <span class="brand-badge" data-i18n="brand.tagline">Bangladesh Bank BRPD Circular 12</span>
+          </div>
+        </a>
+
+        <!-- System & Branch Badge -->
+        <div class="system-status-chip">
+          <span class="status-dot-pulse"></span>
+          <span data-i18n="branch.name">Principal Branch (001)</span>
+        </div>
+      </div>
+
+      <!-- Global Search -->
+      <div class="nav-center">
+        <div class="search-box-wrap">
+          <span class="search-icon"><svg class="svg-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></span>
+          <input type="text" id="global-search" class="global-search-input" aria-label="Global Search CIF, Account, or Voucher" data-i18n-placeholder="search.placeholder" placeholder="Search CIF, Account No or Voucher (Ctrl + K)...">
+          <span class="search-shortcut-badge">⌘K</span>
+        </div>
+      </div>
+
+      <!-- Right Control Actions -->
+      <div class="nav-right">
+        <!-- Maker-Checker Simulator Switcher -->
+        <div class="role-switch-container" title="Simulate 4-Eyes Dual Control Roles">
+          <button id="role-maker-btn" class="role-btn active" onclick="cbsApp.setRole('MAKER')" data-i18n="role.maker_btn">Maker</button>
+          <button id="role-checker-btn" class="role-btn" onclick="cbsApp.setRole('CHECKER')" data-i18n="role.checker_btn">Checker</button>
+        </div>
+
+        <!-- Language Switcher (BN & EN) -->
+        <button id="lang-toggle-btn" class="control-btn" title="Toggle Language (English / Bengali)">
+          <svg class="svg-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg> <span>BN</span>
+        </button>
+
+        <!-- Theme Switcher (Dark & Light) -->
+        <button id="theme-toggle-btn" class="control-btn icon-btn-round" title="Toggle Dark/Light Theme">
+          <svg class="svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+        </button>
+
+        <!-- User Profile Chip -->
+        <div class="user-profile-badge">
+          <div class="user-avatar">TK</div>
+          <div class="user-info">
+            <span id="user-name-label" class="user-name">Tarikul Islam (Maker)</span>
+            <span id="user-role-label" class="user-role-label">Maker Officer · Dual Control</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Mobile Drawer Overlay Backdrop -->
+    <div id="drawer-backdrop" class="drawer-backdrop" aria-hidden="true"></div>
+
+    <!-- 2. SIDEBAR NAVIGATION -->
+    <aside id="sidebar" class="sidebar" role="navigation" aria-label="Main Navigation">
+      <div class="sidebar-top">
+        <!-- Mobile Quick Settings (Inside Drawer on Mobile) -->
+        <div class="mobile-drawer-controls">
+          <div style="font-size:11px;font-weight:800;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.08em;">Quick Settings</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="control-btn" onclick="cbsApp.toggleTheme()" style="flex:1;">
+              <svg class="svg-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle></svg> <span data-i18n="theme.toggle">Theme</span>
+            </button>
+            <button class="control-btn" onclick="cbsApp.toggleLanguage()" style="flex:1;">
+              <svg class="svg-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle></svg> <span data-i18n="lang.toggle">BN</span>
+            </button>
+          </div>
+          <div class="role-switch-container" style="width:100%;justify-content:center;">
+            <button class="role-btn active" onclick="cbsApp.setRole('MAKER')" data-i18n="role.maker_btn">Maker</button>
+            <button class="role-btn" onclick="cbsApp.setRole('CHECKER')" data-i18n="role.checker_btn">Checker</button>
+          </div>
+        </div>
+        <ul class="sidebar-nav-list">
+          <li class="nav-group-title" data-i18n="nav.group_operations">Banking Operations</li>
+          <li>
+            <a href="#dashboard" class="nav-item active" data-view="view-dashboard">
+              <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+              <span data-i18n="nav.dashboard">Overview Dashboard</span>
+            </a>
+          </li>
+          <li>
+            <a href="#customer-onboarding" class="nav-item" data-view="view-customer-onboarding">
+              <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              <span data-i18n="nav.customer_onboarding">Customer e-KYC & Party</span>
+            </a>
+          </li>
+          <li>
+            <a href="#maker-checker" class="nav-item" data-view="view-maker-checker">
+              <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1zM2 16l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1zM7 21h10M12 3v18M3 7h2M19 7h2"></path></svg>
+              <span data-i18n="nav.maker_checker">Maker-Checker Queue</span>
+              <span id="nav-pending-badge" class="nav-badge">2</span>
+            </a>
+          </li>
+          <li>
+            <a href="#vouchers" class="nav-item" data-view="view-vouchers">
+              <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+              <span data-i18n="nav.vouchers">Vouchers & Cash Ledger</span>
+            </a>
+          </li>
+          <li>
+            <a href="#accounts" class="nav-item" data-view="view-accounts">
+              <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="21" x2="21" y2="21"></line><line x1="3" y1="10" x2="21" y2="10"></line><polyline points="5 6 12 3 19 6"></polyline><line x1="4" y1="10" x2="4" y2="21"></line><line x1="20" y1="10" x2="20" y2="21"></line><line x1="8" y1="14" x2="8" y2="17"></line><line x1="12" y1="14" x2="12" y2="17"></line><line x1="16" y1="14" x2="16" y2="17"></line></svg>
+              <span data-i18n="nav.general_banking">Accounts & Deposits</span>
+            </a>
+          </li>
+
+          <li class="nav-group-title" data-i18n="nav.group_compliance">Audit & Compliance</li>
+          <li>
+            <a href="#regulatory-audit" class="nav-item" data-view="view-audit">
+              <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+              <span data-i18n="nav.regulatory_audit">Central Bank Audit Trail</span>
+            </a>
+          </li>
+
+          <li class="nav-group-title" data-i18n="nav.group_system">System & Security</li>
+          <li>
+            <a href="#system-security" class="nav-item" data-view="view-security">
+              <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+              <span data-i18n="nav.system_security">Security & 4-Eyes Access</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Sidebar Footer with Collapse Action (Desktop) -->
+      <div class="sidebar-footer">
+        <button id="sidebar-toggle-btn" class="sidebar-toggle-btn" title="Toggle Sidebar Width">
+          <svg class="svg-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          <span class="sidebar-footer-text" data-i18n="nav.collapse">Collapse Sidebar</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- 3. MAIN WORKSPACE / VIEWS -->
+    <main class="main-wrapper" role="main">
+
+      <!-- ==========================================
+           VIEW 1: DASHBOARD OVERVIEW
+           ========================================== -->
+      <section id="view-dashboard" class="view-section">
+        <div class="page-header">
+          <div class="page-title-wrap">
+            <h1 data-i18n="nav.dashboard">Overview Dashboard</h1>
+            <p>Bangladesh Bank BRPD Circular 12 v2.0 Monitoring & Operational Command Center</p>
+          </div>
+          <div class="header-actions">
+            <button id="action-new-customer" class="btn-primary">
+              <svg class="btn-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> <span data-i18n="btn.new_customer">New Customer (Maker)</span>
+            </button>
+            <button id="action-pending-queue" class="btn-secondary">
+              <svg class="btn-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1zM2 16l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1zM7 21h10M12 3v18M3 7h2M19 7h2"></path></svg> <span data-i18n="nav.maker_checker">Maker-Checker Queue</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- KPI Grid -->
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <span class="kpi-label" data-i18n="kpi.total_deposits">Total Branch Deposits</span>
+              <div class="kpi-icon-wrap">৳</div>
+            </div>
+            <div class="kpi-value">৳ 1,420.50 Cr</div>
+            <div class="kpi-meta">
+              <span class="trend-badge positive">↑ +3.4%</span>
+              <span data-i18n="kpi.trend_daily">+3.4% today</span>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <span class="kpi-label" data-i18n="kpi.active_cif">Active Customers (CIF)</span>
+              <div class="kpi-icon-wrap"><svg class="svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div>
+            </div>
+            <div id="kpi-active-val" class="kpi-value">12,481</div>
+            <div class="kpi-meta">
+              <span class="trend-badge positive">Verified</span>
+              <span>100% e-KYC Linked</span>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <span class="kpi-label" data-i18n="kpi.pending_approvals">Pending Dual-Control</span>
+              <div class="kpi-icon-wrap"><svg class="svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>
+            </div>
+            <div id="kpi-pending-val" class="kpi-value" style="color:var(--warning);">2</div>
+            <div class="kpi-meta">
+              <span class="trend-badge warning">4-Eyes Review</span>
+              <span>Awaiting Checker</span>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <span class="kpi-label" data-i18n="kpi.slr_crr_ratio">SLR / CRR Regulatory Health</span>
+              <div class="kpi-icon-wrap"><svg class="svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="21" x2="21" y2="21"></line><line x1="3" y1="10" x2="21" y2="10"></line><polyline points="5 6 12 3 19 6"></polyline><line x1="4" y1="10" x2="4" y2="21"></line><line x1="20" y1="10" x2="20" y2="21"></line><line x1="8" y1="14" x2="8" y2="17"></line><line x1="12" y1="14" x2="12" y2="17"></line><line x1="16" y1="14" x2="16" y2="17"></line></svg></div>
+            </div>
+            <div class="kpi-value" style="color:var(--success);">14.2% / 4.0%</div>
+            <div class="kpi-meta">
+              <span class="trend-badge positive">Passed</span>
+              <span data-i18n="kpi.trend_healthy">Compliant 100%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dashboard Row (Queue & Feeds) -->
+        <div class="dashboard-row">
+          <!-- Pending Maker-Checker Preview -->
+          <div class="panel-card">
+            <div class="panel-header">
+              <div class="panel-title">
+                <svg class="panel-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1zM2 16l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1zM7 21h10M12 3v18M3 7h2M19 7h2"></path></svg>
+                <span data-i18n="section.pending_approval_table">Dual-Control Maker-Checker Approval Queue</span>
+              </div>
+              <button class="btn-secondary" style="font-size:12px;padding:5px 10px;" onclick="cbsApp.switchView('view-maker-checker')" data-i18n="btn.view_all">
+                View All
+              </button>
+            </div>
+            <div class="table-responsive-wrapper">
+              <table class="cbs-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="th.cif">CIF Number</th>
+                    <th data-i18n="th.name">Customer Name</th>
+                    <th data-i18n="th.nid">NID / Smart ID</th>
+                    <th data-i18n="th.type">Type</th>
+                    <th data-i18n="th.maker">Maker Officer</th>
+                    <th data-i18n="th.status">Workflow Status</th>
+                    <th data-i18n="th.actions">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="queue-table-body">
+                  <!-- Populated dynamically by app.js -->
+                </tbody>
+              </table>
+            </div>
+            <!-- Queue Pagination -->
+            <div id="queue-pagination" class="pagination-container"></div>
+          </div>
+
+          <!-- Quick Regulatory Audit Feed -->
+          <div class="panel-card">
+            <div class="panel-header">
+              <div class="panel-title">
+                <svg class="panel-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                <span data-i18n="section.audit_log_title">Immutable BRPD Audit Log Journal</span>
+              </div>
+              <button class="btn-secondary" style="font-size:12px;padding:5px 10px;" onclick="cbsApp.switchView('view-audit')" data-i18n="btn.full_log">
+                Full Log
+              </button>
+            </div>
+            <div class="table-responsive-wrapper">
+              <table class="cbs-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="th.time">Time</th>
+                    <th data-i18n="th.user">Operator</th>
+                    <th data-i18n="th.event">Event</th>
+                    <th data-i18n="th.regulatory_ref">Ref</th>
+                    <th data-i18n="th.status">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="audit-log-list">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+            <!-- Audit Log Pagination -->
+            <div id="audit-pagination" class="pagination-container"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           VIEW 2: CUSTOMER ONBOARDING (MAKER e-KYC)
+           ========================================== -->
+      <section id="view-customer-onboarding" class="view-section" style="display:none;">
+        <div class="page-header">
+          <div class="page-title-wrap">
+            <h1 data-i18n="section.customer_form_title">Customer Onboarding & e-KYC Draft</h1>
+            <p data-i18n="section.customer_form_sub">Dual-control registration compliant with BRPD Circular 12 (Section 8.1)</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn-secondary" onclick="cbsApp.switchView('view-dashboard')">← Dashboard</button>
+          </div>
+        </div>
+
+        <!-- Dual Control Banner -->
+        <div class="regulatory-banner">
+          <div class="banner-icon"><svg class="svg-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></div>
+          <div class="banner-content">
+            <h4 data-i18n="banner.title">Dual-Control Segregation of Duties Notice</h4>
+            <p data-i18n="banner.desc">Bangladesh Bank BRPD Circular 12 mandate: The Maker who creates a customer draft or financial voucher cannot authorize it. Authorization requires an independent Checker with 4-eyes review.</p>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <form id="customer-onboarding-form">
+            <div class="form-grid">
+              <!-- Customer Entity Type -->
+              <div class="form-group">
+                <label class="form-label" for="cust-type" data-i18n="form.customer_type">Customer Entity Type</label>
+                <select id="cust-type" class="form-control" required>
+                  <option value="Individual" data-i18n="form.customer_type_individual">Individual / Retail</option>
+                  <option value="Corporate" data-i18n="form.customer_type_corporate">Corporate / Enterprise</option>
+                </select>
+              </div>
+
+              <!-- Full Name -->
+              <div class="form-group">
+                <label class="form-label" for="cust-name">
+                  <span data-i18n="form.full_name">Full Legal Name</span>
+                  <span class="form-hint">Matches NID / Trade License</span>
+                </label>
+                <input type="text" id="cust-name" class="form-control" data-i18n-placeholder="form.full_name_placeholder" placeholder="e.g., Kazi Nazrul Islam" required>
+              </div>
+
+              <!-- Date of Birth -->
+              <div class="form-group">
+                <label class="form-label" for="cust-dob">
+                  <span data-i18n="form.dob">Date of Birth</span>
+                  <span class="form-hint">&lt;18 auto-triggers Guardian CIF</span>
+                </label>
+                <input type="date" id="cust-dob" class="form-control" required value="1992-04-14">
+              </div>
+
+              <!-- Gender -->
+              <div class="form-group">
+                <label class="form-label" for="cust-gender" data-i18n="form.gender">Gender</label>
+                <select id="cust-gender" class="form-control" required>
+                  <option value="Male" data-i18n="form.gender_male">Male</option>
+                  <option value="Female" data-i18n="form.gender_female">Female</option>
+                  <option value="Other" data-i18n="form.gender_other">Other</option>
+                </select>
+              </div>
+
+              <!-- Legal Guardian CIF (Hidden by default, triggered if minor < 18) -->
+              <div class="form-group full-width" id="guardian-cif-group" style="display:none;background:var(--warning-soft);padding:14px;border-radius:var(--radius-md);border:1px dashed var(--warning);">
+                <label class="form-label" for="cust-guardian-cif" style="color:var(--warning);">
+                  <span data-i18n="form.guardian_cif">Legal Guardian CIF (Mandatory for Minors &lt; 18)</span>
+                  <span class="form-hint" data-i18n="form.guardian_cif_hint">Minor under-18 requires verified Guardian CIF (BRPD 3.2.1-ii)</span>
+                </label>
+                <input type="text" id="cust-guardian-cif" class="form-control" placeholder="e.g., CIF-984209">
+              </div>
+
+              <!-- NID -->
+              <div class="form-group">
+                <label class="form-label" for="cust-nid">
+                  <span data-i18n="form.nid">National Identity Number (NID)</span>
+                  <span class="form-hint">10, 13 or 17 digits</span>
+                </label>
+                <input type="text" id="cust-nid" class="form-control" placeholder="10-digit Smart NID or 17-digit legacy" maxlength="17" required value="19922691234567890">
+                <span id="ec-verified-badge" class="status-pill active" style="display:none;margin-top:6px;width:fit-content;">
+                  Election Commission Verified (Porichoy)
+                </span>
+              </div>
+
+              <!-- e-TIN -->
+              <div class="form-group">
+                <label class="form-label" for="cust-tin">
+                  <span data-i18n="form.tin">Tax Identification Number (e-TIN)</span>
+                  <span class="form-hint">Exactly 12 digits (BRPD 8.1.4-a)</span>
+                </label>
+                <input type="text" id="cust-tin" class="form-control" placeholder="12 numeric digits" maxlength="12" value="987654321012">
+              </div>
+
+              <!-- Mobile -->
+              <div class="form-group">
+                <label class="form-label" for="cust-mobile" data-i18n="form.mobile">Mobile Number</label>
+                <input type="tel" id="cust-mobile" class="form-control" placeholder="+8801XXXXXXXXX" required value="+8801712345678">
+              </div>
+
+              <!-- Address -->
+              <div class="form-group">
+                <label class="form-label" for="cust-address" data-i18n="form.address">Street Address</label>
+                <input type="text" id="cust-address" class="form-control" placeholder="House, Road, Area" required value="House 42, Road 11, Banani">
+              </div>
+
+              <!-- District -->
+              <div class="form-group">
+                <label class="form-label" for="cust-district" data-i18n="form.district">District</label>
+                <input type="text" id="cust-district" class="form-control" required value="Dhaka">
+              </div>
+
+              <!-- Upazila / Thana -->
+              <div class="form-group">
+                <label class="form-label" for="cust-upazila" data-i18n="form.upazila">Thana / Upazila</label>
+                <input type="text" id="cust-upazila" class="form-control" required value="Banani">
+              </div>
+
+              <!-- Postal Code -->
+              <div class="form-group">
+                <label class="form-label" for="cust-postal" data-i18n="form.postal_code">Postal Code</label>
+                <input type="text" id="cust-postal" class="form-control" required value="1213">
+              </div>
+
+              <!-- Monthly Deposit Cap -->
+              <div class="form-group">
+                <label class="form-label" for="cust-deposit-cap" data-i18n="form.monthly_deposit_cap">Monthly Cash Deposit Limit (BDT)</label>
+                <input type="number" id="cust-deposit-cap" class="form-control" value="500000" step="10000">
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div style="margin-top:24px;display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-end;">
+              <button type="button" id="btn-verify-ec" class="btn-secondary">
+                <svg class="btn-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> <span data-i18n="btn.verify_ec">Verify via Election Commission (EC)</span>
+              </button>
+              <button type="reset" class="btn-secondary" data-i18n="btn.reset_form">Reset Form</button>
+              <button type="submit" class="btn-primary">
+                <svg class="btn-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> <span data-i18n="btn.submit_draft">Submit Draft to Checker</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           VIEW 3: MAKER-CHECKER QUEUE
+           ========================================== -->
+      <section id="view-maker-checker" class="view-section" style="display:none;">
+        <div class="page-header">
+          <div class="page-title-wrap">
+            <h1 data-i18n="section.pending_approval_table">Dual-Control Maker-Checker Approval Queue</h1>
+            <p>Mandatory 4-Eyes Authorization Queue (Bangladesh Bank BRPD Circular 12, Clause 1.3.18)</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn-primary" onclick="cbsApp.switchView('view-customer-onboarding')">
+              <svg class="btn-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> <span data-i18n="btn.new_customer">New Customer Draft</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <div class="table-responsive-wrapper">
+            <table class="cbs-table">
+              <thead>
+                <tr>
+                  <th data-i18n="th.cif">CIF Number</th>
+                  <th data-i18n="th.name">Customer Name</th>
+                  <th data-i18n="th.nid">NID / Smart ID</th>
+                  <th data-i18n="th.type">Type</th>
+                  <th data-i18n="th.maker">Maker Officer</th>
+                  <th data-i18n="th.status">Workflow Status</th>
+                  <th data-i18n="th.actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="queue-table-body-full">
+                <!-- Dynamically populated or mirrored -->
+              </tbody>
+            </table>
+          </div>
+          <!-- Queue Dedicated Full Pagination -->
+          <div id="queue-full-pagination" class="pagination-container"></div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           VIEW 4: VOUCHERS & CASH LEDGER
+           ========================================== -->
+      <section id="view-vouchers" class="view-section" style="display:none;">
+        <div class="page-header">
+          <div class="page-title-wrap">
+            <h1 data-i18n="section.voucher_title">Double-Entry Financial Voucher Engine</h1>
+            <p>Module 1 & 3: Immutable General Ledger Posting with Modulus 11 Account Invariants</p>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <div class="regulatory-banner">
+            <div class="banner-icon"><svg class="svg-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1zM2 16l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1zM7 21h10M12 3v18M3 7h2M19 7h2"></path></svg></div>
+            <div class="banner-content">
+              <h4>Balanced Ledger Guarantee (&Sigma; Debit = &Sigma; Credit)</h4>
+              <p>Every voucher strictly requires equal Debit and Credit postings. Single-leg transactions are blocked by domain invariants.</p>
+            </div>
+          </div>
+
+          <form id="voucher-form" onsubmit="event.preventDefault(); cbsApp.showToast('Financial Voucher posted to Maker-Checker Queue (Dual Control)', 'success');">
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label" for="voucher-type">Voucher Type</label>
+                <select id="voucher-type" name="voucherType" class="form-control">
+                  <option>Cash Deposit Voucher (CR)</option>
+                  <option>Cash Withdrawal Voucher (DR)</option>
+                  <option>Transfer Voucher (TR)</option>
+                  <option>Clearing Settlement (BACH/BEFTN)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="voucher-debit">Debit Account No (Modulus 11)</label>
+                <input type="text" id="voucher-debit" name="debitAccount" class="form-control" placeholder="13 or 16 digit account" value="1010010023456" required>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="voucher-credit">Credit Account No (Modulus 11)</label>
+                <input type="text" id="voucher-credit" name="creditAccount" class="form-control" placeholder="13 or 16 digit account" value="2010010098765" required>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="voucher-amount">Voucher Amount (BDT)</label>
+                <input type="number" id="voucher-amount" name="voucherAmount" class="form-control" value="250000" min="1" step="1" required>
+              </div>
+
+              <div class="form-group full-width">
+                <label class="form-label" for="voucher-narration">Narration / Transaction Purpose</label>
+                <input type="text" id="voucher-narration" name="voucherNarration" class="form-control" value="Cash deposit for business trade settlement" required>
+              </div>
+            </div>
+
+            <div style="margin-top:20px;text-align:right;">
+              <button type="submit" class="btn-primary">
+                <svg class="btn-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> <span>Create Voucher Draft (Maker)</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           VIEW 5: ACCOUNTS & DEPOSITS
+           ========================================== -->
+      <section id="view-accounts" class="view-section" style="display:none;">
+        <div class="page-header">
+          <div class="page-title-wrap">
+            <h1 data-i18n="nav.general_banking">Accounts & Deposits</h1>
+            <p>Savings, Current, DPS (Deposit Pension Scheme) & FDR Portfolio</p>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <div class="table-responsive-wrapper">
+            <table class="cbs-table">
+              <thead>
+                <tr>
+                  <th>Account Number</th>
+                  <th>CIF Number</th>
+                  <th>Title</th>
+                  <th>Scheme</th>
+                  <th>Available Balance</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong style="font-family:var(--font-mono);">1010010023456</strong></td>
+                  <td>CIF-984210</td>
+                  <td>Kazi Nazrul Islam</td>
+                  <td>Savings Account</td>
+                  <td><strong>৳ 450,000.00</strong></td>
+                  <td><span class="status-pill active">ACTIVE</span></td>
+                </tr>
+                <tr>
+                  <td><strong style="font-family:var(--font-mono);">2010010098765</strong></td>
+                  <td>CIF-984209</td>
+                  <td>Green Delta Exim Ltd</td>
+                  <td>Current Account</td>
+                  <td><strong>৳ 12,850,000.00</strong></td>
+                  <td><span class="status-pill active">ACTIVE</span></td>
+                </tr>
+                <tr>
+                  <td><strong style="font-family:var(--font-mono);">3010010077889</strong></td>
+                  <td>CIF-984211</td>
+                  <td>Begum Rokeya</td>
+                  <td>5-Year Monthly DPS</td>
+                  <td><strong>৳ 180,000.00</strong></td>
+                  <td><span class="status-pill pending">PENDING VERIFICATION</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           VIEW 6: AUDIT TRAIL
+           ========================================== -->
+      <section id="view-audit" class="view-section" style="display:none;">
+        <div class="page-header">
+          <div class="page-title-wrap">
+            <h1 data-i18n="nav.regulatory_audit">Central Bank Audit Trail</h1>
+            <p>Tamper-Evident SHA-256 Event Journal (BRPD Circular 12, Clause 10.3)</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn-secondary" onclick="cbsApp.showToast('Audit Log Exported to Encrypted CSV', 'success')">
+              <svg class="btn-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> <span data-i18n="btn.export_csv">Export Audit CSV</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <div class="table-responsive-wrapper">
+            <table class="cbs-table">
+              <thead>
+                <tr>
+                  <th data-i18n="th.time">Timestamp</th>
+                  <th>Operator ID</th>
+                  <th data-i18n="th.event">Event Description</th>
+                  <th data-i18n="th.regulatory_ref">Regulatory Clause</th>
+                  <th>Cryptographic Integrity</th>
+                </tr>
+              </thead>
+              <tbody id="audit-log-list-full">
+                <!-- Mirrored dynamically -->
+              </tbody>
+            </table>
+          </div>
+          <!-- Audit Dedicated Full Pagination -->
+          <div id="audit-full-pagination" class="pagination-container"></div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           VIEW 7: SECURITY & 4-EYES ACCESS
+           ========================================== -->
+      <section id="view-security" class="view-section" style="display:none;">
+        <div class="page-header">
+          <div class="page-title-wrap">
+            <h1 data-i18n="nav.system_security">Security & 4-Eyes Access</h1>
+            <p>Cryptographic Keys, Tokenized Authentication & Bangladesh Bank Security Mandates</p>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:18px;">
+            <div style="background:var(--bg-subtle);padding:18px;border-radius:var(--radius-md);border:1px solid var(--border-light);">
+              <h4 style="color:var(--text-heading);margin-bottom:8px;">Dual-Control Invariant Lock</h4>
+              <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px;">Enforces Maker != Checker at Domain, Application and Database layer.</p>
+              <span class="status-pill active">STATUS: STRICT LOCKED</span>
+            </div>
+            <div style="background:var(--bg-subtle);padding:18px;border-radius:var(--radius-md);border:1px solid var(--border-light);">
+              <h4 style="color:var(--text-heading);margin-bottom:8px;">Election Commission (Porichoy)</h4>
+              <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px;">Biometric & Smart NID token verification pipeline active.</p>
+              <span class="status-pill active">GATEWAY: ONLINE (TLS 1.3)</span>
+            </div>
+            <div style="background:var(--bg-subtle);padding:18px;border-radius:var(--radius-md);border:1px solid var(--border-light);">
+              <h4 style="color:var(--text-heading);margin-bottom:8px;">Sanctions & PEP Screening</h4>
+              <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px;">UNSCR 1267/1373 & Bangladesh BFIU Watchlist Engine.</p>
+              <span class="status-pill active">FILTER: ACTIVE HARD-GATE</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- 4. DETAILS / 4-EYES INSPECTION MODAL -->
+  <div id="details-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 id="modal-title" class="modal-title" data-i18n="btn.view_details">Inspect Customer e-KYC</h2>
+        <button class="close-btn" onclick="cbsApp.closeModal()" aria-label="Close Modal">&times;</button>
+      </div>
+      <div id="modal-body-content">
+        <!-- Injected via JavaScript -->
+      </div>
+      <div style="margin-top:22px;display:flex;justify-content:flex-end;gap:10px;">
+        <button class="btn-secondary" onclick="cbsApp.closeModal()" data-i18n="btn.cancel">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. FLOATING TOAST NOTIFICATION STACK -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- Scripts -->
+  <script src="js/i18n.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

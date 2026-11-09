@@ -15,9 +15,9 @@
 | Phase | Description | Reference Module | Status | Playwright Coverage |
 | :--- | :--- | :--- | :--- | :--- |
 | **Phase 0** | Architecture, Foundation & Core Invariants | Core Accounting & Architecture | **DONE** | Domain Invariants Locked |
-| **Phase 1** | Party & Identity (CRM / e-KYC Context) | Module 8 & 3.1 | **IN PROGRESS (Core Verified)** | 4/4 Playwright E2E Tests Passing |
-| **Phase 2** | General Banking & Core Accounting Engine | Module 1 & 3 | **TODO** | Planned (EOD/BOD, Voucher Lifecycle) |
-| **Phase 3** | Branch Cash & Teller Operations | Module 1.7, 2, 3.10-3.13 | **TODO** | Planned (Teller Cash Balancing, PO/DD) |
+| **Phase 1** | Party & Identity (CRM / e-KYC & Frontend) | Module 8 & 3.1 | **DONE & VERIFIED** | 12 Playwright (4 API + 8 UI) Tests Passing |
+| **Phase 2** | General Banking & Core Accounting Engine | Module 1 & 3 | **DONE & VERIFIED** | 3 Playwright API + Unit Suites Passing |
+| **Phase 3** | Branch Cash & Teller Operations | Module 1.7, 2, 3.10-3.13 | **IN PROGRESS** | Planned (Vault-to-Teller Balancing, PO/DD) |
 | **Phase 4** | Payment Rails, Clearing & Channel Gateway | Module 1.4, 1.5, 7 | **TODO** | Planned (BACH, BEFTN, RTGS E2E) |
 | **Phase 5** | Lending, CAD & Islamic Finance | Module 4 & Shariah | **TODO** | Planned (Loan Amortization, Murabaha) |
 | **Phase 6** | Trade Finance & TBML Detection | Module 5 | **TODO** | Planned (LC Lifecycle, EXP Tracking) |
@@ -27,48 +27,65 @@
 
 ---
 
-## 2. Active Phase: Phase 1 — Party & Identity Management (CRM / e-KYC)
+## 2. Phase 2 Deliverables: General Banking & Core Accounting Engine (DONE)
 
-### Milestones & Deliverables Breakdown
-
-- [x] **Milestone 1.1: Customer Value Objects & Deduplication Fingerprint**
-  - [x] `NationalIdentityNumber`: 10-digit Smart NID, 13/17-digit legacy NID validation (`BRPD 8.1.3-a`).
-  - [x] `TaxIdentificationNumber`: Exactly 12 numeric digits (`BRPD 8.1.4-a`).
-  - [x] `Address`: Structured postal model (District, Upazila/Thana, Postal Code).
-  - [x] `TransactionProfile`: Monthly cash/transfer caps and single-transaction limit checks (`BRPD 1.7.1-x`).
-  - [x] `Customer` Aggregate Root: Deterministic SHA-256 dedupe fingerprint (`BRPD 3.1.15-iii, 8.1.1-d`).
-  - [x] Unit Tests: 11 tests verifying all Milestone 1.1 domain invariants.
-
-- [x] **Milestone 1.2: Election Commission (EC) e-KYC Verification Pipeline**
-  - [x] `IElectionCommissionGateway`: Secure abstraction for Porichoy / EC biometric & Smart NID verification (`BRPD 8.1.1-e`).
-  - [x] Mock / Sandbox EC integration adapter in `CBS.Infrastructure` (`MockElectionCommissionGateway.cs`).
-  - [x] API endpoint `POST /api/v1/customers/ec-verify` with citizen demographic and tokenized verification (`BRPD 8.1.13-a`).
-
-- [x] **Milestone 1.3: Regulatory Sanctions, PEP & FATCA Screening Engine**
-  - [x] UNSCR & Domestic Counter-Terrorism Sanction list loader & matching engine (`BRPD 8.1.14`).
-  - [x] Hard gate: Prohibit onboarding if confirmed sanction hit (`SanctionScreeningHitInvariant`).
-  - [x] PEP / IP risk scoring escalation workflow (`BRPD 8.1.13`).
-  - [x] FATCA Classification (`NonUsPerson`, `UsCitizen`, `UsGreenCardHolder`) (`BRPD 8.1.15`).
-
-- [ ] **Milestone 1.4: Multi-signatory Corporate Mandates & Specimen Storage**
-  - [ ] Compressed, encrypted signature specimen & photo storage abstraction (`BRPD 8.1.12`).
-  - [ ] Mandate resolution rules: Single, Either/Or, Jointly, Any Two (`BRPD 8.1.10`).
-
-- [x] **Milestone 1.5: Application Services, CQRS & Maker-Checker Onboarding Pipeline**
-  - [x] `CreateCustomerDraftCommand` & Handler (Maker drafts profile $\rightarrow$ `PendingCheckerApproval`).
-  - [x] `VerifyCustomerCommand` & Handler (Checker approves with 4-eyes segregation $\rightarrow$ `Active`).
-  - [x] Customer DTOs and lifecycle status state machine (`Draft`, `PendingCheckerApproval`, `Active`, `Rejected`).
-
-- [x] **Milestone 1.6: Playwright E2E Integration Suite for Customer Onboarding**
-  - [x] Setup `tests/CBS.PlaywrightTests` test project with Chromium & Kestrel loopback fixture (`CbsApiServerFixture.cs`).
-  - [x] Automated Playwright test: Full Maker draft $\rightarrow$ Checker authorization workflow passing (HTTP 201 $\rightarrow$ HTTP 200).
-  - [x] Automated Playwright test: Maker approving own draft blocked with `MakerCheckerSeparationInvariant` (Dual-Control 4-eyes principle).
-  - [x] Automated Playwright test: Prohibited Sanction Screening Hit blocked immediately (HTTP 400).
-  - [x] Automated Playwright test: Minor Customer without Legal Guardian rejected (HTTP 400).
+- [x] **Milestone 2.1: Multi-Tier Chart of Accounts (COA) & Organizational Units**
+  - [x] Organizational unit model: HO -> Division -> Region -> Cluster -> Branch (`BRPD 1.3.8`).
+  - [x] Branch operating constraints and hierarchy validation.
+- [x] **Milestone 2.2: Multi-Currency Revaluation Engine**
+  - [x] `ExchangeRate` Value Object and revaluation calculation (`BRPD 1.3.2, 1.3.9`).
+  - [x] Mark-to-market (MTM) conversion and revaluation gain/loss tracking.
+- [x] **Milestone 2.3: End of Day (EOD) & Beginning of Day (BOD) Pipeline**
+  - [x] `BranchOperatingDay` Aggregate Root managing branch operational day lifecycle (`BRPD 1.2.1`).
+  - [x] **Hard Gate:** Prohibition of day close with any pending or unauthorized vouchers (`BRPD 1.3.15-i`).
+  - [x] Beginning of Day (BOD) transition incrementing operational date.
+- [x] **Milestone 2.4: Deposit Product Lifecycles & State Transitions**
+  - [x] `DepositAccount` Aggregate Root with 13-digit Modulus 11 validation (`BRPD 1.1.1-ii, 3.1.8-i`).
+  - [x] Automated Dormancy state engine (`BRPD 3.1.20`): 6 months for Current accounts, 12 months for Savings/SND.
+  - [x] Hard gate blocking customer-induced debits on dormant accounts (`DormantAccountDebitBlockedInvariant`).
+  - [x] Branch Manager dormancy reactivation workflow (`BRPD 3.1.20-iv`).
+  - [x] 10-Year Inoperative account statutory transfer to Bangladesh Bank (`BRPD 3.1.21-iv`).
+  - [x] Automated NBR Source Tax deduction (10% with e-TIN, 15% without e-TIN) (`BRPD 3.1.19-i`).
+  - [x] Statutory annual Excise Duty assessment slab calculation (`BRPD 3.1.19-vii`).
+  - [x] Hovering charge recovery engine on future credit availability (`BRPD 3.1.19-viii`).
+- [x] **Milestone 2.5: Application Services, CQRS & Persistence**
+  - [x] Commands: `OpenDepositAccountCommand`, `PostTransactionCommand`, `RunBranchEodBatchCommand`, `ReactivateDormantAccountCommand`.
+  - [x] Persistence: `InMemoryAccountRepository`, `InMemoryBranchOperatingDayRepository`.
+  - [x] Minimal API Endpoints: `/api/v1/accounts`, `/transactions`, `/reactivate-dormant`, `/api/v1/eod/batch`, `/set-pending-vouchers`.
+- [x] **Milestone 2.6: Comprehensive Verification**
+  - [x] 24 new Unit Tests in `DepositAccountTests.cs` and `GeneralBankingTests.cs` (55 total domain unit tests).
+  - [x] Playwright E2E suite in `GeneralBankingPlaywrightTests.cs` (Deposit account lifecycle, transaction posting, EOD hard gate verification).
 
 ---
 
-## 3. Invariant Locks & Verification Matrix
+## 3. Active Phase: Phase 3 — Branch Cash & Teller Operations
+
+### Milestones & Deliverables Breakdown
+
+- [ ] **Milestone 3.1: Cash Drawer & Denomination Balancing Engine**
+  - [ ] Vault-to-teller and teller-to-vault cash movement aggregate (`BRPD 1.7.1-iii, 1.7.2`).
+  - [ ] Bangladeshi currency denomination-wise tracking (Notes: 1000, 500, 200, 100, 50, 20, 10, 5, 2; Coins: 5, 2, 1).
+  - [ ] Cashier transaction posting limit and mandatory supervisor authorization escalation (`BRPD 1.7.1-ii`).
+  - [ ] End-of-day teller physical cash count vs. system ledger cash balancing verification (`BRPD 1.7.2-ii`).
+- [ ] **Milestone 3.2: Transaction Profile (TP) Real-Time Validation & BFIU CTR/STR Thresholds**
+  - [ ] Real-time comparison of deposit/withdrawal against customer TP (`BRPD 1.7.1-x`).
+  - [ ] Automatic supervisor override queue and alert generation on TP limit breach (`BRPD 1.7.9`).
+  - [ ] Walk-in / non-customer cash transaction due diligence capture ($\ge 50,000$ BDT threshold requiring NID, mobile, purpose) (`BRPD 1.5.6-vi, 3.10.5-i`).
+  - [ ] BFIU Cash Transaction Report (CTR) threshold detection ($\ge 1,000,000$ BDT in a single day) (`BRPD 10.1.2-i`).
+- [ ] **Milestone 3.3: Remittance & Security Instruments (PO / DD / TT)**
+  - [ ] Security stationery inventory tracking under dual custody (`BRPD 3.11.1-iv`).
+  - [ ] Pay Order (PO) & Demand Draft (DD) issuance with automated tiered commission and 15% NBR VAT deduction (`BRPD 1.5.6-v, 3.11.1-i`).
+  - [ ] Instrument lifecycle: `Issued`, `Cleared/Liquidated`, `Stopped`, `Cancelled`, `DuplicateIssued` (`BRPD 2.1.1, 2.1.2`).
+- [ ] **Milestone 3.4: Application Services, CQRS & Teller Endpoints**
+  - [ ] Commands & Queries for vault allocation, teller cash deposit/withdrawal, PO issuance, and instrument liquidation.
+  - [ ] Minimal API endpoints for Teller and Branch Cash Operations.
+- [ ] **Milestone 3.5: Playwright Automated Verification**
+  - [ ] Playwright E2E tests for Teller cash deposit with denomination breakdown and TP limit alert.
+  - [ ] Playwright E2E tests for Pay Order issuance with commission and VAT computation and subsequent liquidation.
+
+---
+
+## 4. Invariant Locks & Verification Matrix
 
 | Invariant Code | Circular Reference | Domain Constraint | Verification Method |
 | :--- | :--- | :--- | :--- |
@@ -77,15 +94,20 @@
 | `NidValidationInvariant` | `BRPD 8.1.3-a` | NID must be 10, 13, or 17 numeric digits. | xUnit Unit Test (`CustomerTests.cs`) |
 | `TinValidationInvariant` | `BRPD 8.1.4-a` | e-TIN must be exactly 12 numeric digits. | xUnit Unit Test (`CustomerTests.cs`) |
 | `MakerCheckerSegregation` | `BRPD 1.3.18, 10.3.5-x` | $\text{MakerUserId} \neq \text{CheckerUserId}$. | xUnit Unit Test (`FinancialVoucherTests.cs`) |
+| `DormantAccountDebitBlockedInvariant` | `BRPD 3.1.20` | Customer-induced debit strictly blocked on dormant accounts. | xUnit Unit Test (`DepositAccountTests.cs`) |
+| `BranchEodPendingVouchersProhibitedInvariant` | `BRPD 1.3.15-i` | EOD day close prohibited if any unauthorized/pending voucher exists. | xUnit Unit Test (`GeneralBankingTests.cs`) |
 | `CleanArchitectureBoundary` | Software Engineering Standard | Domain has 0 dependencies; Application does not reference Infrastructure. | NetArchTest (`CleanArchitectureTests.cs`) |
 
 ---
 
-## 4. Execution Changelog & Historical Audit
+## 5. Execution Changelog & Historical Audit
 
 | Timestamp (UTC) | Phase | Action / Deliverable | Commit | Result |
 | :--- | :--- | :--- | :--- | :--- |
 | 2026-11-09 04:00 | Phase 0 | Initialized .NET 9 Clean Architecture solution, `AccountNumber` (Modulus 11), `Money`, `FinancialVoucher`. | `903212e` | 15/15 tests passed |
 | 2026-11-09 04:10 | Governance | Added Phase 9 AI Knowledge Engine (Google Gemini & RAG) with 5 BRPD Circular 12 Invariant locks. | `4fdab20` | Pushed to main |
-| 2026-11-09 04:16 | Phase 1 | Implemented `Customer` Aggregate, Value Objects (NID, TIN, TP, Address), and 11 unit tests in `CustomerTests.cs`. | Pending | 31/31 tests passed |
-| 2026-11-09 04:34 | Phase 1 | Built Application CQRS commands, Infrastructure Gateways/Mocks, API endpoints, and Playwright E2E suite (`CustomerOnboardingPlaywrightTests.cs`). | Pending | 36/36 tests passed (31 Unit, 1 Arch, 4 Playwright E2E) |
+| 2026-11-09 04:16 | Phase 1 | Implemented `Customer` Aggregate, Value Objects (NID, TIN, TP, Address), and 11 unit tests in `CustomerTests.cs`. | `3be95b9` | 31/31 tests passed |
+| 2026-11-09 04:34 | Phase 1 | Built Application CQRS commands, Infrastructure Gateways/Mocks, API endpoints, and Playwright E2E suite (`CustomerOnboardingPlaywrightTests.cs`). | `3be95b9` | 36/36 tests passed |
+| 2026-11-09 05:00 | Phase 1 / UI | Engineered CBS Frontend UI (Dark/Light S7 Brand, BN/EN i18n, Hamburger Drawer, Maker-Checker Dual-Control Workflow) with 5 Playwright UI browser tests. | `3be95b9` | 41/41 tests passed |
+| 2026-11-09 05:35 | UI/UX Audit | Performed UI/UX audit, fixed desktop grid clipping, mobile navbar overflow, sidebar rail icons, real-time live search. Added 3 Playwright tests. | `3be95b9` | 44/44 tests passed |
+| 2026-11-09 07:25 | Phase 2 | Implemented General Banking & Core Accounting: `DepositAccount` (Modulus 11, Dormancy engine, 10-Yr statutory inoperative transfer, NBR tax & excise duty, hovering recovery), `BranchOperatingDay` (EOD pending voucher hard gate, BOD), `ExchangeRate`, `OrganizationalUnit`, API endpoints, and Playwright E2E suite (`GeneralBankingPlaywrightTests.cs`). | Pending | 76/76 tests passed (55 Unit, 1 Arch, 20 Playwright) |

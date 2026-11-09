@@ -39,7 +39,8 @@ public class CbsApiServerFixture : IAsyncLifetime
         PlaywrightInstance?.Dispose();
         if (_app is not null)
         {
-            await _app.StopAsync();
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            await _app.StopAsync(cts.Token);
             await _app.DisposeAsync();
         }
     }
