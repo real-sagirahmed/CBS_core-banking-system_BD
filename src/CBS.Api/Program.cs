@@ -20,11 +20,14 @@ using CBS.Application.PaymentRails.Commands.PresentCheque;
 using CBS.Application.PaymentRails.Commands.ProcessInwardCheque;
 using CBS.Application.PaymentRails.Commands.Rtgs;
 using CBS.Application.PaymentRails.DTOs;
+using CBS.Application.TradeFinance.Commands;
+using CBS.Application.TradeFinance.DTOs;
 using CBS.Domain.Accounts;
 using CBS.Domain.BranchCash;
 using CBS.Domain.Exceptions;
 using CBS.Domain.Lending;
 using CBS.Domain.PaymentRails;
+using CBS.Domain.TradeFinance;
 using CBS.Domain.ValueObjects;
 using CBS.Infrastructure.Gateways;
 using CBS.Infrastructure.Persistence;
@@ -50,6 +53,7 @@ public partial class Program
         builder.Services.AddSingleton<IBeftnRepository, InMemoryBeftnRepository>();
         builder.Services.AddSingleton<IRtgsRepository, InMemoryRtgsRepository>();
         builder.Services.AddSingleton<ILoanAccountRepository, InMemoryLoanAccountRepository>();
+        builder.Services.AddSingleton<ITradeFinanceRepository, InMemoryTradeFinanceRepository>();
         builder.Services.AddSingleton<IElectionCommissionGateway, MockElectionCommissionGateway>();
         builder.Services.AddSingleton<ISanctionScreeningService, MockSanctionScreeningService>();
 
@@ -70,6 +74,7 @@ public partial class Program
         builder.Services.AddTransient<InitiateBeftnTransferCommandHandler>();
         builder.Services.AddTransient<RtgsCommandHandler>();
         builder.Services.AddTransient<LendingCommandHandler>();
+        builder.Services.AddTransient<TradeFinanceCommandHandler>();
 
         builder.Services.ConfigureHttpJsonOptions(options =>
         {
@@ -844,6 +849,241 @@ public partial class Program
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        // --- TRADE FINANCE & TBML APIS (BRPD Circular 12 Module 5) ---
+        var tradeApi = app.MapGroup("/api/v1/trade");
+
+        tradeApi.MapPost("/lc/draft", async (
+            DraftDocumentaryCreditRequest request,
+            TradeFinanceCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new DraftDocumentaryCreditCommand(request);
+                var result = await handler.HandleDraftLcAsync(command, ct);
+                return Results.Created($"/api/v1/trade/lc/{result.LcNumber}", result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        tradeApi.MapPost("/lc/authorize", async (
+            AuthorizeDocumentaryCreditRequest request,
+            TradeFinanceCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new AuthorizeDocumentaryCreditCommand(request);
+                var result = await handler.HandleAuthorizeLcAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        tradeApi.MapGet("/lc/{lcNumber}", async (
+            string lcNumber,
+            ITradeFinanceRepository repository,
+            CancellationToken ct) =>
+        {
+            var lc = await repository.GetLcByNumberAsync(lcNumber, ct);
+            if (lc is null)
+                return Results.NotFound(new { error = $"Documentary Credit '{lcNumber}' not found." });
+
+            var response = new DocumentaryCreditResponse(
+                lc.LcNumber,
+                lc.Type.ToString(),
+                lc.ApplicantId,
+                lc.BeneficiaryName,
+                lc.BeneficiaryCountry,
+                lc.Amount.Amount,
+                lc.Amount.Currency.Code,
+                lc.CashMarginAmount.Amount,
+                lc.Status.ToString(),
+                lc.CheckerUserId,
+                lc.Mt700Message?.RawMessageText,
+                lc.TbmlResult?.RiskRating.ToString(),
+                lc.TbmlResult?.RiskSummary);
+
+            return Results.Ok(response);
+        });
+
+        tradeApi.MapPost("/shipping-guarantee/issue", async (
+            IssueShippingGuaranteeRequest request,
+            TradeFinanceCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new IssueShippingGuaranteeCommand(request);
+                var result = await handler.HandleIssueSgAsync(command, ct);
+                return Results.Created($"/api/v1/trade/shipping-guarantee/{result.SgReference}", result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        tradeApi.MapPost("/shipping-guarantee/authorize", async (
+            AuthorizeShippingGuaranteeRequest request,
+            TradeFinanceCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new AuthorizeShippingGuaranteeCommand(request);
+                var result = await handler.HandleAuthorizeSgAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        tradeApi.MapPost("/shipping-guarantee/release-bl", async (
+            ReleaseShippingGuaranteeRequest request,
+            TradeFinanceCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new ReleaseShippingGuaranteeCommand(request);
+                var result = await handler.HandleReleaseSgAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        tradeApi.MapPost("/exp/register", async (
+            RegisterExpRequest request,
+            TradeFinanceCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new RegisterExpTrackingCommand(request);
+                var result = await handler.HandleRegisterExpAsync(command, ct);
+                return Results.Created($"/api/v1/trade/exp/{result.ExpNumber}", result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        tradeApi.MapPost("/exp/realize", async (
+            RealizeExpRequest request,
+            TradeFinanceCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new RealizeExpProceedsCommand(request);
+                var result = await handler.HandleRealizeExpAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        tradeApi.MapPost("/exp/evaluate-overdue", async (
+            EvaluateExpOverdueRequest request,
+            TradeFinanceCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new EvaluateExpOverdueCommand(request);
+                var result = await handler.HandleEvaluateExpOverdueAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        tradeApi.MapPost("/tbml/screen", async (
+            TbmlScreeningRequest request,
+            TradeFinanceCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new ScreenTbmlCommand(request);
+                var result = await handler.HandleScreenTbmlAsync(command, ct);
+                return Results.Ok(result);
             }
             catch (Exception ex)
             {

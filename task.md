@@ -20,8 +20,8 @@
 | **Phase 3** | Branch Cash & Teller Operations | Module 1.7, 2, 3.10-3.13 | **DONE & VERIFIED** | 3 Playwright API Suites Passing |
 | **Phase 4** | Payment Rails, Clearing & Channel Gateway | Module 1.4, 1.5, 7 | **DONE & VERIFIED** | 3 Playwright API Suites Passing |
 | **Phase 5** | Lending, CAD & Islamic Finance | Module 4 & Shariah | **DONE & VERIFIED** | 3 Playwright API Suites Passing (10 Unit + 3 E2E Tests) |
-| **Phase 6** | Trade Finance & TBML Detection | Module 5 | **IN PROGRESS** | Planned (LC Lifecycle, EXP Tracking, TBML) |
-| **Phase 7** | Treasury & ALM Engine | Module 6 | **TODO** | Planned (Blotter, CRR/SLR Monitoring) |
+| **Phase 6** | Trade Finance & TBML Detection | Module 5 | **DONE & VERIFIED** | 3 Playwright API Suites Passing (13 Unit + 3 E2E Tests) |
+| **Phase 7** | Treasury & ALM Engine | Module 6 | **IN PROGRESS** | Planned (Blotter, CRR/SLR Monitoring, FX Deals) |
 | **Phase 8** | Security, Audit & Central Bank Reporting | Module 9, 10, 11 | **TODO** | Planned (IAM, Audit Journal, CTR/STR) |
 | **Phase 9** | AI Knowledge Engine, Gemini & TBML | Google Gemini / RAG | **TODO** | Planned (RAG Grounding & Prompt Evals) |
 
@@ -79,29 +79,51 @@
 
 ---
 
-## 4. Active Phase: Phase 6 — International Trade Finance & TBML Engine
+## 4. Phase 6 Deliverables: International Trade Finance & TBML Engine (DONE)
+
+- [x] **Milestone 6.1: Import Documentary Credit (LC) Lifecycle Engine**
+  - [x] Pre-issuance sanction screening against OFAC/UN/EU and Bangladesh Bank CIB defaulter checklist (`BRPD 5.0, 5.1.1-xlii`).
+  - [x] Importer IRC (Import Registration Certificate) validity and HS Code authorization gate (`BRPD 5.1.1-v`).
+  - [x] SWIFT MT700 (Issue of a Documentary Credit) generation engine adhering strictly to SWIFT Category 7 Standards (`BRPD 5.1.8-i`).
+  - [x] Shipping Guarantee (SG) / Delivery Order issuance engine with mandatory 100% cash margin lock and automated guarantee cancellation upon original Bill of Lading (BL) surrender (`BRPD 5.1.2`).
+- [x] **Milestone 6.2: Export Credit & Regulatory Tracking Engine**
+  - [x] EXP Regulatory Form Tracking: Central Bank 120-day realization deadline monitor with automated statutory overdue notification (`BRPD 5.2.1-vi, 5.2.5-i`).
+  - [x] Back-to-Back (B2B) Inland/Foreign LC opening: Strict ceiling validation against Master Export LC / Sales Contract value ($e.g. \le 75\%$) (`BRPD 5.2.2-i`).
+  - [x] Export Development Fund (EDF) refinancing and loan tagging (`BRPD 5.2.4-iv`).
+- [x] **Milestone 6.3: Trade-Based Money Laundering (TBML) Detection Engine**
+  - [x] Unit price anomaly detection: Over-invoicing and under-invoicing variance checking against commodity global reference price bands ($\pm 15\%$ tolerance) (`BRPD 5.4.1`).
+  - [x] Dual-use goods classification and high-risk / sanctioned transshipment port route screening (`BRPD 5.4.2`).
+- [x] **Milestone 6.4: Application Services, CQRS & In-Memory Persistence**
+  - [x] `ITradeFinanceRepository` and thread-safe in-memory concurrent persistence.
+  - [x] Commands, queries, and DTOs for LC draft/authorize, SG issue/release, EXP tracking, and TBML screening.
+  - [x] Minimal API endpoints: `/api/v1/trade/lc/draft`, `/lc/authorize`, `/lc/{lcNumber}`, `/shipping-guarantee/issue`, `/shipping-guarantee/authorize`, `/shipping-guarantee/release-bl`, `/exp/register`, `/exp/realize`, `/exp/evaluate-overdue`, `/tbml/screen`.
+- [x] **Milestone 6.5: Automated Verification Suite (Domain Unit Tests & Playwright E2E)**
+  - [x] 13 pure domain unit tests in `TradeFinanceTests.cs` (121 total domain unit tests).
+  - [x] 3 automated Playwright E2E integration test suites in `TradeFinancePlaywrightTests.cs` (32 total Playwright E2E tests).
+
+---
+
+## 5. Active Phase: Phase 7 — Treasury & ALM Engine (Asset Liability Management)
 
 ### Milestones & Deliverables Breakdown
 
-- [ ] **Milestone 6.1: Import Documentary Credit (LC) Lifecycle Engine**
-  - [ ] Pre-issuance sanction screening against OFAC/UN/EU and Bangladesh Bank CIB defaulter checklist (`BRPD 5.0, 5.1.1-xlii`).
-  - [ ] Importer IRC (Import Registration Certificate) validity and HS Code authorization gate (`BRPD 5.1.1-v`).
-  - [ ] SWIFT MT700 (Issue of a Documentary Credit) generation engine adhering strictly to SWIFT Category 7 Standards (`BRPD 5.1.8-i`).
-  - [ ] Shipping Guarantee (SG) / Delivery Order issuance engine with mandatory 100% cash margin lock and automated guarantee cancellation upon original Bill of Lading (BL) surrender (`BRPD 5.1.2`).
-- [ ] **Milestone 6.2: Export Credit & Regulatory Tracking Engine**
-  - [ ] EXP Regulatory Form Tracking: Central Bank 120-day realization deadline monitor with automated statutory overdue notification (`BRPD 5.2.1-vi, 5.2.5-i`).
-  - [ ] Back-to-Back (B2B) Inland/Foreign LC opening: Strict ceiling validation against Master Export LC / Sales Contract value ($e.g. \le 75\%-80\%$) (`BRPD 5.2.2-i`).
-  - [ ] Export Development Fund (EDF) refinancing and loan tagging (`BRPD 5.2.4-iv`).
-- [ ] **Milestone 6.3: Trade-Based Money Laundering (TBML) Detection Engine**
-  - [ ] Unit price anomaly detection: Over-invoicing and under-invoicing variance checking against commodity global reference price bands ($\pm 15\%$ tolerance) (`BRPD 5.4.1`).
-  - [ ] Dual-use goods classification and high-risk / sanctioned transshipment port route screening (`BRPD 5.4.2`).
-- [ ] **Milestone 6.4: Application Services, CQRS & In-Memory Persistence**
-  - [ ] `ITradeFinanceRepository` and repository implementation.
-  - [ ] Commands, queries, and DTOs for LC issuance, SG release, EXP realization, and TBML screening.
-  - [ ] Minimal API endpoints: `/api/v1/trade/lc/issue`, `/api/v1/trade/shipping-guarantee/issue`, `/api/v1/trade/shipping-guarantee/release-bl`, `/api/v1/trade/exp/track`, `/api/v1/trade/tbml/screen`.
-- [ ] **Milestone 6.5: Automated Verification Suite (Domain Unit Tests & Playwright E2E)**
-  - [ ] Pure invariant unit tests in `TradeFinanceTests.cs`.
-  - [ ] Playwright E2E integration test suite in `TradeFinancePlaywrightTests.cs`.
+- [ ] **Milestone 7.1: Foreign Exchange & Money Market Deal Processing Engine**
+  - [ ] Front-Office deal capture: FX Spot, Forward, Swap contracts (`BRPD 6.1.1, 6.5.1`).
+  - [ ] Money Market Deal Capture: Call Money, Term Placements, Term Borrowings, Commercial Papers (`BRPD 6.1.2`).
+  - [ ] Three-tier segregation: Front-office deal capture $\rightarrow$ Mid-office limit/risk verification $\rightarrow$ Back-office settlement processing (`BRPD 6.5.1-ii`).
+- [ ] **Milestone 7.2: Statutory Liquidity & Reserve Management (CRR & SLR)**
+  - [ ] Net Demand and Time Liabilities (NDTL) daily position calculation (`BRPD 6.2`).
+  - [ ] Cash Reserve Ratio (CRR): Daily bi-weekly average monitoring ($4.00\%$ bi-weekly average, $3.50\%$ daily minimum with Bangladesh Bank) (`BRPD 6.2`).
+  - [ ] Statutory Liquidity Ratio (SLR): Daily unencumbered approved securities & excess cash monitoring ($13.00\%$ Conventional / $5.50\%$ Islamic) (`BRPD 6.2`).
+- [ ] **Milestone 7.3: Treasury Blotter & Asset-Liability Management (ALM)**
+  - [ ] Real-time Nostro account cash flow laddering and currency position blotter (`BRPD 6.4`).
+  - [ ] Structural liquidity gap profiling (time buckets: 1-14 days, 15-28 days, 29-90 days, 91-180 days, 181-365 days, over 1 year) (`BRPD 6.3`).
+- [ ] **Milestone 7.4: Application Services, CQRS & Persistence**
+  - [ ] `ITreasuryRepository` and in-memory persistence.
+  - [ ] Commands, queries, handlers, and endpoints for FX deals, Money Market, and CRR/SLR position.
+- [ ] **Milestone 7.5: Automated Verification Suite (Domain Unit Tests & Playwright E2E)**
+  - [ ] Pure invariant unit tests in `TreasuryTests.cs`.
+  - [ ] Automated Playwright E2E integration test suite in `TreasuryPlaywrightTests.cs`.
 
 ---
 
@@ -136,11 +158,20 @@
 | `QuardNonZeroInterestInvariant` | `BRPD 4.3.4-i` | Islamic Quard-e-Hasana contracts strictly prohibited from charging interest or profit ($0.00\%$). | xUnit Unit Test (`LendingTests.cs`) |
 | `StatutoryRecoveryWaterfallInvariant` | `BRPD 4.2.11-iii` | Repayments strictly cascade: Charges $\rightarrow$ Penal $\rightarrow$ Overdue $\rightarrow$ Regular $\rightarrow$ Principal. | xUnit Unit Test (`LendingTests.cs`) |
 | `AssetClassificationSuspenseInvariant` | `BRPD 3.9.2-i, 4.1.11` | SS/DF/BL classified loan interest accrual ceases to P&L income and diverts to Interest Suspense. | xUnit Unit Test (`LendingTests.cs`) |
+| `LcCibDefaulterBlockedInvariant` | `BRPD 5.1.1-xlii` | Opening documentary credit strictly prohibited against CIB defaulter borrower. | xUnit Unit Test (`TradeFinanceTests.cs`) |
+| `LcInvalidIrcBlockedInvariant` | `BRPD 5.1.1-xli` | Opening documentary credit prohibited without valid and unexpired Import Registration Certificate (IRC). | xUnit Unit Test (`TradeFinanceTests.cs`) |
+| `LcSanctionScreeningHitInvariant` | `BRPD 5.0, 5.7.4` | Pre-issuance sanction screening hit against UN/OFAC/Local blacklist blocks DC opening. | xUnit Unit Test (`TradeFinanceTests.cs`) |
+| `BackToBackCeilingExceededInvariant` | `BRPD 5.2.2-i, 5.6.1-ii` | Back-to-Back LC cannot exceed 75% statutory ceiling of Master Export LC value. | xUnit Unit Test (`TradeFinanceTests.cs`) |
+| `BackToBackShipmentDateInvariant` | `BRPD 5.6.1-vi` | Shipment date of Back-to-Back LC must be strictly earlier than Master LC shipment date. | xUnit Unit Test (`TradeFinanceTests.cs`) |
+| `ShippingGuaranteeCashMarginInvariant` | `BRPD 5.1.2-iii` | Shipping Guarantee strictly requires 100% cash margin locked as security collateral. | Playwright E2E (`TradeFinancePlaywrightTests.cs`) |
+| `ShippingGuaranteeOriginalBlReleaseInvariant` | `BRPD 5.1.2-vii` | Release/Cancellation of Shipping Guarantee strictly requires surrender of original Bill of Lading. | Playwright E2E (`TradeFinancePlaywrightTests.cs`) |
+| `ExpStatutory120DayOverdueInvariant` | `BRPD 5.2.10` | Unrealized export proceeds $> 120$ days automatically marked Overdue and reported to Bangladesh Bank. | Playwright E2E (`TradeFinancePlaywrightTests.cs`) |
+| `TbmlPriceVarianceAlertInvariant` | `BRPD 5.4.1, 5.7.6` | Unit price variance $> \pm 15\%$ against global commodity benchmark triggers TBML over/under-invoicing alert. | Playwright E2E (`TradeFinancePlaywrightTests.cs`) |
 | `CleanArchitectureBoundary` | Software Engineering Standard | Domain has 0 dependencies; Application does not reference Infrastructure. | NetArchTest (`CleanArchitectureTests.cs`) |
 
 ---
 
-## 5. Execution Changelog & Historical Audit
+## 6. Execution Changelog & Historical Audit
 
 | Timestamp (UTC) | Phase | Action / Deliverable | Commit | Result |
 | :--- | :--- | :--- | :--- | :--- |
@@ -153,4 +184,5 @@
 | 2026-11-09 07:25 | Phase 2 | Implemented General Banking & Core Accounting: `DepositAccount` (Modulus 11, Dormancy engine, 10-Yr statutory inoperative transfer, NBR tax & excise duty, hovering recovery), `BranchOperatingDay` (EOD pending voucher hard gate, BOD), `ExchangeRate`, `OrganizationalUnit`, API endpoints, and Playwright E2E suite (`GeneralBankingPlaywrightTests.cs`). | `bf27870` | 76/76 tests passed (55 Unit, 1 Arch, 20 Playwright) |
 | 2026-11-09 07:40 | Phase 3 | Implemented Branch Cash & Teller Operations: `TellerDrawer` (vault-to-teller balancing, cashier posting limits, EOD discrepancy suspense), `CashDenominationBundle` (11 legal tender denominations), `WalkInCustomerDetails` (CDD $\ge 50,000$ BDT), `RemittanceInstrument` (PO/DD tiered commission, 15% NBR statutory VAT, stop payment, liquidation), `SecurityStationeryInventory` (joint custody), API endpoints, and Playwright E2E suite (`BranchCashPlaywrightTests.cs`). | `ef22c23` | 108/108 tests passed (84 Unit, 1 Arch, 23 Playwright) |
 | 2026-11-09 07:50 | Phase 4 | Implemented Payment Rails & Clearing Gateway: `RoutingNumber` (9 digits), `MicrLine` (E-13B standard), `ChequeClearingItem` (High Value $\ge 500k$ vs Regular Value, BB return codes 01/02/05), `BeftnBatchItem` (outward/inward credit/debit), `RtgsTransaction` (ISO 20022 pacs.008, 100k BDT threshold, BB settlement), API endpoints, and Playwright E2E suite (`PaymentRailsPlaywrightTests.cs`). | `f7d6330` | 125/125 tests passed (98 Unit, 1 Arch, 26 Playwright) |
-| 2026-11-09 08:00 | Phase 5 | Implemented Lending, Credit Administration & Islamic Finance: `LoanAccount` Aggregate, `CollateralAsset` (FSV/MV/DP), 3-Tier CAD duty segregation hard gate, Bai-Murabaha direct vendor disbursement lock, Quard-e-Hasana $0.00\%$ interest, statutory repayment waterfall, asset classification (Standard/SMA/SS/DF/BL) with automatic interest suspense, API endpoints, and Playwright E2E suite (`LendingPlaywrightTests.cs`). | Pending Commit | 138/138 tests passed (108 Unit, 1 Arch, 29 Playwright) |
+| 2026-11-09 08:00 | Phase 5 | Implemented Lending, Credit Administration & Islamic Finance: `LoanAccount` Aggregate, `CollateralAsset` (FSV/MV/DP), 3-Tier CAD duty segregation hard gate, Bai-Murabaha direct vendor disbursement lock, Quard-e-Hasana $0.00\%$ interest, statutory repayment waterfall, asset classification (Standard/SMA/SS/DF/BL) with automatic interest suspense, API endpoints, and Playwright E2E suite (`LendingPlaywrightTests.cs`). | `efe7326` | 138/138 tests passed (108 Unit, 1 Arch, 29 Playwright) |
+| 2026-11-09 08:15 | Phase 6 | Implemented International Trade Finance & TBML Engine: `DocumentaryCredit` Aggregate, `ShippingGuarantee` (100% cash margin & BL surrender release), `ExpRegulatoryTracking` (120-day realization monitor & BB overdue reporting), `TbmlScreeningResult` (over/under-invoicing $\pm 15\%$ & sanctioned port route detection), SWIFT Category 7 MT700 message generator, `ITradeFinanceRepository`, API endpoints, and Playwright E2E suite (`TradeFinancePlaywrightTests.cs`). | Pending Commit | 154/154 tests passed (121 Unit, 1 Arch, 32 Playwright) |
