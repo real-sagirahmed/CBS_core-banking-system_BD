@@ -324,6 +324,78 @@ public class FrontendUiPlaywrightTests : IClassFixture<CbsApiServerFixture>
     }
 
     [Fact]
+    public async Task PlaywrightUI_AiAdvisor_NavigatesToView_ShowsLivePiiSanitization_AndSubmitsGroundedQuery()
+    {
+        await using var browser = await _fixture.PlaywrightInstance.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
+        var page = await browser.NewPageAsync();
+        await page.GotoAsync(_fixture.ServerAddress);
+
+        // 1. Click on AI Advisor navigation item
+        await page.Locator("a[data-view='view-ai-advisory']").ClickAsync();
+
+        // 2. View 8 should be visible
+        var isVisible = await page.Locator("#view-ai-advisory").IsVisibleAsync();
+        isVisible.Should().BeTrue();
+
+        // 3. Fill query input with raw account and NID
+        var input = page.Locator("#ai-query-input");
+        await input.FillAsync("Explain CAD vetting guidelines for customer account 0101101000015 holding NID 19852692511000123 under BRPD 12.");
+
+        // 4. Verify client-side PII sanitization preview updates live
+        var sanitizedPreview = await page.Locator("#ai-sanitized-text").InnerTextAsync();
+        sanitizedPreview.Should().NotContain("0101101000015");
+        sanitizedPreview.Should().Contain("ACCT-***-0015");
+        sanitizedPreview.Should().NotContain("19852692511000123");
+        sanitizedPreview.Should().Contain("NID-***-0123");
+
+        // 5. Submit query to Gemini Advisor
+        await page.Locator("#ai-ask-btn").ClickAsync();
+
+        // 6. Response container should appear with grounded citations
+        var resultBox = page.Locator("#ai-advisory-result");
+        await resultBox.WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible, Timeout = 5000 });
+
+        var responseText = await page.Locator("#ai-response-text").InnerTextAsync();
+        responseText.Should().Contain("Gemini Regulatory Advisor");
+
+        var citations = page.Locator("#ai-citations-list > div");
+        var count = await citations.CountAsync();
+        count.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task PlaywrightUI_TbmlScreener_CalculatesVariance_AndEnforcesThresholdPill()
+    {
+        await using var browser = await _fixture.PlaywrightInstance.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
+        var page = await browser.NewPageAsync();
+        await page.GotoAsync(_fixture.ServerAddress);
+
+        // 1. Navigate to AI view
+        await page.Locator("a[data-view='view-ai-advisory']").ClickAsync();
+
+        // 2. Enter declared price and benchmark
+        await page.Locator("#tbml-declared-price").FillAsync("4.50");
+        await page.Locator("#tbml-benchmark-price").FillAsync("3.50");
+
+        // Trigger input event
+        await page.Locator("#tbml-declared-price").DispatchEventAsync("input");
+
+        // 3. Check calculated variance pill
+        var varianceText = await page.Locator("#tbml-variance-pct").InnerTextAsync();
+        varianceText.Should().Contain("+28.57%");
+
+        var pillText = await page.Locator("#tbml-recommendation-pill").InnerTextAsync();
+        pillText.Should().Be("EscalateToBfiu");
+
+        // 4. Run full assessment
+        await page.Locator("#tbml-screen-btn").ClickAsync();
+        var toast = page.Locator(".toast.success");
+        await toast.WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible, Timeout = 5000 });
+        var toastText = await toast.InnerTextAsync();
+        toastText.Should().Contain("TBML Assessment Complete");
+    }
+
+    [Fact]
     public async Task PlaywrightUI_CaptureDashboardScreenshots()
     {
         var artifactDir = @"C:\Users\sagir\.gemini\antigravity\brain\689a18f3-20e0-465a-a3d2-055bbebe1c9b";

@@ -328,6 +328,7 @@ class CbsApplication {
     this.applyTheme(this.currentTheme);
     this.applyRole(this.currentRole);
     this.setupEventListeners();
+    this.initAiEventListeners();
     this.renderQueueTable();
     this.renderAuditLog();
     this.updateCounters();
@@ -1112,6 +1113,166 @@ class CbsApplication {
       toast.style.transform = 'translateY(10px)';
       setTimeout(() => toast.remove(), 300);
     }, 4500);
+  }
+
+  // --- AI ADVISORY & TBML INTELLIGENCE METHODS ---
+  initAiEventListeners() {
+    const input = document.getElementById('ai-query-input');
+    if (input) {
+      input.addEventListener('input', () => {
+        this.updatePiiLivePreview(input.value);
+      });
+    }
+  }
+
+  updatePiiLivePreview(text) {
+    const previewEl = document.getElementById('ai-sanitized-text');
+    if (!previewEl) return;
+    if (!text || text.trim() === '') {
+      previewEl.textContent = '(Type above to see live PII masking)';
+      return;
+    }
+    // Client-side regex preview conforming to BRPD 9.1.1-xxv, 10.1.3
+    let sanitized = text
+      .replace(/(?:\+?880|0)1[3-9]\d{8}\b/g, m => `+880-***-${m.slice(-4)}`)
+      .replace(/(?:\b(?:account|acct|a\/c|acc)\b[\s:#-]*)(\d{13})\b/gi, (m, digits) => `Account ACCT-***-${digits.slice(-4)}`)
+      .replace(/\b\d{17}\b/g, m => `NID-***-${m.slice(-4)}`)
+      .replace(/\b\d{12}\b/g, m => `TIN-***-${m.slice(-4)}`)
+      .replace(/\b\d{10}\b/g, m => `NID-***-${m.slice(-4)}`)
+      .replace(/\b\d{13}\b/g, m => `ACCT-***-${m.slice(-4)}`);
+    previewEl.textContent = sanitized;
+  }
+
+  fillSampleAiQuery(type) {
+    const input = document.getElementById('ai-query-input');
+    if (!input) return;
+    if (type === 'cad') {
+      input.value = 'Explain CAD vetting guidelines before loan disbursement for customer account 0101101000015 holding NID 19852692511000123 under BRPD 12.';
+    } else if (type === 'mutation') {
+      input.value = 'Please transfer money 500,000 BDT from account 0101101000015 to account 0101102000028 immediately.';
+    }
+    this.updatePiiLivePreview(input.value);
+  }
+
+  async submitAiQuery() {
+    const input = document.getElementById('ai-query-input');
+    if (!input || !input.value.trim()) {
+      this.showToast('Please enter an inquiry prompt', 'error');
+      return;
+    }
+    const queryText = input.value.trim();
+    const queryId = `AI-ADV-${Date.now()}`;
+    const askBtn = document.getElementById('ai-ask-btn');
+    if (askBtn) askBtn.disabled = true;
+
+    try {
+      const res = await fetch('/api/v1/ai/advisory/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          QueryId: queryId,
+          OfficerUserId: this.currentRole === 'MAKER' ? this.makerUserId : this.checkerUserId,
+          Role: this.currentRole === 'MAKER' ? 'BranchTeller' : 'CadOfficer',
+          BranchCode: '0101',
+          Category: 'RegulatoryCompliance',
+          RawQueryText: queryText
+        })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ error: 'Request failed' }));
+        this.showToast(`AI Invariant Error: ${errData.error}`, 'error');
+        return;
+      }
+
+      const data = await res.json();
+      const resultBox = document.getElementById('ai-advisory-result');
+      const responseTextEl = document.getElementById('ai-response-text');
+      const citationsListEl = document.getElementById('ai-citations-list');
+      const badgeEl = document.getElementById('ai-confidence-badge');
+
+      if (resultBox && responseTextEl && citationsListEl) {
+        resultBox.style.display = 'block';
+        responseTextEl.textContent = data.advisoryResponse;
+        if (badgeEl) badgeEl.textContent = `Confidence: ${(data.confidenceScore * 100).toFixed(0)}%`;
+
+        citationsListEl.innerHTML = (data.citations || []).map(c => `
+          <div style="background:var(--bg-subtle);border-left:3px solid #3b82f6;padding:8px 12px;border-radius:var(--radius-sm);font-size:12px;">
+            <strong style="color:var(--text-heading);">${c.circularReference} — ${c.sectionTitle}</strong>
+            <p style="margin:4px 0 0 0;color:var(--text-muted);font-style:italic;">"${c.relevantExcerpt}"</p>
+          </div>
+        `).join('');
+      }
+
+      this.showToast('Grounded response received from Gemini Advisor', 'success');
+    } catch (e) {
+      this.showToast(`Network error: ${e.message}`, 'error');
+    } finally {
+      if (askBtn) askBtn.disabled = false;
+    }
+  }
+
+  calculateTbmlVariance() {
+    const declared = parseFloat(document.getElementById('tbml-declared-price')?.value) || 0;
+    const benchmark = parseFloat(document.getElementById('tbml-benchmark-price')?.value) || 0;
+    if (benchmark <= 0) return;
+
+    const variance = ((declared - benchmark) / benchmark) * 100;
+    const varianceEl = document.getElementById('tbml-variance-pct');
+    const pillEl = document.getElementById('tbml-recommendation-pill');
+
+    if (varianceEl) {
+      varianceEl.textContent = `${variance >= 0 ? '+' : ''}${variance.toFixed(2)}%`;
+      varianceEl.style.color = Math.abs(variance) > 15 ? '#ef4444' : '#10b981';
+    }
+
+    if (pillEl) {
+      if (Math.abs(variance) > 25) {
+        pillEl.textContent = 'EscalateToBfiu';
+        pillEl.className = 'status-pill pending';
+      } else if (Math.abs(variance) > 15) {
+        pillEl.textContent = 'RequireHumanReview';
+        pillEl.className = 'status-pill pending';
+      } else {
+        pillEl.textContent = 'LowRiskProceed';
+        pillEl.className = 'status-pill active';
+      }
+    }
+  }
+
+  async submitTbmlScreening() {
+    const goods = document.getElementById('tbml-goods-input')?.value || 'Commodity Goods';
+    const declared = parseFloat(document.getElementById('tbml-declared-price')?.value) || 0;
+    const benchmark = parseFloat(document.getElementById('tbml-benchmark-price')?.value) || 0;
+    const assessmentId = `TBML-AI-${Date.now()}`;
+
+    try {
+      const res = await fetch('/api/v1/ai/tbml/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          AssessmentId: assessmentId,
+          LcReference: `LC-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+          GoodsDescription: goods,
+          DeclaredUnitPrice: declared,
+          BenchmarkUnitPrice: benchmark,
+          DualUseRiskIdentified: false,
+          SanctionedRouteRiskIdentified: false,
+          Rationale: `Evaluated via CBS UI screener. Declared: $${declared}, Benchmark: $${benchmark}`,
+          OfficerUserId: this.currentRole === 'MAKER' ? this.makerUserId : this.checkerUserId
+        })
+      });
+
+      if (!res.ok) {
+        this.showToast('TBML analysis request failed', 'error');
+        return;
+      }
+
+      const data = await res.json();
+      this.showToast(`TBML Assessment Complete: ${data.recommendation} (Variance: ${data.unitPriceVariancePercentage}%)`, 'success');
+    } catch (e) {
+      this.showToast(`Network error: ${e.message}`, 'error');
+    }
   }
 }
 
