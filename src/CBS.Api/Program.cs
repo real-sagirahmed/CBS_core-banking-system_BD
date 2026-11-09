@@ -13,9 +13,15 @@ using CBS.Application.Customers.Commands.CreateCustomerDraft;
 using CBS.Application.Customers.Commands.VerifyCustomer;
 using CBS.Application.Customers.DTOs;
 using CBS.Application.GeneralBanking.Commands.RunBranchEodBatch;
+using CBS.Application.PaymentRails.Commands.InitiateBeftn;
+using CBS.Application.PaymentRails.Commands.PresentCheque;
+using CBS.Application.PaymentRails.Commands.ProcessInwardCheque;
+using CBS.Application.PaymentRails.Commands.Rtgs;
+using CBS.Application.PaymentRails.DTOs;
 using CBS.Domain.Accounts;
 using CBS.Domain.BranchCash;
 using CBS.Domain.Exceptions;
+using CBS.Domain.PaymentRails;
 using CBS.Domain.ValueObjects;
 using CBS.Infrastructure.Gateways;
 using CBS.Infrastructure.Persistence;
@@ -37,6 +43,9 @@ public partial class Program
         builder.Services.AddSingleton<ITellerDrawerRepository, InMemoryTellerDrawerRepository>();
         builder.Services.AddSingleton<IRemittanceInstrumentRepository, InMemoryRemittanceInstrumentRepository>();
         builder.Services.AddSingleton<ISecurityStationeryRepository, InMemorySecurityStationeryRepository>();
+        builder.Services.AddSingleton<IChequeClearingRepository, InMemoryChequeClearingRepository>();
+        builder.Services.AddSingleton<IBeftnRepository, InMemoryBeftnRepository>();
+        builder.Services.AddSingleton<IRtgsRepository, InMemoryRtgsRepository>();
         builder.Services.AddSingleton<IElectionCommissionGateway, MockElectionCommissionGateway>();
         builder.Services.AddSingleton<ISanctionScreeningService, MockSanctionScreeningService>();
 
@@ -52,6 +61,10 @@ public partial class Program
         builder.Services.AddTransient<IssueRemittanceInstrumentCommandHandler>();
         builder.Services.AddTransient<LiquidateRemittanceInstrumentCommandHandler>();
         builder.Services.AddTransient<ManageRemittanceInstrumentLifecycleCommandHandler>();
+        builder.Services.AddTransient<PresentOutwardChequeCommandHandler>();
+        builder.Services.AddTransient<ProcessInwardChequeClearingCommandHandler>();
+        builder.Services.AddTransient<InitiateBeftnTransferCommandHandler>();
+        builder.Services.AddTransient<RtgsCommandHandler>();
 
         builder.Services.ConfigureHttpJsonOptions(options =>
         {
@@ -553,6 +566,136 @@ public partial class Program
             {
                 return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
             }
+        });
+
+        // --- PAYMENT RAILS & CLEARING APIS (PHASE 4) ---
+        var bachApi = app.MapGroup("/api/v1/clearing/bach");
+
+        bachApi.MapPost("/outward/present", async (
+            PresentChequeRequest request,
+            PresentOutwardChequeCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleAsync(new PresentOutwardChequeCommand(request), ct);
+                return Results.Created($"/api/v1/clearing/bach/items/{result.ItemId}", result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        bachApi.MapPost("/inward/process", async (
+            ProcessInwardChequeClearingRequest request,
+            ProcessInwardChequeClearingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleAsync(new ProcessInwardChequeClearingCommand(request), ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        var beftnApi = app.MapGroup("/api/v1/clearing/beftn");
+
+        beftnApi.MapPost("/transfer", async (
+            InitiateBeftnTransferRequest request,
+            InitiateBeftnTransferCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleAsync(new InitiateBeftnTransferCommand(request), ct);
+                return Results.Created($"/api/v1/clearing/beftn/items/{result.ItemId}", result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        var rtgsApi = app.MapGroup("/api/v1/clearing/rtgs");
+
+        rtgsApi.MapPost("/transfer", async (
+            InitiateRtgsTransferRequest request,
+            RtgsCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleInitiateAsync(new InitiateRtgsTransferCommand(request), ct);
+                return Results.Created($"/api/v1/clearing/rtgs/{result.EndToEndId}", result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        rtgsApi.MapPost("/settle", async (
+            SettleRtgsRequest request,
+            RtgsCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleSettleAsync(new SettleRtgsCommand(request), ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        rtgsApi.MapGet("/{endToEndId}", async (
+            string endToEndId,
+            IRtgsRepository repo,
+            CancellationToken ct) =>
+        {
+            var tx = await repo.GetByEndToEndIdAsync(endToEndId, ct);
+            if (tx is null) return Results.NotFound();
+
+            return Results.Ok(RtgsCommandHandler.MapToDto(tx));
         });
 
         return app;

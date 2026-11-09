@@ -6,7 +6,7 @@
 > **Testing Strategy:**  
 > - **Domain & Invariants:** xUnit + FluentAssertions (Pure Invariants, Mathematical Precision)  
 > - **Architecture & Boundaries:** NetArchTest (Zero Dependency Leakage)  
-> - **End-to-End & Integration (E2E):** **Playwright** (API & Browser UI workflows for Teller, Maker-Checker queues, and Reports)
+> - **End-to-End & Integration (E2E):** **Playwright** (API & Browser UI workflows for Teller, Maker-Checker queues, Clearing rails, and Reports)
 
 ---
 
@@ -18,8 +18,8 @@
 | **Phase 1** | Party & Identity (CRM / e-KYC & Frontend) | Module 8 & 3.1 | **DONE & VERIFIED** | 12 Playwright (4 API + 8 UI) Tests Passing |
 | **Phase 2** | General Banking & Core Accounting Engine | Module 1 & 3 | **DONE & VERIFIED** | 3 Playwright API + Unit Suites Passing |
 | **Phase 3** | Branch Cash & Teller Operations | Module 1.7, 2, 3.10-3.13 | **DONE & VERIFIED** | 3 Playwright API Suites Passing |
-| **Phase 4** | Payment Rails, Clearing & Channel Gateway | Module 1.4, 1.5, 7 | **IN PROGRESS** | Planned (BACH, BEFTN, RTGS, NPSB E2E) |
-| **Phase 5** | Lending, CAD & Islamic Finance | Module 4 & Shariah | **TODO** | Planned (Loan Amortization, Murabaha) |
+| **Phase 4** | Payment Rails, Clearing & Channel Gateway | Module 1.4, 1.5, 7 | **DONE & VERIFIED** | 3 Playwright API Suites Passing |
+| **Phase 5** | Lending, CAD & Islamic Finance | Module 4 & Shariah | **IN PROGRESS** | Planned (CAD Segregation, Amortization, Bai-Murabaha) |
 | **Phase 6** | Trade Finance & TBML Detection | Module 5 | **TODO** | Planned (LC Lifecycle, EXP Tracking) |
 | **Phase 7** | Treasury & ALM Engine | Module 6 | **TODO** | Planned (Blotter, CRR/SLR Monitoring) |
 | **Phase 8** | Security, Audit & Central Bank Reporting | Module 9, 10, 11 | **TODO** | Planned (IAM, Audit Journal, CTR/STR) |
@@ -27,53 +27,57 @@
 
 ---
 
-## 2. Phase 3 Deliverables: Branch Cash & Teller Operations (DONE)
+## 2. Phase 4 Deliverables: Payment Rails, Clearing & Channel Gateway (DONE)
 
-- [x] **Milestone 3.1: Cash Drawer & Denomination Balancing Engine**
-  - [x] Bangladeshi legal tender denomination bundles (`CashDenominationBundle`: 1000, 500, 200, 100, 50, 20, 10, 5, 2 notes; 5, 2, 1 coins) (`BRPD 1.7.1-iii`).
-  - [x] Vault-to-teller dual-control handoff requiring distinct supervisor and cashier (`MakerCheckerSeparationInvariant`) (`BRPD 1.7.1-iii, 10.3.5-x`).
-  - [x] Cashier posting limits with mandatory supervisor dual-control authorization on limit breach (`CashierPostingLimitExceededInvariant`) (`BRPD 1.7.1-ii`).
-  - [x] EOD physical cash count balancing and automated suspense parking for cash shortages or excesses (`BRPD 1.7.2-ii`).
-- [x] **Milestone 3.2: Transaction Profile (TP) Real-Time Validation & BFIU CTR Thresholds**
-  - [x] Real-time customer `TransactionProfile` verification on cash transactions (single transaction cap & monthly cash cap checks) (`BRPD 1.7.1-x, 1.7.9`).
-  - [x] Mandatory Walk-in Customer Due Diligence (CDD: Full Name, NID, Mobile, Purpose) for transactions $\ge 50,000$ BDT (`WalkInDueDiligenceRequiredInvariant`) (`BRPD 1.5.6-vi, 3.10.5-i`).
-  - [x] Automatic BFIU Cash Transaction Report (CTR) threshold detection for transactions $\ge 1,000,000$ BDT (`BRPD 10.1.2-i`).
-- [x] **Milestone 3.3: Remittance & Security Instruments (PO / DD / TT)**
-  - [x] Security stationery inventory managed under joint custody (`SecurityStationeryInventory`: Manager != Custodian) (`BRPD 3.11.1-iv`).
-  - [x] Sequential leaf allocation and exhaustion locks (`StationeryExhaustedInvariant`).
-  - [x] Automated statutory tiered commission calculation and 15% NBR VAT computation (`BRPD 1.5.6-v, 3.11.1-i`).
-  - [x] Instrument lifecycle state machine: `Issued`, `Liquidated`, `Stopped`, `Cancelled`, `DuplicateIssued` (`BRPD 2.1.1, 2.1.2`).
-  - [x] Anti-double encashment lock (`DuplicateLiquidationBlockedInvariant`) and liquidation block on stopped/cancelled instruments (`StoppedInstrumentLiquidationBlockedInvariant`).
-- [x] **Milestone 3.4: Application Services, CQRS & Persistence**
-  - [x] Repositories: `ITellerDrawerRepository`, `IRemittanceInstrumentRepository`, `ISecurityStationeryRepository` with in-memory implementations.
-  - [x] Commands & Handlers: `OpenTellerDrawerCommand`, `ProcessTellerCashTransactionCommand`, `CloseTellerDrawerCommand`, `IssueRemittanceInstrumentCommand`, `LiquidateRemittanceInstrumentCommand`, `ManageRemittanceInstrumentLifecycleCommand`.
-  - [x] Minimal API Endpoints: `/api/v1/teller/drawers/open`, `/drawers/{id}`, `/transactions`, `/drawers/close`, `/api/v1/remittance/issue`, `/{number}`, `/liquidate`, `/stop-payment`, `/cancel`, `/stationery/seed`.
-- [x] **Milestone 3.5: Playwright Automated Verification**
-  - [x] 29 new domain unit tests in `TellerCashTests.cs` and `RemittanceInstrumentTests.cs` (84 total domain unit tests).
-  - [x] 3 automated Playwright E2E integration test suites in `BranchCashPlaywrightTests.cs` (100% green).
+- [x] **Milestone 4.1: Bangladesh Automated Clearing House (BACH) MICR Clearing Engine**
+  - [x] `RoutingNumber` Value Object (9 numeric digits: 3 Bank + 3 District + 3 Branch) (`BRPD 1.5.2-a, 1.5.4`).
+  - [x] `MicrLine` Value Object (6-digit Cheque Serial + 9-digit Routing + 13-digit Modulus 11 Account + 2-digit Tx Code) (`BRPD 1.5.2-a`).
+  - [x] High-Value session auto-classification for cheques $\ge 500,000$ BDT vs. Regular-Value session for $< 500,000$ BDT (`BRPD 1.5.1`).
+  - [x] Inward presentment decision engine with Bangladesh Bank standard return codes:
+    - [x] Code 01: Insufficient funds in drawee account (`InsufficientFunds`).
+    - [x] Code 02: Account closed or dormant under BRPD 3.1.20 (`AccountClosedOrDormant`).
+    - [x] Code 05: Stale cheques ($> 180$ days) and post-dated cheques (`PostDatedOrStaleCheque`).
+- [x] **Milestone 4.2: Bangladesh Electronic Funds Transfer Network (BEFTN) Engine**
+  - [x] `BeftnBatchItem` Aggregate Root supporting direct credit and debit transfers (`BRPD 1.5.4`).
+  - [x] State transitions: `Queued` $\rightarrow$ `SentToBb` $\rightarrow$ `Settled` or `Returned`.
+  - [x] Originating customer account debiting on outward transfer initiation.
+- [x] **Milestone 4.3: Real-Time Gross Settlement (RTGS) Pipeline**
+  - [x] `RtgsTransaction` Aggregate Root implementing ISO 20022 messages (`pacs.008`, `pacs.009`, `pacs.004`) (`BRPD 1.5.5`).
+  - [x] Mandatory customer credit transfer minimum threshold enforcement ($\ge 100,000$ BDT) (`RtgsMinimumThresholdInvariant`).
+  - [x] Real-time debtor account debiting and central bank settlement reference binding (`SettledAtBangladeshBank`).
+- [x] **Milestone 4.4: Application Services, CQRS & Persistence**
+  - [x] Repositories: `IChequeClearingRepository`, `IBeftnRepository`, `IRtgsRepository` with in-memory concurrent persistence.
+  - [x] Commands & Handlers: `PresentOutwardChequeCommand`, `ProcessInwardChequeClearingCommand`, `InitiateBeftnTransferCommand`, `RtgsCommandHandler`.
+  - [x] Minimal API Endpoints: `/api/v1/clearing/bach/outward/present`, `/inward/process`, `/api/v1/clearing/beftn/transfer`, `/api/v1/clearing/rtgs/transfer`, `/settle`, `/{endToEndId}`.
+- [x] **Milestone 4.5: Comprehensive Automated Verification**
+  - [x] 14 new domain unit tests in `PaymentRailsTests.cs` (98 total domain unit tests).
+  - [x] 3 automated Playwright E2E integration test suites in `PaymentRailsPlaywrightTests.cs` (26 total Playwright E2E tests).
 
 ---
 
-## 3. Active Phase: Phase 4 — Payment Rails, Clearing & Channel Gateway
+## 3. Active Phase: Phase 5 — Lending, Credit Administration & Islamic Finance
 
 ### Milestones & Deliverables Breakdown
 
-- [ ] **Milestone 4.1: Bangladesh Automated Clearing House (BACH) MICR Clearing Engine**
-  - [ ] Outward and Inward cheque clearing batch cycle processing (High Value $\ge 500,000$ BDT vs. Regular Value) (`BRPD 1.5.1, 1.5.2`).
-  - [ ] MICR line parsing: Cheque Number (6 digits), Routing Number (9 digits), Account Number, Transaction Code (`BRPD 1.5.2-a`).
-  - [ ] Return code engine (Insufficient Funds, Stop Payment, Signature Mismatch, Alteration) (`BRPD 1.5.3`).
-- [ ] **Milestone 4.2: Bangladesh Electronic Funds Transfer Network (BEFTN) Engine**
-  - [ ] Inward and Outward credit/debit batch creation according to BB BEFTN operating rules (`BRPD 1.5.4`).
-  - [ ] Automated validation of 9-digit Bangladesh Bank routing numbers and 13-digit accounts.
-  - [ ] Batch settlement accounting: Nostro / Bangladesh Bank settlement account integration.
-- [ ] **Milestone 4.3: Real-Time Gross Settlement (RTGS) Pipeline**
-  - [ ] Real-time high-value and urgent transactions ($\ge 100,000$ BDT standard, custom threshold) (`BRPD 1.5.5`).
-  - [ ] ISO 20022 message schema adherence (`pacs.008` customer transfer, `pacs.009` financial institution transfer, `pacs.004` payment return).
-- [ ] **Milestone 4.4: National Payment Switch Bangladesh (NPSB) & Channel API Gateway**
-  - [ ] Interbank ATM, POS, and Internet Banking / Mobile Banking fund transfers (`BRPD 1.4, 7.1`).
-  - [ ] Real-time debit authorization, duplicate transaction idempotency, and reversal window handling (`BRPD 7.1.3`).
-- [ ] **Milestone 4.5: Application Services, CQRS & Playwright E2E Suite**
-  - [ ] Domain aggregates, commands, handlers, endpoints, and automated Playwright E2E clearing tests.
+- [ ] **Milestone 5.1: Credit Administration & CAD Duty Segregation Engine**
+  - [ ] Three-tier segregation: CRM/Branch initiates proposal $\rightarrow$ Sanction/Credit Committee approves $\rightarrow$ Credit Administration Department (CAD) vets collateral, legal documentation, and loads limit into system $\rightarrow$ Branch disburses (`BRPD 4.1.3-i, 4.1.5-i`).
+  - [ ] Hard gate prohibiting loan disbursement without verified CAD documentation checklist sign-off (`CadChecklistNotVettedInvariant`).
+  - [ ] Collateral Asset Registry with Forced Sale Value (FSV), Market Value (MV), and Drawing Power (DP) enforcement (`BRPD 4.1.3, 4.1.6`).
+- [ ] **Milestone 5.2: Loan Facilities, Accrual & Regulatory Recovery Waterfall**
+  - [ ] Facility Types: Continuous Loan (CC/OD), Term Loan, Demand Loan (`BRPD 4.1`).
+  - [ ] Term loan amortization schedule generator (Reducing balance method, 360/365-day basis) (`BRPD 4.2.4`).
+  - [ ] Regulatory recovery waterfall (`BRPD 4.2.11-iii`):
+    $$\text{Charges} \rightarrow \text{Penal Interest} \rightarrow \text{Overdue Interest} \rightarrow \text{Regular Interest} \rightarrow \text{Principal}$$
+  - [ ] Daily interest accrual and compounding schedule (`BRPD 4.1.7-i`).
+- [ ] **Milestone 5.3: Islamic Banking Financing (Shariah Invariants)**
+  - [ ] Bai-Murabaha supplier payment lock: Direct Pay Order/RTGS issuance to verified goods suppliers; strictly zero cash disbursement or credit to customer account (`BRPD 4.1.5-iv`).
+  - [ ] Quard-e-Hasana contracts: Strict $0.00\%$ interest/profit invariant (`BRPD 4.3.4-i`).
+  - [ ] Shariah default compensation: Credited to charity/suspense ledger, strictly prohibited from recognition as bank P&L income (`BRPD 4.1.9-iii`).
+- [ ] **Milestone 5.4: Asset Classification (CL) & Provisioning Engine**
+  - [ ] Automated Days Past Due (DPD) evaluation: Standard, SMA (Special Mention Account), SS (Sub-Standard), DF (Doubtful), Bad/Loss (`BRPD 4.1.11, 4.2.27`).
+  - [ ] Automatic interest suspension: Cessation of interest accrual into income once an account is classified; transfer to Interest Suspense account (`BRPD 3.9.2-i, 4.1.11-iii`).
+- [ ] **Milestone 5.5: Application Services, CQRS & Playwright E2E Suite**
+  - [ ] Domain aggregates, commands, handlers, endpoints, and automated Playwright E2E lending tests.
 
 ---
 
@@ -94,6 +98,13 @@
 | `DuplicateLiquidationBlockedInvariant` | `BRPD 2.1.2-i` | Encashment of already liquidated remittance instrument strictly prohibited. | Playwright E2E (`BranchCashPlaywrightTests.cs`) |
 | `StoppedInstrumentLiquidationBlockedInvariant` | `BRPD 2.1.1-iii` | Encashment of stopped instrument strictly prohibited. | Playwright E2E (`BranchCashPlaywrightTests.cs`) |
 | `JointCustodySegregationInvariant` | `BRPD 3.11.1-iv, 10.3.5-x` | Security stationery book must be held under joint control (Manager $\neq$ Custodian). | xUnit Unit Test (`RemittanceInstrumentTests.cs`) |
+| `InvalidRoutingNumberInvariant` | `BRPD 1.5.2-a, 1.5.4` | Routing number must be exactly 9 numeric digits. | xUnit Unit Test (`PaymentRailsTests.cs`) |
+| `InvalidChequeNumberInvariant` | `BRPD 1.5.2-a` | Cheque number must be exactly 6 numeric digits. | xUnit Unit Test (`PaymentRailsTests.cs`) |
+| `ChequeHighValueSessionInvariant` | `BRPD 1.5.1` | Cheque $\ge 500,000$ BDT must be in High-Value session; $< 500,000$ BDT in Regular-Value session. | Playwright E2E (`PaymentRailsPlaywrightTests.cs`) |
+| `StaleChequeReturnInvariant` | `BRPD 1.5.3 Code 05` | Cheque presented $> 180$ days after issue date returned as Stale Cheque. | Playwright E2E (`PaymentRailsPlaywrightTests.cs`) |
+| `PostDatedChequeReturnInvariant` | `BRPD 1.5.3 Code 05` | Cheque presented before issue date returned as Post-Dated Cheque. | Playwright E2E (`PaymentRailsPlaywrightTests.cs`) |
+| `DraweeAccountInsufficientFundsReturnInvariant` | `BRPD 1.5.3 Code 01` | Inward clearing cheque returned if drawer account has insufficient balance. | Playwright E2E (`PaymentRailsPlaywrightTests.cs`) |
+| `RtgsMinimumThresholdInvariant` | `BRPD 1.5.5` | Customer RTGS (pacs.008) transfer requires minimum 100,000 BDT. | Playwright E2E (`PaymentRailsPlaywrightTests.cs`) |
 | `CleanArchitectureBoundary` | Software Engineering Standard | Domain has 0 dependencies; Application does not reference Infrastructure. | NetArchTest (`CleanArchitectureTests.cs`) |
 
 ---
@@ -110,3 +121,4 @@
 | 2026-11-09 05:35 | UI/UX Audit | Performed UI/UX audit, fixed desktop grid clipping, mobile navbar overflow, sidebar rail icons, real-time live search. Added 3 Playwright tests. | `3be95b9` | 44/44 tests passed |
 | 2026-11-09 07:25 | Phase 2 | Implemented General Banking & Core Accounting: `DepositAccount` (Modulus 11, Dormancy engine, 10-Yr statutory inoperative transfer, NBR tax & excise duty, hovering recovery), `BranchOperatingDay` (EOD pending voucher hard gate, BOD), `ExchangeRate`, `OrganizationalUnit`, API endpoints, and Playwright E2E suite (`GeneralBankingPlaywrightTests.cs`). | `bf27870` | 76/76 tests passed (55 Unit, 1 Arch, 20 Playwright) |
 | 2026-11-09 07:40 | Phase 3 | Implemented Branch Cash & Teller Operations: `TellerDrawer` (vault-to-teller balancing, cashier posting limits, EOD discrepancy suspense), `CashDenominationBundle` (11 legal tender denominations), `WalkInCustomerDetails` (CDD $\ge 50,000$ BDT), `RemittanceInstrument` (PO/DD tiered commission, 15% NBR statutory VAT, stop payment, liquidation), `SecurityStationeryInventory` (joint custody), API endpoints, and Playwright E2E suite (`BranchCashPlaywrightTests.cs`). | `ef22c23` | 108/108 tests passed (84 Unit, 1 Arch, 23 Playwright) |
+| 2026-11-09 07:50 | Phase 4 | Implemented Payment Rails & Clearing Gateway: `RoutingNumber` (9 digits), `MicrLine` (E-13B standard), `ChequeClearingItem` (High Value $\ge 500k$ vs Regular Value, BB return codes 01/02/05), `BeftnBatchItem` (outward/inward credit/debit), `RtgsTransaction` (ISO 20022 pacs.008, 100k BDT threshold, BB settlement), API endpoints, and Playwright E2E suite (`PaymentRailsPlaywrightTests.cs`). | Pending | 125/125 tests passed (98 Unit, 1 Arch, 26 Playwright) |
