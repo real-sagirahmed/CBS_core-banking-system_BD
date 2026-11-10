@@ -27,11 +27,18 @@ public sealed class TreasuryDeal : AggregateRoot<string>
     public DateTime ValueDate { get; private set; }
     public TreasuryDealStatus Status { get; private set; }
 
+    public string BranchCode { get; private set; } = "001";
+    public string? SettlementVoucherNumber { get; private set; }
+    public string? SecurityIsin { get; private set; }
+
     public string FrontOfficeDealerUserId { get; private set; } = null!;
     public string? MidOfficeRiskOfficerUserId { get; private set; }
     public DateTime? MidOfficeVerifiedAtUtc { get; private set; }
     public string? BackOfficeSettlementUserId { get; private set; }
     public DateTime? SettledAtUtc { get; private set; }
+
+    // Parameterless constructor for EF Core ORM materialization
+    private TreasuryDeal() : base(string.Empty) { }
 
     private TreasuryDeal(string dealReference) : base(dealReference) { }
 
@@ -47,7 +54,9 @@ public sealed class TreasuryDeal : AggregateRoot<string>
         decimal interestRate,
         DateTime dealDate,
         DateTime valueDate,
-        string frontOfficeDealerUserId)
+        string frontOfficeDealerUserId,
+        string branchCode = "001",
+        string? securityIsin = null)
     {
         if (string.IsNullOrWhiteSpace(dealReference))
             throw new ArgumentException("Deal reference is required.", nameof(dealReference));
@@ -77,7 +86,9 @@ public sealed class TreasuryDeal : AggregateRoot<string>
             DealDate = dealDate.Date,
             ValueDate = valueDate.Date,
             Status = TreasuryDealStatus.CapturedByFrontOffice,
-            FrontOfficeDealerUserId = frontOfficeDealerUserId.Trim()
+            FrontOfficeDealerUserId = frontOfficeDealerUserId.Trim(),
+            BranchCode = string.IsNullOrWhiteSpace(branchCode) ? "001" : branchCode.Trim(),
+            SecurityIsin = securityIsin?.Trim().ToUpperInvariant()
         };
     }
 
@@ -105,7 +116,7 @@ public sealed class TreasuryDeal : AggregateRoot<string>
     /// Back-Office final settlement execution and payment release.
     /// Invariant: BackOfficeOfficer != FrontOfficeDealer AND BackOfficeOfficer != MidOfficeOfficer (BRPD 6.5.1-ii, 6.5.4).
     /// </summary>
-    public void SettleByBackOffice(string backOfficeOfficerUserId)
+    public void SettleByBackOffice(string backOfficeOfficerUserId, string? settlementVoucherNumber = null)
     {
         if (Status != TreasuryDealStatus.VerifiedByMidOffice)
             throw new InvalidOperationException($"Regulatory Invariant Violation [BRPD 6.5.1-ii, 6.5.4-ii]: Settlement is prohibited before mid-office risk and limit verification. Current status: '{Status}'.");
@@ -123,6 +134,7 @@ public sealed class TreasuryDeal : AggregateRoot<string>
 
         BackOfficeSettlementUserId = backOfficeUser;
         SettledAtUtc = DateTime.UtcNow;
+        SettlementVoucherNumber = settlementVoucherNumber?.Trim();
         Status = TreasuryDealStatus.SettledByBackOffice;
     }
 }

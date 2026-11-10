@@ -1,3 +1,4 @@
+using CBS.Domain.Enums;
 using CBS.Domain.GeneralLedger;
 
 namespace CBS.Application.GeneralLedger.Services;
@@ -150,6 +151,27 @@ public interface IGeneralLedgerService
         decimal billAmount,
         decimal cashMarginAmount,
         string customerAccountNumber,
+        string makerUserId,
+        string? checkerUserId = null,
+        CancellationToken ct = default);
+
+    Task<FinancialVoucher> PostTreasuryDealSettlementAsync(
+        string branchSol,
+        string dealReference,
+        TreasuryDealType dealType,
+        DealDirection direction,
+        decimal settlementAmount,
+        string currency,
+        string counterpartyName,
+        string makerUserId,
+        string? checkerUserId = null,
+        CancellationToken ct = default);
+
+    Task<FinancialVoucher> PostTreasurySecuritiesMtmRevaluationAsync(
+        string branchSol,
+        string securityId,
+        decimal unrealizedGainLossAmount,
+        bool isGain,
         string makerUserId,
         string? checkerUserId = null,
         CancellationToken ct = default);

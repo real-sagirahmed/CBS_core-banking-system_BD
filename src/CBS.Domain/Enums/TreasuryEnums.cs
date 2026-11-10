@@ -44,3 +44,21 @@ public enum LiquidityBucket
     Days181To365 = 5,
     Over1Year = 6
 }
+
+public enum TreasurySecurityType
+{
+    TreasuryBill91D = 1,
+    TreasuryBill182D = 2,
+    TreasuryBill364D = 3,
+    TreasuryBond5Y = 4,
+    TreasuryBond10Y = 5,
+    TreasuryBond15Y = 6,
+    TreasuryBond20Y = 7,
+    IslamicSukuk = 8
+}
+
+public enum SecurityClassification
+{
+    Hft = 1, // Held for Trading (daily Mark-to-Market revaluation to reserve)
+    Htm = 2  // Held to Maturity (amortized cost, exempt from daily MTM)
+}

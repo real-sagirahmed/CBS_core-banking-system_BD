@@ -227,4 +227,115 @@ public class TreasuryTests
         profile.HasShortTermDeficitAlert.Should().BeFalse();
         profile.Summary.Should().Contain("Normal liquidity profile within tolerance");
     }
+
+    [Fact]
+    public void TreasurySecurity_Hft_ExecutesDailyMtmRevaluation_CalculatesGainAndDifferential()
+    {
+        // Arrange: 91-Day T-Bill (100,000,000 BDT Face Value, bought at 97,500,000 BDT)
+        var faceValue = new Money(100000000m, Currency.BDT);
+        var bookValue = new Money(97500000m, Currency.BDT);
+        var issueDate = new DateTime(2026, 6, 1);
+        var maturityDate = issueDate.AddDays(91);
+
+        var security = TreasurySecurity.Create(
+            securityId: "BD0926011019",
+            securityName: "91-Day Bangladesh Government Treasury Bill",
+            securityType: TreasurySecurityType.TreasuryBill91D,
+            classification: SecurityClassification.Hft,
+            faceValue: faceValue,
+            bookValue: bookValue,
+            couponRate: 0.00m,
+            purchaseYield: 10.25m,
+            issueDate: issueDate,
+            maturityDate: maturityDate);
+
+        security.MarketValue.Amount.Should().Be(97500000m);
+        security.UnrealizedMtmGainLoss.Amount.Should().Be(0m);
+
+        // Act: Market yield drops, clean price rises to 98.20 BDT per 100 face value
+        var valuationDate = issueDate.AddDays(15);
+        decimal differential = security.ExecuteDailyMtmRevaluation(9.50m, 98.20m, valuationDate);
+
+        // Assert: Market value = 100M * (98.20 / 100) = 98,200,000 BDT
+        // Differential = 98.2M - 97.5M = 700,000 BDT Gain!
+        security.MarketValue.Amount.Should().Be(98200000m);
+        security.UnrealizedMtmGainLoss.Amount.Should().Be(700000m);
+        differential.Should().Be(700000m);
+        security.CleanPrice.Should().Be(98.20m);
+        security.CurrentMarketYield.Should().Be(9.50m);
+        security.LastMtmValuationDate.Should().Be(valuationDate);
+    }
+
+    [Fact]
+    public void TreasurySecurity_Htm_WhenMtmAttempted_ShouldThrowRegulatoryViolation()
+    {
+        // Arrange: 10-Year Bangladesh Government Treasury Bond held to maturity
+        var faceValue = new Money(500000000m, Currency.BDT);
+        var bookValue = new Money(500000000m, Currency.BDT);
+        var issueDate = new DateTime(2026, 1, 1);
+        var maturityDate = issueDate.AddYears(10);
+
+        var security = TreasurySecurity.Create(
+            securityId: "BD0936101025",
+            securityName: "10-Year Bangladesh Government Treasury Bond",
+            securityType: TreasurySecurityType.TreasuryBond10Y,
+            classification: SecurityClassification.Htm,
+            faceValue: faceValue,
+            bookValue: bookValue,
+            couponRate: 12.50m,
+            purchaseYield: 12.50m,
+            issueDate: issueDate,
+            maturityDate: maturityDate);
+
+        // Act & Assert: Daily MTM prohibited on HTM securities (DOS Circular 05/2014)
+        var act = () => security.ExecuteDailyMtmRevaluation(11.80m, 102.50m, issueDate.AddDays(30));
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*DOS Circular 05/2014*HTM (Held-To-Maturity) securities are carried at amortized cost*");
+    }
+
+    [Fact]
+    public void MarketRiskCalculator_ParametricVaR99_ComputesCorrectValue()
+    {
+        // Portfolio value: 1,000,000,000 BDT (100 Crore), Annual Volatility: 12%, Holding: 1 day, Conf: 99%
+        var result = MarketRiskCalculator.CalculateParametricVaR(
+            portfolioValue: 1000000000m,
+            annualVolatilityPercentage: 12.0m,
+            holdingDays: 1,
+            confidenceLevel: 0.99m);
+
+        result.PortfolioValue.Should().Be(1000000000m);
+        result.ConfidenceLevel.Should().Be(0.99m);
+        result.HoldingDays.Should().Be(1);
+        result.ValueAtRiskAmount.Should().BeGreaterThan(0m);
+        result.ValueAtRiskPercentage.Should().BeGreaterThan(1.0m).And.BeLessThan(3.0m);
+    }
+
+    [Fact]
+    public void MarketRiskCalculator_FxNetOpenPosition_CalculatesOverallNopAndDetectsBreach()
+    {
+        // USD: Long 30,000,000, Short 10,000,000 -> Net +20,000,000
+        // EUR: Long 5,000,000, Short 12,000,000 -> Net -7,000,000
+        // GBP: Long 4,000,000, Short 2,000,000 -> Net +2,000,000
+        // Total Net Long = 20M + 2M = 22M
+        // Total Net Short = 7M
+        // Overall NOP = max(22M, 7M) = 22M USD equivalent
+        var rawPositions = new List<(string Currency, decimal Long, decimal Short)>
+        {
+            ("USD", 30000000m, 10000000m),
+            ("EUR", 5000000m, 12000000m),
+            ("GBP", 4000000m, 2000000m)
+        };
+
+        // Act 1: Within 25M limit
+        var okResult = MarketRiskCalculator.CalculateFxNetOpenPosition(rawPositions, approvedNopLimit: 25000000m);
+        okResult.OverallNetOpenPosition.Should().Be(22000000m);
+        okResult.HasNopLimitBreach.Should().BeFalse();
+        okResult.UtilizationPercentage.Should().Be(88.00m);
+
+        // Act 2: Exceeding 20M limit
+        var breachResult = MarketRiskCalculator.CalculateFxNetOpenPosition(rawPositions, approvedNopLimit: 20000000m);
+        breachResult.OverallNetOpenPosition.Should().Be(22000000m);
+        breachResult.HasNopLimitBreach.Should().BeTrue();
+        breachResult.UtilizationPercentage.Should().Be(110.00m);
+    }
 }

@@ -87,7 +87,6 @@ public partial class Program
         builder.Services.AddSingleton<IChequeClearingRepository, InMemoryChequeClearingRepository>();
         builder.Services.AddSingleton<IBeftnRepository, InMemoryBeftnRepository>();
         builder.Services.AddSingleton<IRtgsRepository, InMemoryRtgsRepository>();
-        builder.Services.AddSingleton<ITreasuryRepository, InMemoryTreasuryRepository>();
         builder.Services.AddSingleton<ISecurityAuditRepository, InMemorySecurityAuditRepository>();
         builder.Services.AddSingleton<IAiKnowledgeRepository, InMemoryAiKnowledgeRepository>();
         builder.Services.AddSingleton<IGeminiAiService, GeminiAiService>();
@@ -1750,9 +1749,140 @@ public partial class Program
                 deal.FrontOfficeDealerUserId,
                 deal.MidOfficeRiskOfficerUserId,
                 deal.BackOfficeSettlementUserId,
-                deal.SettledAtUtc);
+                deal.SettledAtUtc,
+                deal.BranchCode,
+                deal.SettlementVoucherNumber,
+                deal.SecurityIsin);
 
             return Results.Ok(response);
+        });
+
+        // --- Government Securities & MTM Revaluation Endpoints (DOS Circular 05/2014) ---
+        treasuryApi.MapPost("/securities/register", async (
+            RegisterTreasurySecurityRequest request,
+            TreasuryCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new RegisterTreasurySecurityCommand(request);
+                var result = await handler.HandleRegisterSecurityAsync(command, ct);
+                return Results.Created($"/api/v1/treasury/securities/{result.SecurityId}", result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        treasuryApi.MapGet("/securities/{securityId}", async (
+            string securityId,
+            ITreasuryRepository repository,
+            CancellationToken ct) =>
+        {
+            var sec = await repository.GetSecurityByIdAsync(securityId, ct);
+            if (sec is null)
+                return Results.NotFound(new { error = $"Treasury Security '{securityId}' not found." });
+
+            var response = new TreasurySecurityResponseDto(
+                sec.SecurityId,
+                sec.SecurityName,
+                sec.SecurityType.ToString(),
+                sec.Classification.ToString(),
+                sec.FaceValue.Amount,
+                sec.BookValue.Amount,
+                sec.MarketValue.Amount,
+                sec.FaceValue.Currency.Code,
+                sec.CouponRate,
+                sec.PurchaseYield,
+                sec.CurrentMarketYield,
+                sec.CleanPrice,
+                sec.IssueDate,
+                sec.MaturityDate,
+                sec.LastMtmValuationDate,
+                sec.UnrealizedMtmGainLoss.Amount,
+                sec.BranchCode);
+
+            return Results.Ok(response);
+        });
+
+        treasuryApi.MapGet("/securities", async (
+            ITreasuryRepository repository,
+            CancellationToken ct) =>
+        {
+            var list = await repository.GetAllSecuritiesAsync(ct);
+            var responses = list.Select(sec => new TreasurySecurityResponseDto(
+                sec.SecurityId,
+                sec.SecurityName,
+                sec.SecurityType.ToString(),
+                sec.Classification.ToString(),
+                sec.FaceValue.Amount,
+                sec.BookValue.Amount,
+                sec.MarketValue.Amount,
+                sec.FaceValue.Currency.Code,
+                sec.CouponRate,
+                sec.PurchaseYield,
+                sec.CurrentMarketYield,
+                sec.CleanPrice,
+                sec.IssueDate,
+                sec.MaturityDate,
+                sec.LastMtmValuationDate,
+                sec.UnrealizedMtmGainLoss.Amount,
+                sec.BranchCode)).ToList();
+
+            return Results.Ok(responses);
+        });
+
+        treasuryApi.MapPost("/securities/mtm-batch", async (
+            MtmRevaluationBatchRequest request,
+            TreasuryCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new MtmRevaluationBatchCommand(request);
+                var result = await handler.HandleMtmRevaluationBatchAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        // --- Market Risk Limits Endpoints (VaR & FX NOP - BRPD 6.5.2) ---
+        treasuryApi.MapPost("/risk/var/evaluate", async (
+            EvaluateParametricVaRRequest request,
+            TreasuryCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new EvaluateParametricVaRCommand(request);
+                var result = await handler.HandleEvaluateVarAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        treasuryApi.MapPost("/risk/nop/evaluate", async (
+            FxNetOpenPositionRequest request,
+            TreasuryCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new EvaluateFxNetOpenPositionCommand(request);
+                var result = await handler.HandleEvaluateNopAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
         });
 
         treasuryApi.MapPost("/alm/crr-slr/evaluate", async (

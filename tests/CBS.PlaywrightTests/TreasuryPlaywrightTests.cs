@@ -192,4 +192,209 @@ public class TreasuryPlaywrightTests : IClassFixture<CbsApiServerFixture>
         gapResult.Buckets.Should().HaveCount(6);
         gapResult.Buckets.First().NetGap.Should().Be(-300000000m);
     }
+
+    [Fact]
+    public async Task PlaywrightE2E_TreasuryDeal_BackOfficeSettlement_GeneratesDoubleEntryGlVoucher_AndDurablePersistence()
+    {
+        var api = await _fixture.CreateApiContextAsync();
+        var uniqueNum = Random.Shared.Next(10000, 99999);
+        var dealRef = $"TR-MM-2026-{uniqueNum}";
+        var dealDate = DateTime.UtcNow.Date;
+        var valueDate = dealDate.AddDays(1);
+
+        // Act 1: Front Office captures Call Money Borrowing deal (50,000,000 BDT from Sonali Bank PLC)
+        var captureReq = new CaptureTreasuryDealRequest(
+            DealReference: dealRef,
+            Type: TreasuryDealType.CallMoneyBorrowing,
+            Direction: DealDirection.Borrow,
+            CounterpartyBankBic: "BSONBDDH",
+            CounterpartyName: "Sonali Bank PLC",
+            PrimaryAmount: 50000000m,
+            PrimaryCurrency: "BDT",
+            SecondaryAmount: 50000000m,
+            SecondaryCurrency: "BDT",
+            ExchangeRate: 1.00m,
+            InterestRate: 9.25m,
+            DealDate: dealDate,
+            ValueDate: valueDate,
+            FrontOfficeDealerUserId: $"DEALER_{uniqueNum}",
+            BranchCode: "001");
+
+        var captureRes = await api.PostAsync("/api/v1/treasury/deals/capture", new APIRequestContextOptions
+        {
+            DataObject = captureReq
+        });
+        captureRes.Status.Should().Be(201);
+
+        // Act 2: Independent Mid-Office Officer verifies risk limits
+        var verifyRes = await api.PostAsync("/api/v1/treasury/deals/verify-mid-office", new APIRequestContextOptions
+        {
+            DataObject = new VerifyMidOfficeDealRequest(dealRef, $"RISK_OFFICER_{uniqueNum}")
+        });
+        verifyRes.Status.Should().Be(200);
+
+        // Act 3: Independent Back-Office Officer settles deal -> triggers double-entry GL voucher
+        var settleRes = await api.PostAsync("/api/v1/treasury/deals/settle-back-office", new APIRequestContextOptions
+        {
+            DataObject = new SettleBackOfficeDealRequest(dealRef, $"SETTLEMENT_OFFICER_{uniqueNum}")
+        });
+        settleRes.Status.Should().Be(200);
+        var settledDeal = (await settleRes.JsonAsync())?.Deserialize<TreasuryDealResponse>(JsonOptions);
+        settledDeal.Should().NotBeNull();
+        settledDeal!.Status.Should().Be("SettledByBackOffice");
+        settledDeal.SettlementVoucherNumber.Should().NotBeNullOrWhiteSpace();
+
+        // Act 4: Query Deal from API and verify durable persistence
+        var getDealRes = await api.GetAsync($"/api/v1/treasury/deals/{dealRef}");
+        getDealRes.Status.Should().Be(200);
+        var persistedDeal = (await getDealRes.JsonAsync())?.Deserialize<TreasuryDealResponse>(JsonOptions);
+        persistedDeal.Should().NotBeNull();
+        persistedDeal!.Status.Should().Be("SettledByBackOffice");
+        persistedDeal.SettlementVoucherNumber.Should().Be(settledDeal.SettlementVoucherNumber);
+
+        // Act 5: Query GL Voucher and verify balanced double-entry booking (BRPD Module 1.3 & 6)
+        var voucherRes = await api.GetAsync($"/api/v1/gl/vouchers/{settledDeal.SettlementVoucherNumber}");
+        voucherRes.Status.Should().Be(200);
+        var voucherJson = await voucherRes.TextAsync();
+        voucherJson.Should().Contain("102010000"); // Dr Bangladesh Bank Settlement
+        voucherJson.Should().Contain("205010000"); // Cr Call Money Borrowings
+    }
+
+    [Fact]
+    public async Task PlaywrightE2E_TreasurySecurities_MtmRevaluationBatch_PostsRevaluationReserveGlVouchers()
+    {
+        var api = await _fixture.CreateApiContextAsync();
+        var uniqueNum = Random.Shared.Next(10000, 99999);
+        var tbillIsin = $"BD09260{uniqueNum}";
+        var tbondIsin = $"BD09361{uniqueNum}";
+        var issueDate = DateTime.UtcNow.Date.AddDays(-10);
+
+        // Act 1: Register HFT 91-Day Treasury Bill (100,000,000 BDT Face Value, 97,500,000 BDT Book Value)
+        var regHftReq = new RegisterTreasurySecurityRequest(
+            SecurityId: tbillIsin,
+            SecurityName: "91-Day Bangladesh Government Treasury Bill",
+            SecurityType: TreasurySecurityType.TreasuryBill91D,
+            Classification: SecurityClassification.Hft,
+            FaceValue: 100000000m,
+            BookValue: 97500000m,
+            Currency: "BDT",
+            CouponRate: 0.00m,
+            PurchaseYield: 10.25m,
+            IssueDate: issueDate,
+            MaturityDate: issueDate.AddDays(91),
+            BranchCode: "001");
+
+        var regHftRes = await api.PostAsync("/api/v1/treasury/securities/register", new APIRequestContextOptions
+        {
+            DataObject = regHftReq
+        });
+        regHftRes.Status.Should().Be(201);
+
+        // Act 2: Register HTM 10-Year Treasury Bond (200,000,000 BDT)
+        var regHtmReq = new RegisterTreasurySecurityRequest(
+            SecurityId: tbondIsin,
+            SecurityName: "10-Year Bangladesh Government Treasury Bond",
+            SecurityType: TreasurySecurityType.TreasuryBond10Y,
+            Classification: SecurityClassification.Htm,
+            FaceValue: 200000000m,
+            BookValue: 200000000m,
+            Currency: "BDT",
+            CouponRate: 12.50m,
+            PurchaseYield: 12.50m,
+            IssueDate: issueDate,
+            MaturityDate: issueDate.AddYears(10),
+            BranchCode: "001");
+
+        var regHtmRes = await api.PostAsync("/api/v1/treasury/securities/register", new APIRequestContextOptions
+        {
+            DataObject = regHtmReq
+        });
+        regHtmRes.Status.Should().Be(201);
+
+        // Act 3: Execute Daily MTM Revaluation Batch (clean price rises to 98.20 -> 700k BDT Gain)
+        var mtmBatchReq = new MtmRevaluationBatchRequest(
+            BranchCode: "001",
+            ValuerUserId: $"VALUER_{uniqueNum}",
+            Quotes: new List<SecurityMarketQuoteDto>
+            {
+                new(tbillIsin, 9.50m, 98.20m)
+            });
+
+        var mtmRes = await api.PostAsync("/api/v1/treasury/securities/mtm-batch", new APIRequestContextOptions
+        {
+            DataObject = mtmBatchReq
+        });
+        mtmRes.Status.Should().Be(200);
+        var batchResult = (await mtmRes.JsonAsync())?.Deserialize<MtmRevaluationBatchResponseDto>(JsonOptions);
+        batchResult.Should().NotBeNull();
+        batchResult!.TotalHftSecuritiesEvaluated.Should().BeGreaterOrEqualTo(1);
+        batchResult.TotalRevaluationVouchersPosted.Should().BeGreaterOrEqualTo(1);
+
+        var billResult = batchResult.Results.FirstOrDefault(r => r.SecurityId == tbillIsin);
+        billResult.Should().NotBeNull();
+        billResult!.MtmDifferential.Should().Be(700000m);
+        billResult.VoucherNumber.Should().NotBeNullOrWhiteSpace();
+
+        // Act 4: Query security and verify updated market value and unrealized gain
+        var secRes = await api.GetAsync($"/api/v1/treasury/securities/{tbillIsin}");
+        secRes.Status.Should().Be(200);
+        var secDto = (await secRes.JsonAsync())?.Deserialize<TreasurySecurityResponseDto>(JsonOptions);
+        secDto.Should().NotBeNull();
+        secDto!.MarketValue.Should().Be(98200000m);
+        secDto.UnrealizedMtmGainLoss.Should().Be(700000m);
+
+        // Act 5: Verify MTM GL Voucher posted to Revaluation Reserve (301020000)
+        var mtmVoucherRes = await api.GetAsync($"/api/v1/gl/vouchers/{billResult.VoucherNumber}");
+        mtmVoucherRes.Status.Should().Be(200);
+        var mtmVoucherJson = await mtmVoucherRes.TextAsync();
+        mtmVoucherJson.Should().Contain("104010000"); // Dr Treasury Bills (HFT)
+        mtmVoucherJson.Should().Contain("301020000"); // Cr Revaluation Reserve (DOS Cir 05/2014)
+    }
+
+    [Fact]
+    public async Task PlaywrightE2E_TreasuryMarketRisk_ParametricVaR99_AndFxNetOpenPositionEnforcement()
+    {
+        var api = await _fixture.CreateApiContextAsync();
+
+        // Act 1: 99% Parametric Value at Risk evaluation
+        var varReq = new EvaluateParametricVaRRequest(
+            PortfolioValue: 1000000000m, // 100 Crore BDT
+            AnnualVolatilityPercentage: 12.0m,
+            HoldingDays: 1,
+            ConfidenceLevel: 0.99m);
+
+        var varRes = await api.PostAsync("/api/v1/treasury/risk/var/evaluate", new APIRequestContextOptions
+        {
+            DataObject = varReq
+        });
+        varRes.Status.Should().Be(200);
+        var varResult = (await varRes.JsonAsync())?.Deserialize<ParametricVaRResponseDto>(JsonOptions);
+        varResult.Should().NotBeNull();
+        varResult!.PortfolioValue.Should().Be(1000000000m);
+        varResult.ConfidenceLevel.Should().Be(0.99m);
+        varResult.ValueAtRiskAmount.Should().BeGreaterThan(0m);
+        varResult.ValueAtRiskPercentage.Should().BeGreaterThan(1.0m).And.BeLessThan(3.0m);
+
+        // Act 2: Foreign Exchange Net Open Position (NOP) evaluation
+        var nopReq = new FxNetOpenPositionRequest(
+            ApprovedNopLimit: 25000000m, // 25M USD approved ceiling
+            Positions: new List<FxPositionInputDto>
+            {
+                new("USD", 30000000m, 10000000m), // Net +20M
+                new("EUR", 5000000m, 12000000m),  // Net -7M
+                new("GBP", 4000000m, 2000000m)   // Net +2M
+            });
+
+        var nopRes = await api.PostAsync("/api/v1/treasury/risk/nop/evaluate", new APIRequestContextOptions
+        {
+            DataObject = nopReq
+        });
+        nopRes.Status.Should().Be(200);
+        var nopResult = (await nopRes.JsonAsync())?.Deserialize<FxNetOpenPositionResponseDto>(JsonOptions);
+        nopResult.Should().NotBeNull();
+        nopResult!.OverallNetOpenPosition.Should().Be(22000000m);
+        nopResult.HasNopLimitBreach.Should().BeFalse();
+        nopResult.UtilizationPercentage.Should().Be(88.00m);
+        nopResult.CurrencyBreakdown.Should().HaveCount(3);
+    }
 }

@@ -46,8 +46,12 @@ public class EfChartOfAccountsRepository : IChartOfAccountsRepository
             new(StandardGlAccounts.TellerTillCash, "Teller Cash Till Account", AccountCategory.Asset),
             new(StandardGlAccounts.BangladeshBankSettlement, "Bangladesh Bank Clearing Settlement Account", AccountCategory.Asset),
             new(StandardGlAccounts.BachClearingAdjustment, "BACH Clearing Adjustment Account", AccountCategory.Asset),
+            new(StandardGlAccounts.NostroForeignCurrencyBalances, "Nostro Foreign Currency Balances with Correspondent Banks", AccountCategory.Asset),
             new(StandardGlAccounts.CustomerLoansAdvances, "Customer Loans and Advances", AccountCategory.Asset),
             new(StandardGlAccounts.CustomerLiabilityForLettersOfCredit, "Customer Liability for Letters of Credit (Contingent)", AccountCategory.Asset),
+            new(StandardGlAccounts.TreasuryBillsHeldForTrading, "Government Treasury Bills (Held For Trading - HFT)", AccountCategory.Asset),
+            new(StandardGlAccounts.TreasuryBondsHeldToMaturity, "Government Treasury Bonds (Held To Maturity - HTM)", AccountCategory.Asset),
+            new(StandardGlAccounts.CallMoneyPlacementsWithBanks, "Interbank Call Money Placements (Lending)", AccountCategory.Asset),
             new(StandardGlAccounts.CashDiscrepancyShortage, "Cash Discrepancy - Teller Shortage", AccountCategory.Asset),
 
             // Liabilities (200000000)
@@ -63,16 +67,23 @@ public class EfChartOfAccountsRepository : IChartOfAccountsRepository
             new(StandardGlAccounts.LoanInterestSuspense, "Loan Interest Suspense Liability Account", AccountCategory.Liability),
             new(StandardGlAccounts.CustomerCashMarginDeposit, "Customer Cash Margin on Letters of Credit & Guarantees", AccountCategory.Liability),
             new(StandardGlAccounts.BankAcceptanceAndLcLiability, "Bank Acceptance and Letters of Credit Liability (Contingent)", AccountCategory.Liability),
+            new(StandardGlAccounts.CallMoneyBorrowingsFromBanks, "Interbank Call Money Borrowings", AccountCategory.Liability),
             new(StandardGlAccounts.CashDiscrepancyExcess, "Cash Discrepancy - Teller Excess", AccountCategory.Liability),
+
+            // Equity & Reserves (300000000)
+            new(StandardGlAccounts.TreasuryRevaluationReserve, "Treasury Securities Revaluation Reserve (DOS Circular 05/2014)", AccountCategory.Equity),
 
             // Income (400000000)
             new(StandardGlAccounts.RemittanceCommissionIncome, "Remittance Issuance Commission Income", AccountCategory.Income),
             new(StandardGlAccounts.AccountMaintenanceHoveringFeeIncome, "Account Maintenance & Hovering Fee Income", AccountCategory.Income),
             new(StandardGlAccounts.TradeCommissionAndFeeIncome, "Trade Services Commission and Fee Income", AccountCategory.Income),
             new(StandardGlAccounts.LoanInterestIncome, "Loan and Advance Interest Income", AccountCategory.Income),
+            new(StandardGlAccounts.TreasuryDealingAndTradingGain, "Treasury Dealing & Securities Trading Gain", AccountCategory.Income),
 
             // Expenses (500000000)
-            new(StandardGlAccounts.DepositInterestExpense, "Customer Deposit Interest Expense", AccountCategory.Expense)
+            new(StandardGlAccounts.DepositInterestExpense, "Customer Deposit Interest Expense", AccountCategory.Expense),
+            new(StandardGlAccounts.MoneyMarketInterestExpense, "Money Market Borrowing Interest Expense", AccountCategory.Expense),
+            new(StandardGlAccounts.TreasuryDealingAndTradingLoss, "Treasury Dealing & Securities Trading Loss", AccountCategory.Expense)
         };
 
         await _dbContext.ChartOfAccounts.AddRangeAsync(defaults, cancellationToken);

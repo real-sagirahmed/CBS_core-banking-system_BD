@@ -588,6 +588,201 @@ public class GeneralLedgerService : IGeneralLedgerService
         return voucher;
     }
 
+    public async Task<FinancialVoucher> PostTreasuryDealSettlementAsync(
+        string branchSol,
+        string dealReference,
+        TreasuryDealType dealType,
+        DealDirection direction,
+        decimal settlementAmount,
+        string currency,
+        string counterpartyName,
+        string makerUserId,
+        string? checkerUserId = null,
+        CancellationToken ct = default)
+    {
+        var voucherNumber = GenerateVoucherNumber(branchSol, VoucherType.Transfer);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var effectiveChecker = string.IsNullOrWhiteSpace(checkerUserId) || checkerUserId == makerUserId
+            ? "SYSTEM_GL_AUTOPOST"
+            : checkerUserId;
+
+        var voucher = new FinancialVoucher(voucherNumber, branchSol, VoucherType.Transfer, today, makerUserId);
+        var money = Money.Bdt(settlementAmount);
+
+        switch (dealType)
+        {
+            case TreasuryDealType.CallMoneyBorrowing:
+            case TreasuryDealType.TermBorrowing:
+                voucher.AddEntry(
+                    StandardGlAccounts.BangladeshBankSettlement,
+                    DebitCredit.Debit,
+                    money,
+                    1.0m,
+                    $"Treasury {dealType} from {counterpartyName} Ref {dealReference}");
+                voucher.AddEntry(
+                    StandardGlAccounts.CallMoneyBorrowingsFromBanks,
+                    DebitCredit.Credit,
+                    money,
+                    1.0m,
+                    $"Treasury {dealType} Liability to {counterpartyName} Ref {dealReference}");
+                break;
+
+            case TreasuryDealType.CallMoneyLending:
+            case TreasuryDealType.TermPlacement:
+                voucher.AddEntry(
+                    StandardGlAccounts.CallMoneyPlacementsWithBanks,
+                    DebitCredit.Debit,
+                    money,
+                    1.0m,
+                    $"Treasury {dealType} Placement with {counterpartyName} Ref {dealReference}");
+                voucher.AddEntry(
+                    StandardGlAccounts.BangladeshBankSettlement,
+                    DebitCredit.Credit,
+                    money,
+                    1.0m,
+                    $"Treasury {dealType} Outflow to {counterpartyName} Ref {dealReference}");
+                break;
+
+            case TreasuryDealType.TreasuryBillPurchase:
+                voucher.AddEntry(
+                    StandardGlAccounts.TreasuryBillsHeldForTrading,
+                    DebitCredit.Debit,
+                    money,
+                    1.0m,
+                    $"Treasury Bill Purchase (HFT) Ref {dealReference}");
+                voucher.AddEntry(
+                    StandardGlAccounts.BangladeshBankSettlement,
+                    DebitCredit.Credit,
+                    money,
+                    1.0m,
+                    $"Treasury Bill Settlement Outflow Ref {dealReference}");
+                break;
+
+            case TreasuryDealType.TreasuryBondPurchase:
+                voucher.AddEntry(
+                    StandardGlAccounts.TreasuryBondsHeldToMaturity,
+                    DebitCredit.Debit,
+                    money,
+                    1.0m,
+                    $"Treasury Bond Purchase (HTM) Ref {dealReference}");
+                voucher.AddEntry(
+                    StandardGlAccounts.BangladeshBankSettlement,
+                    DebitCredit.Credit,
+                    money,
+                    1.0m,
+                    $"Treasury Bond Settlement Outflow Ref {dealReference}");
+                break;
+
+            case TreasuryDealType.FxSpot:
+            case TreasuryDealType.FxForward:
+            case TreasuryDealType.FxSwap:
+                if (direction == DealDirection.Buy)
+                {
+                    voucher.AddEntry(
+                        StandardGlAccounts.NostroForeignCurrencyBalances,
+                        DebitCredit.Debit,
+                        money,
+                        1.0m,
+                        $"Treasury FX Buy {currency} from {counterpartyName} Ref {dealReference}");
+                    voucher.AddEntry(
+                        StandardGlAccounts.BangladeshBankSettlement,
+                        DebitCredit.Credit,
+                        money,
+                        1.0m,
+                        $"Treasury FX Settlement BDT Outflow Ref {dealReference}");
+                }
+                else
+                {
+                    voucher.AddEntry(
+                        StandardGlAccounts.BangladeshBankSettlement,
+                        DebitCredit.Debit,
+                        money,
+                        1.0m,
+                        $"Treasury FX Settlement BDT Inflow from {counterpartyName} Ref {dealReference}");
+                    voucher.AddEntry(
+                        StandardGlAccounts.NostroForeignCurrencyBalances,
+                        DebitCredit.Credit,
+                        money,
+                        1.0m,
+                        $"Treasury FX Sell {currency} Outflow Ref {dealReference}");
+                }
+                break;
+
+            default:
+                voucher.AddEntry(
+                    StandardGlAccounts.CallMoneyPlacementsWithBanks,
+                    DebitCredit.Debit,
+                    money,
+                    1.0m,
+                    $"Treasury Interbank Settlement Ref {dealReference}");
+                voucher.AddEntry(
+                    StandardGlAccounts.BangladeshBankSettlement,
+                    DebitCredit.Credit,
+                    money,
+                    1.0m,
+                    $"Treasury Settlement Outflow Ref {dealReference}");
+                break;
+        }
+
+        voucher.AuthorizeAndPost(effectiveChecker);
+        await _voucherRepository.AddAsync(voucher, ct);
+        return voucher;
+    }
+
+    public async Task<FinancialVoucher> PostTreasurySecuritiesMtmRevaluationAsync(
+        string branchSol,
+        string securityId,
+        decimal unrealizedGainLossAmount,
+        bool isGain,
+        string makerUserId,
+        string? checkerUserId = null,
+        CancellationToken ct = default)
+    {
+        var voucherNumber = GenerateVoucherNumber(branchSol, VoucherType.SystemGenerated);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var effectiveChecker = string.IsNullOrWhiteSpace(checkerUserId) || checkerUserId == makerUserId
+            ? "SYSTEM_GL_AUTOPOST"
+            : checkerUserId;
+
+        var voucher = new FinancialVoucher(voucherNumber, branchSol, VoucherType.SystemGenerated, today, makerUserId);
+        var money = Money.Bdt(Math.Abs(unrealizedGainLossAmount));
+
+        if (isGain)
+        {
+            voucher.AddEntry(
+                StandardGlAccounts.TreasuryBillsHeldForTrading,
+                DebitCredit.Debit,
+                money,
+                1.0m,
+                $"MTM Daily Revaluation Gain for HFT Security {securityId}");
+            voucher.AddEntry(
+                StandardGlAccounts.TreasuryRevaluationReserve,
+                DebitCredit.Credit,
+                money,
+                1.0m,
+                $"MTM Revaluation Reserve Credit (DOS Cir 05/2014) for {securityId}");
+        }
+        else
+        {
+            voucher.AddEntry(
+                StandardGlAccounts.TreasuryRevaluationReserve,
+                DebitCredit.Debit,
+                money,
+                1.0m,
+                $"MTM Revaluation Reserve Debit (DOS Cir 05/2014) for {securityId}");
+            voucher.AddEntry(
+                StandardGlAccounts.TreasuryBillsHeldForTrading,
+                DebitCredit.Credit,
+                money,
+                1.0m,
+                $"MTM Daily Revaluation Loss for HFT Security {securityId}");
+        }
+
+        voucher.AuthorizeAndPost(effectiveChecker);
+        await _voucherRepository.AddAsync(voucher, ct);
+        return voucher;
+    }
+
     public async Task<FinancialVoucher> ReverseVoucherAsync(
         string voucherNumber,
         string reversalMakerUserId,

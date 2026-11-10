@@ -5,6 +5,7 @@ using CBS.Domain.GeneralLedger;
 using CBS.Domain.Lending;
 using CBS.Domain.SecurityAudit;
 using CBS.Domain.TradeFinance;
+using CBS.Domain.Treasury;
 using CBS.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,6 +24,8 @@ public class CbsDbContext : DbContext
     public DbSet<DocumentaryCredit> DocumentaryCredits => Set<DocumentaryCredit>();
     public DbSet<ShippingGuarantee> ShippingGuarantees => Set<ShippingGuarantee>();
     public DbSet<ExpRegulatoryTracking> ExpRegulatoryTrackings => Set<ExpRegulatoryTracking>();
+    public DbSet<TreasuryDeal> TreasuryDeals => Set<TreasuryDeal>();
+    public DbSet<TreasurySecurity> TreasurySecurities => Set<TreasurySecurity>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -66,6 +69,8 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new DocumentaryCreditConfiguration());
         modelBuilder.ApplyConfiguration(new ShippingGuaranteeConfiguration());
         modelBuilder.ApplyConfiguration(new ExpRegulatoryTrackingConfiguration());
+        modelBuilder.ApplyConfiguration(new TreasuryDealConfiguration());
+        modelBuilder.ApplyConfiguration(new TreasurySecurityConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -76,6 +81,8 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<DocumentaryCredit>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<ShippingGuarantee>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<ExpRegulatoryTracking>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<TreasuryDeal>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<TreasurySecurity>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -91,6 +98,8 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<DocumentaryCredit>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<ShippingGuarantee>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<ExpRegulatoryTracking>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<TreasuryDeal>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<TreasurySecurity>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
