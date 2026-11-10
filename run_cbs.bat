@@ -25,8 +25,8 @@ echo.
 :: Open default browser after 2 seconds to allow server initialization
 start "" cmd /c "timeout /t 2 /nobreak >nul && start http://localhost:5000"
 
-:: Run ASP.NET Core Web Host with Static Files & APIs
-dotnet run --project src\CBS.Api --urls "http://localhost:5000"
+:: Run ASP.NET Core Web Host with dotnet watch & Hot Reload
+dotnet watch --project src\CBS.Api run --urls "http://localhost:5000"
 
 if %ERRORLEVEL% NEQ 0 (
     echo.
