@@ -1,5 +1,7 @@
+using CBS.Application.Accounts.Services;
 using CBS.Application.Common.Interfaces;
 using CBS.Application.GeneralLedger.Services;
+using CBS.Infrastructure.Accounts;
 using CBS.Infrastructure.GeneralLedger;
 using CBS.Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
@@ -46,6 +48,7 @@ public static class DependencyInjection
         services.AddScoped<IFinancialVoucherRepository, EfFinancialVoucherRepository>();
         services.AddScoped<IChartOfAccountsRepository, EfChartOfAccountsRepository>();
         services.AddScoped<IGeneralLedgerService, GeneralLedgerService>();
+        services.AddScoped<IDepositLifecycleService, DepositLifecycleService>();
 
         return services;
     }

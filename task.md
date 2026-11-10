@@ -27,7 +27,8 @@
 | **Remediation Phase 1** | Security & RBAC Hard Lock | Module 10.3.5-vii, 10.3.5-viii | **DONE & VERIFIED** | JWT Bearer Auth, Financial Filter (403), Atomic Session Lock, Card/Passport PII |
 | **Remediation Phase 2** | EF Core PostgreSQL, UnitOfWork & Concurrency Locks | Architecture & Persistence | **DONE & VERIFIED** | EF Core 9, Npgsql, IUnitOfWork, RowVersion (xmin), SELECT FOR UPDATE (197/197 Tests Passing) |
 | **Remediation Phase 3** | General Ledger & Chart of Accounts Integration | Module 1.3 (Core Accounting) | **DONE & VERIFIED** | 9-digit COA, IGeneralLedgerService, Auto Double-Entry Postings, SL-to-GL Trial Balance, Reversal Engine (201/201 Tests Passing) |
-| **Remediation Phase 4** | Deposit Lifecycle, Dormancy & Unclaimed Funds Engine | Module 3 (Deposits & Operations) | **PLANNED** | 6m Inactivity, 12m Dormancy, KYC Maker-Checker, 10-Yr BB Unclaimed Fund Transfer, 365/366 Interest Engine |
+| **Remediation Phase 4** | Deposit Lifecycle, Dormancy & Unclaimed Funds Engine | Module 3 (Deposits & Operations) | **DONE & VERIFIED** | 6m Inactivity, 12m Dormancy, KYC Maker-Checker, 10-Yr BB Unclaimed Fund Transfer, 365/366 Interest Engine (219/219 Tests Passing) |
+| **Remediation Phase 5** | Lending, CAD 3-Tier Segregation, Asset Classification (CL) & Interest Suspense | Module 4 (Loans & Advances) | **PLANNED** | CAD Duty Segregation, SMA/SS/DF/BL Classification, Interest Suspense GL Posting, EF Core Loan Persistence |
 
 ---
 

@@ -58,6 +58,7 @@ public class EfChartOfAccountsRepository : IChartOfAccountsRepository
             new(StandardGlAccounts.StatutorySourceTaxPayable, "Statutory Source Tax (AIT) Payable", AccountCategory.Liability),
             new(StandardGlAccounts.StatutoryExciseDutyPayable, "Statutory Excise Duty Payable", AccountCategory.Liability),
             new(StandardGlAccounts.StatutoryVatPayable, "Statutory 15% VAT Payable", AccountCategory.Liability),
+            new(StandardGlAccounts.BangladeshBankUnclaimedFunds, "Bangladesh Bank Unclaimed Funds Government Account", AccountCategory.Liability),
             new(StandardGlAccounts.CashDiscrepancyExcess, "Cash Discrepancy - Teller Excess", AccountCategory.Liability),
 
             // Income (400000000)

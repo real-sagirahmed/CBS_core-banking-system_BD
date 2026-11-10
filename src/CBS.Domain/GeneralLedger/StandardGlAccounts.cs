@@ -21,6 +21,7 @@ public static class StandardGlAccounts
     public const string StatutorySourceTaxPayable = "203010000";
     public const string StatutoryExciseDutyPayable = "203020000";
     public const string StatutoryVatPayable = "203030000";
+    public const string BangladeshBankUnclaimedFunds = "203040000";
     public const string CashDiscrepancyExcess = "209010000";
 
     // REVENUE (400000000)

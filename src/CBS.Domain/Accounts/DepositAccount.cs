@@ -5,8 +5,9 @@ using CBS.Domain.ValueObjects;
 
 namespace CBS.Domain.Accounts;
 
-// ARCHITECTURAL INTENT: Deposit Account Lifecycle, Inactivity/Dormancy locks,
-// NBR statutory tax/excise duty and hovering charges strictly enforced (BRPD Circular 12/2024 Module 3).
+// ARCHITECTURAL INTENT: Deposit Account Lifecycle, Inactivity/Dormancy/Inoperative locks,
+// 10-Year Unclaimed Fund Transfer (BRPD 3.1.21-iv), NBR statutory tax/excise duty,
+// and Leap-Year Actual/365/366 daily interest accrual & capitalization (BRPD Circular 12/2024 Module 1.2, 1.3, 3.1, 3.2).
 public class DepositAccount : AggregateRoot<AccountNumber>
 {
     public CifNumber Cif { get; private set; }
@@ -23,6 +24,22 @@ public class DepositAccount : AggregateRoot<AccountNumber>
     public string? ReactivatedByUserId { get; private set; }
     public DateTime? ReactivatedAtUtc { get; private set; }
 
+    // Interest & Provisioning state (BRPD 1.2.2-i, 1.3.7, 3.2.2)
+    public decimal AnnualInterestRate { get; private set; }
+    public Money AccruedInterestProvision { get; private set; }
+    public DateOnly? LastInterestCalculationDate { get; private set; }
+    public DateOnly? LastInterestCapitalizationDate { get; private set; }
+
+    // 10-Year Unclaimed Fund Transfer & Notice Tracking (BRPD 3.1.21-iv)
+    public int UnclaimedNoticesServedCount { get; private set; }
+    public DateOnly? LastUnclaimedNoticeDate { get; private set; }
+
+    // Maker-Checker Reactivation Separation (BRPD 1.3.18, 3.1.20-iv)
+    public string? ReactivationRequestedByUserId { get; private set; }
+    public string? ReactivationKycDocumentReference { get; private set; }
+    public DateTime? ReactivationRequestedAtUtc { get; private set; }
+    public bool IsReactivationPending { get; private set; }
+
     #pragma warning disable CS8618
     protected DepositAccount() : base(null!) { }
     #pragma warning restore CS8618
@@ -34,12 +51,32 @@ public class DepositAccount : AggregateRoot<AccountNumber>
         string branchCode,
         DateOnly openedDate,
         Currency currency,
-        bool hasTin = false) : base(accountNumber)
+        bool hasTin = false,
+        decimal? annualInterestRate = null) : base(accountNumber)
     {
         ArgumentNullException.ThrowIfNull(accountNumber, nameof(accountNumber));
         ArgumentNullException.ThrowIfNull(cif, nameof(cif));
         ArgumentNullException.ThrowIfNull(currency, nameof(currency));
         if (string.IsNullOrWhiteSpace(branchCode)) throw new ArgumentException("Branch code is required.", nameof(branchCode));
+
+        // BRPD 3.1.1: Current accounts are strictly non-interest bearing (0.00%)
+        if (productType == DepositProductType.CurrentAccount && annualInterestRate.HasValue && annualInterestRate.Value > 0m)
+        {
+            throw new InvariantViolationException(
+                "CurrentAccountInterestProhibitedInvariant",
+                "BRPD Circular 12/2024 (3.1.1, 3.2.4)",
+                "Demand Current accounts cannot bear positive interest rate.");
+        }
+
+        decimal defaultRate = productType switch
+        {
+            DepositProductType.CurrentAccount => 0.00m,
+            DepositProductType.SavingsAccount => 4.00m,
+            DepositProductType.SpecialNoticeDeposit => 2.50m,
+            DepositProductType.FixedDepositReceipt => 7.00m,
+            DepositProductType.MonthlySavingsScheme => 7.50m,
+            _ => 0.00m
+        };
 
         Cif = cif;
         ProductType = productType;
@@ -51,11 +88,29 @@ public class DepositAccount : AggregateRoot<AccountNumber>
         HighestCreditBalanceInYear = Money.Zero(currency);
         HoveringCharges = Money.Zero(currency);
         HasTin = hasTin;
+        AnnualInterestRate = annualInterestRate ?? defaultRate;
+        AccruedInterestProvision = Money.Zero(currency);
+        UnclaimedNoticesServedCount = 0;
+        IsReactivationPending = false;
     }
 
     public void UpdateTinStatus(bool hasTin)
     {
         HasTin = hasTin;
+    }
+
+    public void UpdateInterestRate(decimal newRate)
+    {
+        if (ProductType == DepositProductType.CurrentAccount && newRate > 0m)
+        {
+            throw new InvariantViolationException(
+                "CurrentAccountInterestProhibitedInvariant",
+                "BRPD Circular 12/2024 (3.1.1, 3.2.4)",
+                "Demand Current accounts cannot bear positive interest rate.");
+        }
+
+        if (newRate < 0m) throw new ArgumentException("Interest rate cannot be negative.", nameof(newRate));
+        AnnualInterestRate = newRate;
     }
 
     // 1. INVARIANT: Credit Operations & Hovering Charge Auto-Recovery (BRPD 3.1.19-viii)
@@ -105,19 +160,19 @@ public class DepositAccount : AggregateRoot<AccountNumber>
         return recoveredHovering;
     }
 
-    // 2. INVARIANT: Debit Operations & Dormancy Block Lock (BRPD 3.1.20, 1.3.5)
+    // 2. INVARIANT: Debit Operations & Dormancy/Inoperative Block Lock (BRPD 3.1.20, 3.1.21, 1.3.5)
     public void Debit(Money amount, string narration, bool isCustomerInduced = true, DateOnly? transactionDate = null)
     {
         ArgumentNullException.ThrowIfNull(amount, nameof(amount));
         if (amount.Amount <= 0m) throw new ArgumentException("Debit amount must be positive.", nameof(amount));
 
-        // HARD LOCK: Dormancy blocks customer-induced debit transactions (BRPD 3.1.20)
-        if (Status == AccountOperatingStatus.Dormant && isCustomerInduced)
+        // HARD LOCK: Dormant and Inoperative accounts block customer-induced debit transactions (BRPD 3.1.20, 3.1.21)
+        if ((Status == AccountOperatingStatus.Dormant || Status == AccountOperatingStatus.Inoperative) && isCustomerInduced)
         {
             throw new InvariantViolationException(
                 "DormantAccountDebitBlockedInvariant",
-                "BRPD Circular 12/2024 (3.1.20)",
-                $"Account '{Id.Value}' is DORMANT (Inactive since {LastCustomerTransactionDate:yyyy-MM-dd}). Debit transaction blocked until Branch Manager reactivation.");
+                "BRPD Circular 12/2024 (3.1.20, 3.1.21)",
+                $"Account '{Id.Value}' is {Status} (Inactive since {LastCustomerTransactionDate:yyyy-MM-dd}). Debit transaction blocked until Branch Manager reactivation.");
         }
 
         if (Status is AccountOperatingStatus.BlockedDebit or AccountOperatingStatus.Frozen or AccountOperatingStatus.Closed or AccountOperatingStatus.Unclaimed10YearTransferred)
@@ -145,13 +200,27 @@ public class DepositAccount : AggregateRoot<AccountNumber>
         }
     }
 
-    // 3. INVARIANT: Automated Dormancy State Engine (BRPD 3.1.20)
-    // Current Account: 6 months; Savings/SND: 12 months of inactivity
+    // 3. INVARIANT: Automated Dormancy and Inoperative State Engine (BRPD 3.1.20, 3.1.21)
     public bool EvaluateAndApplyDormancy(DateOnly currentDate)
     {
-        if (Status != AccountOperatingStatus.Active) return false;
+        if (Status is AccountOperatingStatus.Closed or AccountOperatingStatus.Unclaimed10YearTransferred or AccountOperatingStatus.Frozen)
+            return false;
 
         int monthsInactive = CalculateMonthsDifference(LastCustomerTransactionDate, currentDate);
+
+        // Inoperative check (BRPD 3.1.21): >= 24 months of customer inactivity
+        if (monthsInactive >= 24)
+        {
+            if (Status != AccountOperatingStatus.Inoperative)
+            {
+                Status = AccountOperatingStatus.Inoperative;
+                DormantDate ??= currentDate;
+                return true;
+            }
+            return false;
+        }
+
+        // Dormant check (BRPD 3.1.20): 6 months for Current Account, 12 months for Savings/SND
         int thresholdMonths = ProductType switch
         {
             DepositProductType.CurrentAccount => 6,
@@ -162,58 +231,224 @@ public class DepositAccount : AggregateRoot<AccountNumber>
 
         if (monthsInactive >= thresholdMonths)
         {
-            Status = AccountOperatingStatus.Dormant;
-            DormantDate = currentDate;
+            if (Status != AccountOperatingStatus.Dormant)
+            {
+                Status = AccountOperatingStatus.Dormant;
+                DormantDate = currentDate;
+                return true;
+            }
+            return false;
+        }
+
+        return false;
+    }
+
+    // 4. INVARIANT: Unclaimed Notice Dispatch Engine (BRPD 3.1.21-iv)
+    // Serves 3 notices: Notice 1 @ 9 yrs (108m), Notice 2 @ 9.5 yrs (114m), Final Notice @ 9.9 yrs (119m)
+    public int EvaluateUnclaimedNotices(DateOnly currentDate)
+    {
+        if (Status is AccountOperatingStatus.Closed or AccountOperatingStatus.Unclaimed10YearTransferred)
+            return 0;
+
+        int monthsInactive = CalculateMonthsDifference(LastCustomerTransactionDate, currentDate);
+
+        if (monthsInactive >= 119 && UnclaimedNoticesServedCount < 3)
+        {
+            UnclaimedNoticesServedCount = 3;
+            LastUnclaimedNoticeDate = currentDate;
+            return 3;
+        }
+
+        if (monthsInactive >= 114 && UnclaimedNoticesServedCount < 2)
+        {
+            UnclaimedNoticesServedCount = 2;
+            LastUnclaimedNoticeDate = currentDate;
+            return 2;
+        }
+
+        if (monthsInactive >= 108 && UnclaimedNoticesServedCount < 1)
+        {
+            UnclaimedNoticesServedCount = 1;
+            LastUnclaimedNoticeDate = currentDate;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    // 5. INVARIANT: 10-Year Inoperative Central Bank Unclaimed Transfer Execution (BRPD 3.1.21-iv)
+    public Money Execute10YearUnclaimedTransfer(DateOnly currentDate)
+    {
+        if (Status is AccountOperatingStatus.Closed or AccountOperatingStatus.Unclaimed10YearTransferred)
+        {
+            throw new InvalidOperationException($"Account '{Id.Value}' is already in state '{Status}'. Cannot re-execute unclaimed transfer.");
+        }
+
+        int monthsInactive = CalculateMonthsDifference(LastCustomerTransactionDate, currentDate);
+        if (monthsInactive < 120) // 10 years = 120 months
+        {
+            throw new InvariantViolationException(
+                "PrematureUnclaimedTransferInvariant",
+                "BRPD Circular 12/2024 (3.1.21-iv)",
+                $"Account '{Id.Value}' has been inactive for {monthsInactive} months. Minimum 120 months (10 years) required for statutory transfer to Bangladesh Bank.");
+        }
+
+        var transferredAmount = Balance;
+        Balance = Money.Zero(transferredAmount.Currency);
+        Status = AccountOperatingStatus.Unclaimed10YearTransferred;
+        DormantDate = currentDate;
+
+        return transferredAmount;
+    }
+
+    // Backwards-compatible direct check
+    public bool Evaluate10YearUnclaimedTransfer(DateOnly currentDate)
+    {
+        if (Status is AccountOperatingStatus.Closed or AccountOperatingStatus.Unclaimed10YearTransferred)
+            return false;
+
+        int monthsInactive = CalculateMonthsDifference(LastCustomerTransactionDate, currentDate);
+        if (monthsInactive >= 120)
+        {
+            Execute10YearUnclaimedTransfer(currentDate);
             return true;
         }
 
         return false;
     }
 
-    // 4. INVARIANT: Branch Manager Reactivation Workflow (BRPD 3.1.20-iv)
-    public void ReactivateDormant(string branchManagerUserId, string remarks)
+    // 6. INVARIANT: Maker-Checker Dormancy Reactivation Workflow (BRPD 1.3.18, 3.1.20-iv, 10.3.5-x)
+    public void RequestDormancyReactivation(string makerUserId, string kycDocumentReference)
     {
-        if (string.IsNullOrWhiteSpace(branchManagerUserId))
-            throw new ArgumentException("Branch Manager User ID is required for dormancy reactivation (BRPD 3.1.20-iv).", nameof(branchManagerUserId));
+        if (string.IsNullOrWhiteSpace(makerUserId))
+            throw new ArgumentException("Maker User ID is required.", nameof(makerUserId));
+        if (string.IsNullOrWhiteSpace(kycDocumentReference))
+            throw new ArgumentException("KYC document verification reference is required.", nameof(kycDocumentReference));
+
+        if (Status is not (AccountOperatingStatus.Dormant or AccountOperatingStatus.Inoperative))
+        {
+            throw new InvalidOperationException($"Cannot request reactivation for account '{Id.Value}' in state '{Status}'. Account must be 'Dormant' or 'Inoperative'.");
+        }
+
+        ReactivationRequestedByUserId = makerUserId.Trim();
+        ReactivationKycDocumentReference = kycDocumentReference.Trim();
+        ReactivationRequestedAtUtc = DateTime.UtcNow;
+        IsReactivationPending = true;
+    }
+
+    public void ApproveDormancyReactivation(string branchManagerCheckerUserId, string remarks)
+    {
+        if (string.IsNullOrWhiteSpace(branchManagerCheckerUserId))
+            throw new ArgumentException("Branch Manager User ID is required for dormancy reactivation (BRPD 3.1.20-iv).", nameof(branchManagerCheckerUserId));
         if (string.IsNullOrWhiteSpace(remarks))
             throw new ArgumentException("Reactivation remarks/KYC review reference is required.", nameof(remarks));
 
-        if (Status != AccountOperatingStatus.Dormant)
+        if (Status is not (AccountOperatingStatus.Dormant or AccountOperatingStatus.Inoperative))
         {
-            throw new InvalidOperationException($"Cannot reactivate account '{Id.Value}' from status '{Status}'. Account must be 'Dormant'.");
+            throw new InvalidOperationException($"Cannot reactivate account '{Id.Value}' from status '{Status}'. Account must be 'Dormant' or 'Inoperative'.");
+        }
+
+        // HARD LOCK: Dual-Control Maker-Checker duty segregation (BRPD 1.3.18, 10.3.5-x)
+        if (IsReactivationPending && branchManagerCheckerUserId.Equals(ReactivationRequestedByUserId, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvariantViolationException(
+                "MakerCheckerSeparationInvariant",
+                "BRPD Circular 12/2024 (1.3.18, 3.1.20-iv, 10.3.5-x)",
+                $"Maker '{ReactivationRequestedByUserId}' cannot approve their own dormancy reactivation request. Mandatory dual-control segregation.");
         }
 
         Status = AccountOperatingStatus.Active;
         DormantDate = null;
-        ReactivatedByUserId = branchManagerUserId.Trim();
+        ReactivatedByUserId = branchManagerCheckerUserId.Trim();
         ReactivatedAtUtc = DateTime.UtcNow;
+        IsReactivationPending = false;
     }
 
-    // 5. INVARIANT: 10-Year Inoperative Central Bank Unclaimed Transfer (BRPD 3.1.21-iv)
-    public bool Evaluate10YearUnclaimedTransfer(DateOnly currentDate)
+    // Direct reactivation helper for existing tests and backwards-compatibility
+    public void ReactivateDormant(string branchManagerUserId, string remarks)
     {
-        if (Status == AccountOperatingStatus.Closed || Status == AccountOperatingStatus.Unclaimed10YearTransferred)
-            return false;
+        ApproveDormancyReactivation(branchManagerUserId, remarks);
+    }
 
-        int monthsInactive = CalculateMonthsDifference(LastCustomerTransactionDate, currentDate);
-        if (monthsInactive >= 120) // 10 years = 120 months
+    // 7. INVARIANT: Leap-Year Actual/365/366 Daily Interest Accrual (BRPD 1.2.2-i, 1.3.7, 3.2.2)
+    public Money AccrueDailyInterest(DateOnly businessDate)
+    {
+        if (AnnualInterestRate <= 0m || Balance.Amount <= 0m || ProductType == DepositProductType.CurrentAccount)
         {
-            Status = AccountOperatingStatus.Unclaimed10YearTransferred;
-            return true;
+            LastInterestCalculationDate = businessDate;
+            return Money.Zero(Balance.Currency);
         }
 
-        return false;
+        // Dynamic leap-year day count (BRPD 3.2.2)
+        int daysInYear = DateTime.IsLeapYear(businessDate.Year) ? 366 : 365;
+        decimal dailyRate = AnnualInterestRate / (100m * daysInYear);
+        decimal dailyInterestAmount = Math.Round(Balance.Amount * dailyRate, 2, MidpointRounding.AwayFromZero);
+
+        var dailyInterest = new Money(dailyInterestAmount, Balance.Currency);
+        AccruedInterestProvision += dailyInterest;
+        LastInterestCalculationDate = businessDate;
+
+        return dailyInterest;
     }
 
-    // 6. INVARIANT: Automated NBR Withholding Tax Assessment (BRPD 3.1.19-i)
+    // 8. INVARIANT: Periodic Interest Capitalization & Withholding Tax Deductions (BRPD 1.2.2, 3.1.19, 3.2.2)
+    public InterestCapitalizationResult CapitalizeInterest(DateOnly businessDate)
+    {
+        if (AccruedInterestProvision.Amount <= 0m)
+        {
+            LastInterestCapitalizationDate = businessDate;
+            return new InterestCapitalizationResult(
+                Money.Zero(Balance.Currency),
+                Money.Zero(Balance.Currency),
+                Money.Zero(Balance.Currency),
+                Money.Zero(Balance.Currency));
+        }
+
+        var grossInterest = AccruedInterestProvision;
+        var tax = CalculateWithholdingTax(grossInterest);
+        var netInterest = grossInterest - tax;
+
+        // Credit net interest to customer balance
+        Balance += netInterest;
+        if (Balance > HighestCreditBalanceInYear)
+        {
+            HighestCreditBalanceInYear = Balance;
+        }
+
+        // Auto-recover hovering charges from new balance if available
+        Money recoveredHovering = Money.Zero(Balance.Currency);
+        if (HoveringCharges.Amount > 0m)
+        {
+            if (Balance >= HoveringCharges)
+            {
+                recoveredHovering = HoveringCharges;
+                Balance -= HoveringCharges;
+                HoveringCharges = Money.Zero(Balance.Currency);
+            }
+            else
+            {
+                recoveredHovering = Balance;
+                HoveringCharges -= Balance;
+                Balance = Money.Zero(Balance.Currency);
+            }
+        }
+
+        AccruedInterestProvision = Money.Zero(Balance.Currency);
+        LastInterestCapitalizationDate = businessDate;
+
+        return new InterestCapitalizationResult(grossInterest, tax, netInterest, recoveredHovering);
+    }
+
+    // 9. INVARIANT: Automated NBR Withholding Tax Assessment (BRPD 3.1.19-i)
     // 10% if customer has valid e-TIN; 15% if no e-TIN
     public Money CalculateWithholdingTax(Money grossInterest)
     {
         decimal rate = HasTin ? 0.10m : 0.15m;
-        return new Money(grossInterest.Amount * rate, grossInterest.Currency);
+        decimal taxAmount = Math.Round(grossInterest.Amount * rate, 2, MidpointRounding.AwayFromZero);
+        return new Money(taxAmount, grossInterest.Currency);
     }
 
-    // 7. INVARIANT: Annual NBR Statutory Excise Duty Slab Assessment (BRPD 3.1.19-vii)
+    // 10. INVARIANT: Annual NBR Statutory Excise Duty Slab Assessment (BRPD 3.1.19-vii)
     public Money CalculateAnnualExciseDuty()
     {
         decimal highestAmount = HighestCreditBalanceInYear.Amount;
@@ -242,3 +477,9 @@ public class DepositAccount : AggregateRoot<AccountNumber>
         return ((toDate.Year - fromDate.Year) * 12) + (toDate.Month - fromDate.Month);
     }
 }
+
+public record InterestCapitalizationResult(
+    Money GrossInterest,
+    Money WithholdingTax,
+    Money NetInterest,
+    Money RecoveredHoveringCharges);

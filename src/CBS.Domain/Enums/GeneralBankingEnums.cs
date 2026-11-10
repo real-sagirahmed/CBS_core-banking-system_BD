@@ -59,7 +59,8 @@ public enum AccountOperatingStatus
     BlockedCredit = 4,
     Frozen = 5,
     Unclaimed10YearTransferred = 6,
-    Closed = 7
+    Closed = 7,
+    Inoperative = 8
 }
 
 public enum DayStatus

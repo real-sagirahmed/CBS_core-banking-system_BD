@@ -82,6 +82,45 @@ public class DepositAccountConfiguration : IEntityTypeConfiguration<DepositAccou
         builder.Property(a => a.ReactivatedAtUtc)
             .HasColumnName("reactivated_at_utc");
 
+        builder.Property(a => a.AnnualInterestRate)
+            .HasColumnName("annual_interest_rate")
+            .HasPrecision(5, 2)
+            .IsRequired();
+
+        builder.Property(a => a.AccruedInterestProvision)
+            .HasConversion(v => v.Amount, v => Money.Bdt(v))
+            .HasColumnName("accrued_interest_bdt")
+            .HasPrecision(18, 2)
+            .IsRequired();
+
+        builder.Property(a => a.LastInterestCalculationDate)
+            .HasColumnName("last_interest_calculation_date");
+
+        builder.Property(a => a.LastInterestCapitalizationDate)
+            .HasColumnName("last_interest_capitalization_date");
+
+        builder.Property(a => a.UnclaimedNoticesServedCount)
+            .HasColumnName("unclaimed_notices_served_count")
+            .IsRequired();
+
+        builder.Property(a => a.LastUnclaimedNoticeDate)
+            .HasColumnName("last_unclaimed_notice_date");
+
+        builder.Property(a => a.ReactivationRequestedByUserId)
+            .HasColumnName("reactivation_requested_by_user_id")
+            .HasMaxLength(50);
+
+        builder.Property(a => a.ReactivationKycDocumentReference)
+            .HasColumnName("reactivation_kyc_document_ref")
+            .HasMaxLength(100);
+
+        builder.Property(a => a.ReactivationRequestedAtUtc)
+            .HasColumnName("reactivation_requested_at_utc");
+
+        builder.Property(a => a.IsReactivationPending)
+            .HasColumnName("is_reactivation_pending")
+            .IsRequired();
+
         builder.Ignore(a => a.DomainEvents);
 
         builder.HasIndex(a => a.Cif).HasDatabaseName("ix_deposit_accounts_cif");

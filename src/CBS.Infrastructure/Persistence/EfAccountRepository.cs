@@ -58,7 +58,6 @@ public class EfAccountRepository : IAccountRepository
     public async Task<IEnumerable<DepositAccount>> GetAllAccountsAsync(CancellationToken cancellationToken = default)
     {
         return await _dbContext.DepositAccounts
-            .AsNoTracking()
             .ToListAsync(cancellationToken);
     }
 }

@@ -69,6 +69,31 @@ public interface IGeneralLedgerService
         string? checkerUserId = null,
         CancellationToken ct = default);
 
+    Task<FinancialVoucher> PostDepositInterestAccrualAsync(
+        string branchSol,
+        decimal totalAccruedAmount,
+        string makerUserId,
+        string? checkerUserId = null,
+        CancellationToken ct = default);
+
+    Task<FinancialVoucher> PostDepositInterestCapitalizationAsync(
+        string branchSol,
+        string customerAccountNumber,
+        decimal grossInterest,
+        decimal withholdingTax,
+        decimal netInterest,
+        string makerUserId,
+        string? checkerUserId = null,
+        CancellationToken ct = default);
+
+    Task<FinancialVoucher> Post10YearUnclaimedTransferAsync(
+        string branchSol,
+        string customerAccountNumber,
+        decimal transferredAmount,
+        string makerUserId,
+        string? checkerUserId = null,
+        CancellationToken ct = default);
+
     Task<FinancialVoucher> ReverseVoucherAsync(
         string voucherNumber,
         string reversalMakerUserId,

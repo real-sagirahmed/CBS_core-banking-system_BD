@@ -1,6 +1,7 @@
 using CBS.Application.Accounts.Commands.OpenDepositAccount;
 using CBS.Application.Accounts.Commands.PostTransaction;
 using CBS.Application.Accounts.DTOs;
+using CBS.Application.Accounts.Services;
 using CBS.Application.AiIntelligence.Commands;
 using CBS.Application.AiIntelligence.DTOs;
 using CBS.Application.BranchCash.Commands.CloseTellerDrawer;
@@ -366,6 +367,166 @@ public partial class Program
             {
                 return Results.BadRequest(new { error = ex.Message });
             }
+        });
+
+        // Maker requests dormancy reactivation (BRPD 3.1.20-iv, 1.3.18)
+        accountApi.MapPost("/{accountNumber}/request-reactivation", async (
+            string accountNumber,
+            RequestDormancyReactivationRequest request,
+            HttpContext httpContext,
+            IDepositLifecycleService lifecycleService,
+            CancellationToken ct) =>
+        {
+            string makerUserId = httpContext.Request.Headers["X-User-Id"].FirstOrDefault() ?? "MAKER01";
+
+            try
+            {
+                await lifecycleService.RequestDormancyReactivationAsync(
+                    AccountNumber.From(accountNumber),
+                    makerUserId,
+                    request.KycDocumentReference,
+                    request.Remarks,
+                    ct);
+
+                return Results.Ok(new { message = $"Dormancy reactivation requested for account '{accountNumber}'. Pending Branch Manager approval.", maker = makerUserId });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        // Checker (Branch Manager) approves dormancy reactivation (BRPD 3.1.20-iv, 10.3.5-x)
+        accountApi.MapPost("/{accountNumber}/approve-reactivation", async (
+            string accountNumber,
+            ApproveDormancyReactivationRequest request,
+            HttpContext httpContext,
+            IDepositLifecycleService lifecycleService,
+            CancellationToken ct) =>
+        {
+            string branchManagerUserId = httpContext.Request.Headers["X-Approver-Id"].FirstOrDefault()
+                                         ?? httpContext.Request.Headers["X-User-Id"].FirstOrDefault()
+                                         ?? "BM01";
+
+            try
+            {
+                var response = await lifecycleService.ApproveDormancyReactivationAsync(
+                    AccountNumber.From(accountNumber),
+                    branchManagerUserId,
+                    request.Remarks,
+                    ct);
+
+                return Results.Ok(response);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        // Deposit Lifecycle EOD Batch execution (Dormancy, Inoperative, 10-Yr Unclaimed Transfer, Leap-Year Interest Accrual)
+        accountApi.MapPost("/lifecycle/eod-batch", async (
+            DepositLifecycleEodRequest request,
+            HttpContext httpContext,
+            IDepositLifecycleService lifecycleService,
+            CancellationToken ct) =>
+        {
+            string userId = httpContext.Request.Headers["X-User-Id"].FirstOrDefault() ?? "OPS_OFFICER_01";
+            var businessDate = string.IsNullOrWhiteSpace(request.BusinessDate)
+                ? DateOnly.FromDateTime(DateTime.UtcNow)
+                : DateOnly.Parse(request.BusinessDate);
+
+            try
+            {
+                var summary = await lifecycleService.ExecuteBranchDepositEodAsync(
+                    request.BranchCode,
+                    businessDate,
+                    userId,
+                    ct);
+
+                return Results.Ok(summary);
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                var entryNames = string.Join(", ", ex.Entries.Select(e => $"{e.Entity.GetType().Name} ({e.State}): {string.Join(";", e.Properties.Where(p => p.IsModified).Select(p => p.Metadata.Name))}"));
+                return Results.BadRequest(new { error = ex.Message, entries = entryNames });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        // Deposit Periodic Interest Capitalization & NBR Withholding Tax Deductions (BRPD 1.2.2, 3.1.19, 3.2.2)
+        accountApi.MapPost("/lifecycle/capitalize-interest", async (
+            DepositInterestCapitalizationRequest request,
+            HttpContext httpContext,
+            IDepositLifecycleService lifecycleService,
+            CancellationToken ct) =>
+        {
+            string userId = httpContext.Request.Headers["X-User-Id"].FirstOrDefault() ?? "OPS_OFFICER_01";
+            var businessDate = string.IsNullOrWhiteSpace(request.BusinessDate)
+                ? DateOnly.FromDateTime(DateTime.UtcNow)
+                : DateOnly.Parse(request.BusinessDate);
+
+            try
+            {
+                var result = await lifecycleService.ExecuteInterestCapitalizationBatchAsync(
+                    request.BranchCode,
+                    businessDate,
+                    userId,
+                    ct);
+
+                return Results.Ok(result);
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                var entryNames = string.Join(", ", ex.Entries.Select(e => $"{e.Entity.GetType().Name} ({e.State}): {string.Join(";", e.Properties.Where(p => p.IsModified).Select(p => p.Metadata.Name))}"));
+                return Results.BadRequest(new { error = ex.Message, entries = entryNames });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        // Regulatory Unclaimed Accounts Ageing Report (BRPD 3.1.21-iv)
+        accountApi.MapGet("/reports/unclaimed-ageing", async (
+            string? branchCode,
+            string? asOfDate,
+            IDepositLifecycleService lifecycleService,
+            CancellationToken ct) =>
+        {
+            var date = string.IsNullOrWhiteSpace(asOfDate)
+                ? DateOnly.FromDateTime(DateTime.UtcNow)
+                : DateOnly.Parse(asOfDate);
+
+            var report = await lifecycleService.GetUnclaimedAccountsAgeingReportAsync(branchCode, date, ct);
+            return Results.Ok(report);
         });
 
         // --- GENERAL BANKING & EOD APIS (PHASE 2) ---

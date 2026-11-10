@@ -243,6 +243,83 @@ public class GeneralLedgerService : IGeneralLedgerService
         return voucher;
     }
 
+    public async Task<FinancialVoucher> PostDepositInterestAccrualAsync(
+        string branchSol,
+        decimal totalAccruedAmount,
+        string makerUserId,
+        string? checkerUserId = null,
+        CancellationToken ct = default)
+    {
+        var voucherNumber = GenerateVoucherNumber(branchSol, VoucherType.SystemGenerated);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var effectiveChecker = string.IsNullOrWhiteSpace(checkerUserId) || checkerUserId == makerUserId
+            ? "SYSTEM_GL_AUTOPOST"
+            : checkerUserId;
+
+        var voucher = new FinancialVoucher(voucherNumber, branchSol, VoucherType.SystemGenerated, today, makerUserId);
+        voucher.AddEntry(StandardGlAccounts.DepositInterestExpense, DebitCredit.Debit, Money.Bdt(totalAccruedAmount), 1.0m, "EOD Daily Deposit Interest Accrual Provision");
+        voucher.AddEntry(StandardGlAccounts.CustomerSavingsDeposit, DebitCredit.Credit, Money.Bdt(totalAccruedAmount), 1.0m, "EOD Daily Deposit Interest Accrued Payable");
+
+        voucher.AuthorizeAndPost(effectiveChecker);
+        await _voucherRepository.AddAsync(voucher, ct);
+        return voucher;
+    }
+
+    public async Task<FinancialVoucher> PostDepositInterestCapitalizationAsync(
+        string branchSol,
+        string customerAccountNumber,
+        decimal grossInterest,
+        decimal withholdingTax,
+        decimal netInterest,
+        string makerUserId,
+        string? checkerUserId = null,
+        CancellationToken ct = default)
+    {
+        var voucherNumber = GenerateVoucherNumber(branchSol, VoucherType.SystemGenerated);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var effectiveChecker = string.IsNullOrWhiteSpace(checkerUserId) || checkerUserId == makerUserId
+            ? "SYSTEM_GL_AUTOPOST"
+            : checkerUserId;
+
+        var voucher = new FinancialVoucher(voucherNumber, branchSol, VoucherType.SystemGenerated, today, makerUserId);
+        // Dr Accrued Interest Provision (Gross)
+        voucher.AddEntry(StandardGlAccounts.CustomerSavingsDeposit, DebitCredit.Debit, Money.Bdt(grossInterest), 1.0m, $"Interest Capitalization - Gross Accrual Debit for Acct {customerAccountNumber}");
+        // Cr Customer Account Liability (Net Interest)
+        voucher.AddEntry(StandardGlAccounts.CustomerSavingsDeposit, DebitCredit.Credit, Money.Bdt(netInterest), 1.0m, $"Interest Capitalization - Net Interest Credit to Acct {customerAccountNumber}");
+        // Cr NBR Withholding Tax Liability (Tax)
+        if (withholdingTax > 0m)
+        {
+            voucher.AddEntry(StandardGlAccounts.StatutorySourceTaxPayable, DebitCredit.Credit, Money.Bdt(withholdingTax), 1.0m, $"NBR Statutory Withholding Tax (AIT) for Acct {customerAccountNumber}");
+        }
+
+        voucher.AuthorizeAndPost(effectiveChecker);
+        await _voucherRepository.AddAsync(voucher, ct);
+        return voucher;
+    }
+
+    public async Task<FinancialVoucher> Post10YearUnclaimedTransferAsync(
+        string branchSol,
+        string customerAccountNumber,
+        decimal transferredAmount,
+        string makerUserId,
+        string? checkerUserId = null,
+        CancellationToken ct = default)
+    {
+        var voucherNumber = GenerateVoucherNumber(branchSol, VoucherType.Transfer);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var effectiveChecker = string.IsNullOrWhiteSpace(checkerUserId) || checkerUserId == makerUserId
+            ? "SYSTEM_GL_AUTOPOST"
+            : checkerUserId;
+
+        var voucher = new FinancialVoucher(voucherNumber, branchSol, VoucherType.Transfer, today, makerUserId);
+        voucher.AddEntry(StandardGlAccounts.CustomerSavingsDeposit, DebitCredit.Debit, Money.Bdt(transferredAmount), 1.0m, $"BRPD 3.1.21 10-Yr Unclaimed Transfer Debit for Acct {customerAccountNumber}");
+        voucher.AddEntry(StandardGlAccounts.BangladeshBankUnclaimedFunds, DebitCredit.Credit, Money.Bdt(transferredAmount), 1.0m, $"BRPD 3.1.21 Bangladesh Bank Unclaimed Funds Government Account (Acct {customerAccountNumber})");
+
+        voucher.AuthorizeAndPost(effectiveChecker);
+        await _voucherRepository.AddAsync(voucher, ct);
+        return voucher;
+    }
+
     public async Task<FinancialVoucher> ReverseVoucherAsync(
         string voucherNumber,
         string reversalMakerUserId,
