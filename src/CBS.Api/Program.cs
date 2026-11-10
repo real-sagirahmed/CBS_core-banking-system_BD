@@ -38,6 +38,7 @@ using CBS.Domain.SecurityAudit;
 using CBS.Domain.TradeFinance;
 using CBS.Domain.Treasury;
 using CBS.Domain.ValueObjects;
+using CBS.Infrastructure;
 using CBS.Infrastructure.AiIntelligence;
 using CBS.Infrastructure.Gateways;
 using CBS.Infrastructure.Persistence;
@@ -75,10 +76,8 @@ public partial class Program
                 };
             });
         builder.Services.AddAuthorization();
-        builder.Services.AddSingleton<ICustomerRepository, InMemoryCustomerRepository>();
-        builder.Services.AddSingleton<IAccountRepository, InMemoryAccountRepository>();
+        builder.Services.AddCbsPersistence(builder.Configuration);
         builder.Services.AddSingleton<IBranchOperatingDayRepository, InMemoryBranchOperatingDayRepository>();
-        builder.Services.AddSingleton<ITellerDrawerRepository, InMemoryTellerDrawerRepository>();
         builder.Services.AddSingleton<IRemittanceInstrumentRepository, InMemoryRemittanceInstrumentRepository>();
         builder.Services.AddSingleton<ISecurityStationeryRepository, InMemorySecurityStationeryRepository>();
         builder.Services.AddSingleton<IChequeClearingRepository, InMemoryChequeClearingRepository>();
@@ -122,6 +121,7 @@ public partial class Program
         });
 
         var app = builder.Build();
+        app.UseDeveloperExceptionPage();
 
         if (!app.Environment.IsDevelopment())
         {
@@ -181,6 +181,10 @@ public partial class Program
             {
                 return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -239,6 +243,10 @@ public partial class Program
             {
                 return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -285,6 +293,10 @@ public partial class Program
             catch (InvariantViolationException ex)
             {
                 return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
@@ -433,6 +445,10 @@ public partial class Program
             {
                 return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -460,6 +476,10 @@ public partial class Program
             catch (InvariantViolationException ex)
             {
                 return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
@@ -528,6 +548,10 @@ public partial class Program
             {
                 return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -556,6 +580,10 @@ public partial class Program
             {
                 return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -583,6 +611,10 @@ public partial class Program
             catch (InvariantViolationException ex)
             {
                 return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
@@ -679,6 +711,10 @@ public partial class Program
             {
                 return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -705,6 +741,10 @@ public partial class Program
             {
                 return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -728,6 +768,10 @@ public partial class Program
             catch (InvariantViolationException ex)
             {
                 return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
@@ -771,6 +815,10 @@ public partial class Program
             {
                 return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -810,6 +858,10 @@ public partial class Program
             {
                 return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -838,6 +890,10 @@ public partial class Program
             {
                 return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -863,6 +919,10 @@ public partial class Program
             {
                 return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -887,6 +947,10 @@ public partial class Program
             catch (InvariantViolationException ex)
             {
                 return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
@@ -936,6 +1000,10 @@ public partial class Program
             catch (InvalidOperationException ex)
             {
                 return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
@@ -1010,6 +1078,10 @@ public partial class Program
             {
                 return Results.BadRequest(new { error = ex.Message });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -1034,6 +1106,10 @@ public partial class Program
             catch (InvalidOperationException ex)
             {
                 return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
@@ -1081,6 +1157,10 @@ public partial class Program
             {
                 return Results.BadRequest(new { error = ex.Message });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -1105,6 +1185,10 @@ public partial class Program
             catch (InvalidOperationException ex)
             {
                 return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
@@ -1172,6 +1256,10 @@ public partial class Program
             {
                 return Results.BadRequest(new { error = ex.Message });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -1196,6 +1284,10 @@ public partial class Program
             catch (InvalidOperationException ex)
             {
                 return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
@@ -1310,6 +1402,10 @@ public partial class Program
                 var result = await handler.HandleLogoutAsync(command, ct);
                 return Results.Ok(result);
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -1334,6 +1430,10 @@ public partial class Program
             catch (InvalidOperationException ex)
             {
                 return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
@@ -1486,6 +1586,8 @@ public partial class Program
             var result = handler.HandlePiiSanitizeAsync(command);
             return Results.Ok(result.Result);
         });
+
+        app.Services.InitializeCbsDatabase();
 
         return app;
     }

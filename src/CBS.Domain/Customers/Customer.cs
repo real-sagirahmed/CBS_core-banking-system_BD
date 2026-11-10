@@ -40,6 +40,10 @@ public class Customer : AggregateRoot<CifNumber>
     public MakerCheckerAudit? OnboardingAudit { get; private set; }
     public bool IsActive { get; private set; }
 
+    #pragma warning disable CS8618
+    protected Customer() : base(null!) { }
+    #pragma warning restore CS8618
+
     public Customer(
         CifNumber cifNumber,
         CustomerType type,

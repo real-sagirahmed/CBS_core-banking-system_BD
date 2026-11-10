@@ -16,10 +16,14 @@ public record OpenTellerDrawerCommand(
 public class OpenTellerDrawerCommandHandler
 {
     private readonly ITellerDrawerRepository _drawerRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public OpenTellerDrawerCommandHandler(ITellerDrawerRepository drawerRepository)
+    public OpenTellerDrawerCommandHandler(
+        ITellerDrawerRepository drawerRepository,
+        IUnitOfWork unitOfWork)
     {
-        _drawerRepository = drawerRepository;
+        _drawerRepository = drawerRepository ?? throw new ArgumentNullException(nameof(drawerRepository));
+        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
     public async Task<TellerDrawerResponseDto> HandleAsync(OpenTellerDrawerCommand command, CancellationToken ct = default)
@@ -38,6 +42,7 @@ public class OpenTellerDrawerCommandHandler
         drawer.Open(Money.Bdt(req.InitialVaultAllocation), bundle, command.SupervisorUserId);
 
         await _drawerRepository.AddAsync(drawer, ct);
+        await _unitOfWork.SaveChangesAsync(ct);
 
         return new TellerDrawerResponseDto(
             drawer.Id,

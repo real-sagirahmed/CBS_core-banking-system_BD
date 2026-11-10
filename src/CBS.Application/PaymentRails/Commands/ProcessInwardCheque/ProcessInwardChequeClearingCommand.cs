@@ -13,13 +13,16 @@ public class ProcessInwardChequeClearingCommandHandler
 {
     private readonly IChequeClearingRepository _chequeRepository;
     private readonly IAccountRepository _accountRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
     public ProcessInwardChequeClearingCommandHandler(
         IChequeClearingRepository chequeRepository,
-        IAccountRepository accountRepository)
+        IAccountRepository accountRepository,
+        IUnitOfWork unitOfWork)
     {
-        _chequeRepository = chequeRepository;
-        _accountRepository = accountRepository;
+        _chequeRepository = chequeRepository ?? throw new ArgumentNullException(nameof(chequeRepository));
+        _accountRepository = accountRepository ?? throw new ArgumentNullException(nameof(accountRepository));
+        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
     public async Task<InwardClearingDecisionResponseDto> HandleAsync(ProcessInwardChequeClearingCommand command, CancellationToken ct = default)
@@ -83,6 +86,7 @@ public class ProcessInwardChequeClearingCommandHandler
             // Valid presentment: Debit drawee account and settle
             draweeAccount.Debit(amount, $"BACH Inward Cheque #{req.ChequeNumber}");
             await _accountRepository.UpdateAsync(draweeAccount, ct);
+            await _unitOfWork.SaveChangesAsync(ct);
             remainingBalance = draweeAccount.Balance.Amount;
 
             item.Settle(presentationDate);

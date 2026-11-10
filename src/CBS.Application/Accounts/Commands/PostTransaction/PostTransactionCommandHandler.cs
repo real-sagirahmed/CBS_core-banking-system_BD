@@ -8,10 +8,12 @@ namespace CBS.Application.Accounts.Commands.PostTransaction;
 public class PostTransactionCommandHandler
 {
     private readonly IAccountRepository _accountRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public PostTransactionCommandHandler(IAccountRepository accountRepository)
+    public PostTransactionCommandHandler(IAccountRepository accountRepository, IUnitOfWork unitOfWork)
     {
         _accountRepository = accountRepository ?? throw new ArgumentNullException(nameof(accountRepository));
+        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
     public async Task<TransactionResponseDto> HandleAsync(PostTransactionCommand command, CancellationToken cancellationToken = default)
@@ -23,8 +25,11 @@ public class PostTransactionCommandHandler
         if (string.IsNullOrWhiteSpace(command.UserId)) throw new ArgumentException("User ID is required.", nameof(command));
 
         var accNum = AccountNumber.From(req.AccountNumber);
-        var account = await _accountRepository.GetByAccountNumberAsync(accNum, cancellationToken)
-            ?? throw new KeyNotFoundException($"Account '{req.AccountNumber}' not found.");
+        var account = req.Type == DebitCredit.Debit
+            ? await _accountRepository.GetByAccountNumberForUpdateAsync(accNum, cancellationToken)
+            : await _accountRepository.GetByAccountNumberAsync(accNum, cancellationToken);
+
+        if (account is null) throw new KeyNotFoundException($"Account '{req.AccountNumber}' not found.");
 
         decimal previousBalance = account.Balance.Amount;
         decimal recoveredHovering = 0m;
@@ -40,6 +45,7 @@ public class PostTransactionCommandHandler
         }
 
         await _accountRepository.UpdateAsync(account, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new TransactionResponseDto(
             account.Id.Value,

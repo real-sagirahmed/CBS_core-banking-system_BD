@@ -15,10 +15,14 @@ public record CloseTellerDrawerCommand(
 public class CloseTellerDrawerCommandHandler
 {
     private readonly ITellerDrawerRepository _drawerRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public CloseTellerDrawerCommandHandler(ITellerDrawerRepository drawerRepository)
+    public CloseTellerDrawerCommandHandler(
+        ITellerDrawerRepository drawerRepository,
+        IUnitOfWork unitOfWork)
     {
-        _drawerRepository = drawerRepository;
+        _drawerRepository = drawerRepository ?? throw new ArgumentNullException(nameof(drawerRepository));
+        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
     public async Task<DrawerBalancingResponseDto> HandleAsync(CloseTellerDrawerCommand command, CancellationToken ct = default)
@@ -31,6 +35,7 @@ public class CloseTellerDrawerCommandHandler
         drawer.CloseAndBalanceDrawer(physicalBundle, command.BranchManagerUserId, out decimal discrepancy);
 
         await _drawerRepository.UpdateAsync(drawer, ct);
+        await _unitOfWork.SaveChangesAsync(ct);
 
         string message = discrepancy == 0m
             ? "Teller drawer balanced perfectly against physical cash count."

@@ -20,6 +20,7 @@ public sealed class UserSession : AggregateRoot<string>
     public DateTime? LoggedOutAtUtc { get; private set; }
     public bool IsActive { get; private set; }
 
+    private UserSession() : base(string.Empty) { }
     private UserSession(string sessionId) : base(sessionId) { }
 
     public static UserSession StartSession(

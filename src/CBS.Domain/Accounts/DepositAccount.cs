@@ -23,6 +23,10 @@ public class DepositAccount : AggregateRoot<AccountNumber>
     public string? ReactivatedByUserId { get; private set; }
     public DateTime? ReactivatedAtUtc { get; private set; }
 
+    #pragma warning disable CS8618
+    protected DepositAccount() : base(null!) { }
+    #pragma warning restore CS8618
+
     public DepositAccount(
         AccountNumber accountNumber,
         CifNumber cif,

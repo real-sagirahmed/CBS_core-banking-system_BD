@@ -15,7 +15,8 @@ public sealed record Currency
     public static readonly Currency EUR = new("EUR", "Euro", "€", 2, isBaseCurrency: false);
     public static readonly Currency GBP = new("GBP", "British Pound", "£", 2, isBaseCurrency: false);
 
-    private Currency(string code, string name, string symbol, int decimalPlaces, bool isBaseCurrency)
+    [System.Text.Json.Serialization.JsonConstructor]
+    public Currency(string code, string name, string symbol, int decimalPlaces, bool isBaseCurrency)
     {
         if (string.IsNullOrWhiteSpace(code) || code.Trim().Length != 3)
             throw new ArgumentException("Currency code must be exactly 3 characters ISO 4217 code.", nameof(code));

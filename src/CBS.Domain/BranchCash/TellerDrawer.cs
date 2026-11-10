@@ -21,6 +21,10 @@ public class TellerDrawer : AggregateRoot<Guid>
     public string? ClosingManagerUserId { get; private set; }
     public decimal? DiscrepancyAmount { get; private set; }
 
+    #pragma warning disable CS8618
+    protected TellerDrawer() : base(Guid.Empty) { }
+    #pragma warning restore CS8618
+
     public TellerDrawer(
         Guid id,
         string branchCode,

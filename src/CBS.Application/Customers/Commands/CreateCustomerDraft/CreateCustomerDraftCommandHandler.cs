@@ -11,13 +11,16 @@ public class CreateCustomerDraftCommandHandler
 {
     private readonly ICustomerRepository _customerRepository;
     private readonly ISanctionScreeningService _sanctionService;
+    private readonly IUnitOfWork _unitOfWork;
 
     public CreateCustomerDraftCommandHandler(
         ICustomerRepository customerRepository,
-        ISanctionScreeningService sanctionService)
+        ISanctionScreeningService sanctionService,
+        IUnitOfWork unitOfWork)
     {
         _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
         _sanctionService = sanctionService ?? throw new ArgumentNullException(nameof(sanctionService));
+        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
     public async Task<CustomerResponseDto> HandleAsync(CreateCustomerDraftCommand command, CancellationToken cancellationToken = default)
@@ -98,6 +101,7 @@ public class CreateCustomerDraftCommandHandler
 
         // 8. Persist Draft
         await _customerRepository.AddAsync(customer, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new CustomerResponseDto(
             customer.Id.Value,

@@ -12,13 +12,16 @@ public class InitiateBeftnTransferCommandHandler
 {
     private readonly IBeftnRepository _beftnRepository;
     private readonly IAccountRepository _accountRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
     public InitiateBeftnTransferCommandHandler(
         IBeftnRepository beftnRepository,
-        IAccountRepository accountRepository)
+        IAccountRepository accountRepository,
+        IUnitOfWork unitOfWork)
     {
-        _beftnRepository = beftnRepository;
-        _accountRepository = accountRepository;
+        _beftnRepository = beftnRepository ?? throw new ArgumentNullException(nameof(beftnRepository));
+        _accountRepository = accountRepository ?? throw new ArgumentNullException(nameof(accountRepository));
+        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
     public async Task<BeftnBatchItemResponseDto> HandleAsync(InitiateBeftnTransferCommand command, CancellationToken ct = default)
@@ -33,6 +36,7 @@ public class InitiateBeftnTransferCommandHandler
         // Debit originating customer account for outgoing fund transfer
         origAccount.Debit(amount, $"BEFTN Transfer to {req.BeneficiaryName} ({req.DestinationAccount})");
         await _accountRepository.UpdateAsync(origAccount, ct);
+        await _unitOfWork.SaveChangesAsync(ct);
 
         var origRouting = RoutingNumber.From(req.OriginatingRouting);
         var destRouting = RoutingNumber.From(req.DestinationRouting);

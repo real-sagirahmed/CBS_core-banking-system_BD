@@ -8,10 +8,14 @@ namespace CBS.Application.Customers.Commands.VerifyCustomer;
 public class VerifyCustomerCommandHandler
 {
     private readonly ICustomerRepository _customerRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public VerifyCustomerCommandHandler(ICustomerRepository customerRepository)
+    public VerifyCustomerCommandHandler(
+        ICustomerRepository customerRepository,
+        IUnitOfWork unitOfWork)
     {
         _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
+        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
     public async Task<CustomerResponseDto> HandleAsync(VerifyCustomerCommand command, CancellationToken cancellationToken = default)
@@ -34,6 +38,7 @@ public class VerifyCustomerCommandHandler
         }
 
         await _customerRepository.UpdateAsync(customer, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new CustomerResponseDto(
             customer.Id.Value,

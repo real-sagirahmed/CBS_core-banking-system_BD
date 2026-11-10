@@ -11,14 +11,17 @@ public class OpenDepositAccountCommandHandler
 {
     private readonly IAccountRepository _accountRepository;
     private readonly ICustomerRepository _customerRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private static int _accountSequence = 100;
 
     public OpenDepositAccountCommandHandler(
         IAccountRepository accountRepository,
-        ICustomerRepository customerRepository)
+        ICustomerRepository customerRepository,
+        IUnitOfWork unitOfWork)
     {
         _accountRepository = accountRepository ?? throw new ArgumentNullException(nameof(accountRepository));
         _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
+        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
     public async Task<AccountResponseDto> HandleAsync(OpenDepositAccountCommand command, CancellationToken cancellationToken = default)
@@ -75,6 +78,7 @@ public class OpenDepositAccountCommandHandler
 
         // 6. Persist to Repository
         await _accountRepository.AddAsync(account, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new AccountResponseDto(
             account.Id.Value,

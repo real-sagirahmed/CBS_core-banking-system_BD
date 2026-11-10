@@ -12,13 +12,16 @@ public class RtgsCommandHandler
 {
     private readonly IRtgsRepository _rtgsRepository;
     private readonly IAccountRepository _accountRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
     public RtgsCommandHandler(
         IRtgsRepository rtgsRepository,
-        IAccountRepository accountRepository)
+        IAccountRepository accountRepository,
+        IUnitOfWork unitOfWork)
     {
-        _rtgsRepository = rtgsRepository;
-        _accountRepository = accountRepository;
+        _rtgsRepository = rtgsRepository ?? throw new ArgumentNullException(nameof(rtgsRepository));
+        _accountRepository = accountRepository ?? throw new ArgumentNullException(nameof(accountRepository));
+        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
     public async Task<RtgsResponseDto> HandleInitiateAsync(InitiateRtgsTransferCommand command, CancellationToken ct = default)
@@ -33,6 +36,7 @@ public class RtgsCommandHandler
         // Debit debtor account for RTGS transfer
         debtorAccount.Debit(amount, $"RTGS Transfer to {req.CreditorName} (Ref: {req.EndToEndId})");
         await _accountRepository.UpdateAsync(debtorAccount, ct);
+        await _unitOfWork.SaveChangesAsync(ct);
 
         var debtorRouting = RoutingNumber.From(req.DebtorAgentRouting);
         var creditorRouting = RoutingNumber.From(req.CreditorAgentRouting);

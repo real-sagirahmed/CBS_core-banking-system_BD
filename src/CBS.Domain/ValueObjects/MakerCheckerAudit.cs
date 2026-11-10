@@ -14,6 +14,23 @@ public sealed record MakerCheckerAudit
     public MakerCheckerStatus Status { get; private set; }
     public string? RejectionReason { get; private set; }
 
+    [System.Text.Json.Serialization.JsonConstructor]
+    public MakerCheckerAudit(
+        string makerUserId,
+        DateTime makerTimestampUtc,
+        string? checkerUserId,
+        DateTime? checkerTimestampUtc,
+        MakerCheckerStatus status,
+        string? rejectionReason)
+    {
+        MakerUserId = makerUserId;
+        MakerTimestampUtc = makerTimestampUtc;
+        CheckerUserId = checkerUserId;
+        CheckerTimestampUtc = checkerTimestampUtc;
+        Status = status;
+        RejectionReason = rejectionReason;
+    }
+
     private MakerCheckerAudit(string makerUserId, DateTime makerTimestampUtc, MakerCheckerStatus status)
     {
         if (string.IsNullOrWhiteSpace(makerUserId))
