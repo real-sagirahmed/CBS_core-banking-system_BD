@@ -61,3 +61,26 @@ public record RepaymentResultResponseDto(
 public record EvaluateLoanClassificationRequest(
     string AccountNumber,
     int DaysPastDue);
+
+public record LoanEodBatchRequest(
+    string BranchCode);
+
+public record LoanEodBatchResponseDto(
+    string BranchCode,
+    int TotalLoansProcessed,
+    int ClassifiedLoansCount,
+    decimal TotalRegularInterestAccrued,
+    decimal TotalSuspenseInterestAccrued,
+    string Message);
+
+public record BangladeshBankClReportDto(
+    string AccountNumber,
+    string Cif,
+    string FacilityType,
+    decimal SanctionLimit,
+    decimal OutstandingPrincipal,
+    decimal RegularAccruedInterest,
+    decimal InterestSuspense,
+    int DaysPastDue,
+    string ClassificationGrade,
+    string BranchCode);

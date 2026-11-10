@@ -1254,6 +1254,42 @@ public partial class Program
             }
         });
 
+        lendingApi.MapPost("/accounts/eod-batch", async (
+            LoanEodBatchRequest request,
+            HttpContext httpContext,
+            LendingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            string userId = httpContext.Request.Headers["X-User-Id"].FirstOrDefault() ?? "OPS_OFFICER_01";
+
+            try
+            {
+                var result = await handler.HandleLoanEodBatchAsync(request.BranchCode, userId, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                return Results.Conflict(new { error = "Concurrency Conflict: Resource modified by another transaction.", details = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        lendingApi.MapGet("/reports/cl-statement", async (
+            string? branchCode,
+            LendingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var report = await handler.GetClReportAsync(branchCode, ct);
+            return Results.Ok(report);
+        });
+
         // --- TRADE FINANCE & TBML APIS (BRPD Circular 12 Module 5) ---
         var tradeApi = app.MapGroup("/api/v1/trade").AddEndpointFilter<FinancialAuthorizationFilter>();
 

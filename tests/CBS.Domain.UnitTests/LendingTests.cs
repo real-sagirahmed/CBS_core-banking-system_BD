@@ -250,4 +250,99 @@ public class LendingTests
         loan.RegularAccruedInterest.Should().Be(Money.Zero(Currency.BDT));
         loan.InterestSuspense.Amount.Should().BeGreaterThan(initialRegular);
     }
+
+    [Fact]
+    public void LoanAccount_Disbursement_WhenDisbursingOfficerEqualsSanctionApprover_ThrowsMakerCheckerSeparation()
+    {
+        // 3-Tier Duty Segregation: Sanction Approver cannot disburse funds (BRPD 4.1.3, 10.3.5-x)
+        var loan = new LoanAccount(
+            CreateValidAccountNumber(),
+            CreateValidCif(),
+            LoanFacilityType.TermLoan,
+            "001",
+            Money.Bdt(500000m),
+            Money.Bdt(400000m),
+            9.00m,
+            new DateOnly(2026, 11, 1),
+            new DateOnly(2029, 11, 1),
+            sanctionApprovedByUserId: "CREDIT_COMMITTEE_CHAIR");
+
+        loan.VetCadChecklist("CAD_OFFICER_01");
+
+        // Sanction approver tries to disburse
+        var action = () => loan.Disburse(Money.Bdt(200000m), "CREDIT_COMMITTEE_CHAIR");
+
+        action.Should().Throw<InvariantViolationException>()
+            .WithMessage("*MakerCheckerSeparationInvariant*")
+            .And.RegulatoryReference.Should().Contain("BRPD");
+    }
+
+    [Theory]
+    [InlineData(0, LoanClassificationGrade.Standard)]
+    [InlineData(59, LoanClassificationGrade.Standard)]
+    [InlineData(60, LoanClassificationGrade.SpecialMentionAccount_SMA)]
+    [InlineData(179, LoanClassificationGrade.SpecialMentionAccount_SMA)]
+    [InlineData(180, LoanClassificationGrade.SubStandard_SS)]
+    [InlineData(269, LoanClassificationGrade.SubStandard_SS)]
+    [InlineData(270, LoanClassificationGrade.Doubtful_DF)]
+    [InlineData(359, LoanClassificationGrade.Doubtful_DF)]
+    [InlineData(360, LoanClassificationGrade.BadLoss_BL)]
+    [InlineData(720, LoanClassificationGrade.BadLoss_BL)]
+    public void LoanAccount_5TierClassification_MapsAccuratelyAcrossAllDpdThresholds(int dpd, LoanClassificationGrade expectedGrade)
+    {
+        var loan = new LoanAccount(
+            CreateValidAccountNumber(),
+            CreateValidCif(),
+            LoanFacilityType.TermLoan,
+            "001",
+            Money.Bdt(1000000m),
+            Money.Bdt(1000000m),
+            9.00m,
+            new DateOnly(2026, 1, 1),
+            new DateOnly(2028, 1, 1));
+
+        loan.VetCadChecklist("CAD_OFFICER_01");
+        loan.Disburse(Money.Bdt(500000m), "BRANCH_DISBURSER_01");
+
+        loan.EvaluateClassification(dpd);
+
+        loan.Classification.Should().Be(expectedGrade);
+        loan.DaysPastDue.Should().Be(dpd);
+    }
+
+    [Fact]
+    public void LoanAccount_RepaymentWaterfall_ExcessAmountDirectlyReducesPrincipal()
+    {
+        var loan = new LoanAccount(
+            CreateValidAccountNumber(),
+            CreateValidCif(),
+            LoanFacilityType.TermLoan,
+            "001",
+            Money.Bdt(500000m),
+            Money.Bdt(500000m),
+            9.00m,
+            new DateOnly(2026, 1, 1),
+            new DateOnly(2028, 1, 1));
+
+        loan.VetCadChecklist("CAD_OFFICER_01");
+        loan.Disburse(Money.Bdt(100000m), "BRANCH_DISBURSER_01");
+
+        loan.SetCharges(Money.Bdt(500m));
+        loan.SetPenalInterest(Money.Bdt(500m));
+        loan.AccrueDailyInterest(days: 30); // ~739.73 BDT
+        decimal regularInt = loan.RegularAccruedInterest.Amount;
+
+        // Repayment of 50,000 BDT: covers Charges (500), Penal (500), Regular (~739.73), and rest to Principal (~48,260.27)
+        var breakdown = loan.ProcessRepaymentWaterfall(Money.Bdt(50000m));
+
+        breakdown.AllocatedCharges.Should().Be(Money.Bdt(500m));
+        breakdown.AllocatedPenalInterest.Should().Be(Money.Bdt(500m));
+        breakdown.AllocatedRegularInterest.Amount.Should().Be(regularInt);
+        breakdown.AllocatedPrincipal.Amount.Should().Be(50000m - 1000m - regularInt);
+
+        loan.AccruedCharges.Should().Be(Money.Zero(Currency.BDT));
+        loan.PenalInterest.Should().Be(Money.Zero(Currency.BDT));
+        loan.RegularAccruedInterest.Should().Be(Money.Zero(Currency.BDT));
+        loan.OutstandingPrincipal.Amount.Should().Be(100000m - breakdown.AllocatedPrincipal.Amount);
+    }
 }

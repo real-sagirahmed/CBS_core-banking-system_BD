@@ -1,5 +1,6 @@
 using System.Text.Json;
 using CBS.Application.Customers.DTOs;
+using CBS.Application.GeneralLedger.DTOs;
 using CBS.Application.Lending.DTOs;
 using CBS.Domain.Enums;
 using CBS.PlaywrightTests.Infrastructure;
@@ -255,5 +256,178 @@ public class LendingPlaywrightTests : IClassFixture<CbsApiServerFixture>
         // With no charges or overdue interest, all 50,000 BDT reduces principal
         repayResult.AllocatedPrincipal.Should().Be(50000m);
         repayResult.RemainingOutstandingPrincipal.Should().Be(250000m); // 300k - 50k
+    }
+
+    [Fact]
+    public async Task PlaywrightE2E_Lending_3TierDutySegregation_StrictlyEnforced()
+    {
+        var api = await _fixture.CreateApiContextAsync();
+        string cif = await CreateVerifiedCustomerAsync(api, "Three Tier Segregation Corp");
+
+        // 1. Sanction facility approved by CREDIT_COMMITTEE_CHAIR
+        var createLoanReq = new CreateLoanAccountRequest(
+            CifNumber: cif,
+            FacilityType: LoanFacilityType.TermLoan,
+            BranchCode: "001",
+            SanctionLimit: 2000000m,
+            DrawingPower: 2000000m,
+            InterestRate: 9.50m,
+            MaturityDate: new DateOnly(2028, 12, 31));
+
+        var createRes = await api.PostAsync("/api/v1/lending/accounts", new APIRequestContextOptions
+        {
+            Headers = new Dictionary<string, string> { { "X-Approver-Id", "CREDIT_COMMITTEE_CHAIR" } },
+            DataObject = createLoanReq
+        });
+        createRes.Status.Should().Be(201);
+        var loan = (await createRes.JsonAsync())?.Deserialize<LoanAccountResponseDto>(JsonOptions)!;
+
+        // 2. Sanction approver CREDIT_COMMITTEE_CHAIR attempts to perform CAD Legal Vetting -> Must fail (BRPD 4.1.3, 1.3.18)
+        var approverVetRes = await api.PostAsync("/api/v1/lending/accounts/vet-cad", new APIRequestContextOptions
+        {
+            Headers = new Dictionary<string, string> { { "X-Cad-Officer-Id", "CREDIT_COMMITTEE_CHAIR" } },
+            DataObject = new VetCadChecklistRequest(loan.AccountNumber)
+        });
+        approverVetRes.Status.Should().Be(400);
+        var approverVetBody = await approverVetRes.TextAsync();
+        approverVetBody.Should().Contain("MakerCheckerSeparationInvariant");
+
+        // 3. Legitimate CAD officer CAD_OFFICER_HEAD_OFFICE performs CAD Legal Vetting -> Succeeds
+        var cadVetRes = await api.PostAsync("/api/v1/lending/accounts/vet-cad", new APIRequestContextOptions
+        {
+            Headers = new Dictionary<string, string> { { "X-Cad-Officer-Id", "CAD_OFFICER_HEAD_OFFICE" } },
+            DataObject = new VetCadChecklistRequest(loan.AccountNumber)
+        });
+        cadVetRes.Status.Should().Be(200);
+
+        // 4. Sanction approver CREDIT_COMMITTEE_CHAIR attempts to disburse funds -> Must fail (BRPD 4.1.3, 10.3.5-x)
+        var approverDisburseRes = await api.PostAsync("/api/v1/lending/accounts/disburse", new APIRequestContextOptions
+        {
+            Headers = new Dictionary<string, string> { { "X-Disbursing-Officer-Id", "CREDIT_COMMITTEE_CHAIR" } },
+            DataObject = new DisburseLoanRequest(loan.AccountNumber, 500000m)
+        });
+        approverDisburseRes.Status.Should().Be(400);
+        var approverDisburseBody = await approverDisburseRes.TextAsync();
+        approverDisburseBody.Should().Contain("MakerCheckerSeparationInvariant");
+
+        // 5. CAD officer CAD_OFFICER_HEAD_OFFICE attempts to disburse funds -> Must fail (BRPD 4.1.5-i, 1.3.18)
+        var cadDisburseRes = await api.PostAsync("/api/v1/lending/accounts/disburse", new APIRequestContextOptions
+        {
+            Headers = new Dictionary<string, string> { { "X-Disbursing-Officer-Id", "CAD_OFFICER_HEAD_OFFICE" } },
+            DataObject = new DisburseLoanRequest(loan.AccountNumber, 500000m)
+        });
+        cadDisburseRes.Status.Should().Be(400);
+        var cadDisburseBody = await cadDisburseRes.TextAsync();
+        cadDisburseBody.Should().Contain("MakerCheckerSeparationInvariant");
+
+        // 6. Distinct 3rd tier officer BRANCH_DISBURSER_DISTINCT disburses funds -> Succeeds
+        var distinctDisburseRes = await api.PostAsync("/api/v1/lending/accounts/disburse", new APIRequestContextOptions
+        {
+            Headers = new Dictionary<string, string> { { "X-Disbursing-Officer-Id", "BRANCH_DISBURSER_DISTINCT" } },
+            DataObject = new DisburseLoanRequest(loan.AccountNumber, 500000m)
+        });
+        distinctDisburseRes.Status.Should().Be(200);
+        var finalLoan = (await distinctDisburseRes.JsonAsync())?.Deserialize<LoanAccountResponseDto>(JsonOptions)!;
+        finalLoan.OutstandingPrincipal.Should().Be(500000m);
+        finalLoan.DisbursedByUserId.Should().Be("BRANCH_DISBURSER_DISTINCT");
+    }
+
+    [Fact]
+    public async Task PlaywrightE2E_Lending_EodBatch_ClassifiesLoans_SuspendsInterest_AndBalancesGl()
+    {
+        var api = await _fixture.CreateApiContextAsync();
+        string cif = await CreateVerifiedCustomerAsync(api, "Batch Lending Client");
+
+        // 1. Create and disburse a regular loan (account 1)
+        var req1 = new CreateLoanAccountRequest(
+            CifNumber: cif,
+            FacilityType: LoanFacilityType.TermLoan,
+            BranchCode: "001",
+            SanctionLimit: 1000000m,
+            DrawingPower: 1000000m,
+            InterestRate: 9.00m,
+            MaturityDate: new DateOnly(2028, 1, 1));
+        var res1 = await api.PostAsync("/api/v1/lending/accounts", new APIRequestContextOptions
+        {
+            Headers = new Dictionary<string, string> { { "X-Approver-Id", "SANCTION_CHAIR_01" } },
+            DataObject = req1
+        });
+        var loan1 = (await res1.JsonAsync())?.Deserialize<LoanAccountResponseDto>(JsonOptions)!;
+
+        await api.PostAsync("/api/v1/lending/accounts/vet-cad", new APIRequestContextOptions
+        {
+            Headers = new Dictionary<string, string> { { "X-Cad-Officer-Id", "CAD_VET_01" } },
+            DataObject = new VetCadChecklistRequest(loan1.AccountNumber)
+        });
+        await api.PostAsync("/api/v1/lending/accounts/disburse", new APIRequestContextOptions
+        {
+            Headers = new Dictionary<string, string> { { "X-Disbursing-Officer-Id", "DISBURSER_01" } },
+            DataObject = new DisburseLoanRequest(loan1.AccountNumber, 500000m)
+        });
+
+        // 2. Create and disburse loan 2, then set DPD to 200 (SubStandard_SS)
+        var req2 = new CreateLoanAccountRequest(
+            CifNumber: cif,
+            FacilityType: LoanFacilityType.ContinuousLoan_OD,
+            BranchCode: "001",
+            SanctionLimit: 800000m,
+            DrawingPower: 800000m,
+            InterestRate: 10.00m,
+            MaturityDate: new DateOnly(2028, 1, 1));
+        var res2 = await api.PostAsync("/api/v1/lending/accounts", new APIRequestContextOptions
+        {
+            Headers = new Dictionary<string, string> { { "X-Approver-Id", "SANCTION_CHAIR_02" } },
+            DataObject = req2
+        });
+        var loan2 = (await res2.JsonAsync())?.Deserialize<LoanAccountResponseDto>(JsonOptions)!;
+
+        await api.PostAsync("/api/v1/lending/accounts/vet-cad", new APIRequestContextOptions
+        {
+            Headers = new Dictionary<string, string> { { "X-Cad-Officer-Id", "CAD_VET_02" } },
+            DataObject = new VetCadChecklistRequest(loan2.AccountNumber)
+        });
+        await api.PostAsync("/api/v1/lending/accounts/disburse", new APIRequestContextOptions
+        {
+            Headers = new Dictionary<string, string> { { "X-Disbursing-Officer-Id", "DISBURSER_02" } },
+            DataObject = new DisburseLoanRequest(loan2.AccountNumber, 400000m)
+        });
+        await api.PostAsync("/api/v1/lending/accounts/evaluate-classification", new APIRequestContextOptions
+        {
+            DataObject = new EvaluateLoanClassificationRequest(loan2.AccountNumber, 200)
+        });
+
+        // 3. Execute Loan EOD Batch for Branch 001
+        var eodRes = await api.PostAsync("/api/v1/lending/accounts/eod-batch", new APIRequestContextOptions
+        {
+            Headers = new Dictionary<string, string> { { "X-User-Id", "OPS_OFFICER_01" } },
+            DataObject = new LoanEodBatchRequest("001")
+        });
+        eodRes.Status.Should().Be(200);
+        var eodSummary = (await eodRes.JsonAsync())?.Deserialize<LoanEodBatchResponseDto>(JsonOptions)!;
+
+        eodSummary.TotalLoansProcessed.Should().BeGreaterThanOrEqualTo(2);
+        eodSummary.ClassifiedLoansCount.Should().BeGreaterThanOrEqualTo(1);
+        eodSummary.TotalRegularInterestAccrued.Should().BeGreaterThan(0m);
+        eodSummary.TotalSuspenseInterestAccrued.Should().BeGreaterThan(0m);
+
+        // 4. Verify General Ledger Trial Balance remains strictly balanced with zero discrepancy
+        var tbRes = await api.GetAsync("/api/v1/gl/trial-balance?branchCode=001", new APIRequestContextOptions
+        {
+            Headers = new Dictionary<string, string> { { "X-User-Id", "OPS_OFFICER_01" } }
+        });
+        tbRes.Status.Should().Be(200);
+        var tb = (await tbRes.JsonAsync())?.Deserialize<TrialBalanceDto>(JsonOptions)!;
+        tb.IsBalanced.Should().BeTrue();
+        tb.Discrepancy.Should().Be(0m);
+
+        // 5. Verify Bangladesh Bank CL Statement report
+        var clRes = await api.GetAsync("/api/v1/lending/reports/cl-statement?branchCode=001", new APIRequestContextOptions
+        {
+            Headers = new Dictionary<string, string> { { "X-User-Id", "OPS_OFFICER_01" } }
+        });
+        clRes.Status.Should().Be(200);
+        var clList = (await clRes.JsonAsync())?.Deserialize<List<BangladeshBankClReportDto>>(JsonOptions)!;
+        clList.Should().NotBeNull();
+        clList.Should().Contain(l => l.AccountNumber == loan2.AccountNumber && l.ClassificationGrade == LoanClassificationGrade.SubStandard_SS.ToString());
     }
 }

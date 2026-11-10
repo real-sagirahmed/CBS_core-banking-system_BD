@@ -28,10 +28,15 @@ public class LoanAccount : AggregateRoot<AccountNumber>
     public DateOnly MaturityDate { get; private set; }
     public DateOnly? DisbursedDate { get; private set; }
     public string? DisbursedByUserId { get; private set; }
+    public string? SanctionApprovedByUserId { get; private set; }
     public string? DisbursementBeneficiarySupplier { get; private set; }
     public LoanClassificationGrade Classification { get; private set; }
     public int DaysPastDue { get; private set; }
     public bool IsShariahCompliant { get; private set; }
+
+    #pragma warning disable CS8618
+    protected LoanAccount() : base(null!) { }
+    #pragma warning restore CS8618
 
     public LoanAccount(
         AccountNumber accountNumber,
@@ -42,7 +47,8 @@ public class LoanAccount : AggregateRoot<AccountNumber>
         Money drawingPower,
         decimal interestRate,
         DateOnly sanctionDate,
-        DateOnly maturityDate) : base(accountNumber)
+        DateOnly maturityDate,
+        string? sanctionApprovedByUserId = null) : base(accountNumber)
     {
         ArgumentNullException.ThrowIfNull(accountNumber, nameof(accountNumber));
         ArgumentNullException.ThrowIfNull(cif, nameof(cif));
@@ -91,6 +97,7 @@ public class LoanAccount : AggregateRoot<AccountNumber>
         MaturityDate = maturityDate;
         Classification = LoanClassificationGrade.Standard;
         DaysPastDue = 0;
+        SanctionApprovedByUserId = sanctionApprovedByUserId?.Trim();
         IsCadVetted = false;
         IsShariahCompliant = facilityType is LoanFacilityType.Islamic_BaiMurabaha or LoanFacilityType.Islamic_Quard;
     }
@@ -143,13 +150,21 @@ public class LoanAccount : AggregateRoot<AccountNumber>
                 $"Disbursement for facility '{Id.Value}' is prohibited. CAD legal checklist and charge documents must be vetted and signed off before release of funds.");
         }
 
-        // 2. HARD GATE: Maker-Checker / Disbursing vs CAD Officer segregation (BRPD 1.3.18, 10.3.5-x)
+        // 2. HARD GATE: Maker-Checker / Disbursing vs CAD Officer & Approver segregation (BRPD 1.3.18, 10.3.5-x)
         if (branchDisbursingUserId.Equals(CadVettedByUserId, StringComparison.OrdinalIgnoreCase))
         {
             throw new InvariantViolationException(
                 "MakerCheckerSeparationInvariant",
                 "BRPD Circular 12/2024 (1.3.18, 10.3.5-x)",
                 $"CAD vetting officer '{CadVettedByUserId}' cannot disburse funds for facility '{Id.Value}'. Mandatory 4-eyes duty segregation.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(SanctionApprovedByUserId) && branchDisbursingUserId.Equals(SanctionApprovedByUserId, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvariantViolationException(
+                "MakerCheckerSeparationInvariant",
+                "BRPD Circular 12/2024 (1.3.18, 10.3.5-x)",
+                $"Sanctioning approver '{SanctionApprovedByUserId}' cannot disburse funds for facility '{Id.Value}'. Mandatory 3-tier duty segregation.");
         }
 
         // 3. HARD GATE: Drawing Power limit check (BRPD 4.1.6)

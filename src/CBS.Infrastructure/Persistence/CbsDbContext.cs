@@ -2,6 +2,7 @@ using CBS.Domain.Accounts;
 using CBS.Domain.BranchCash;
 using CBS.Domain.Customers;
 using CBS.Domain.GeneralLedger;
+using CBS.Domain.Lending;
 using CBS.Domain.SecurityAudit;
 using CBS.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +18,7 @@ public class CbsDbContext : DbContext
     public DbSet<FinancialVoucher> FinancialVouchers => Set<FinancialVoucher>();
     public DbSet<VoucherEntry> VoucherEntries => Set<VoucherEntry>();
     public DbSet<ChartOfAccount> ChartOfAccounts => Set<ChartOfAccount>();
+    public DbSet<LoanAccount> LoanAccounts => Set<LoanAccount>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -56,12 +58,14 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new FinancialVoucherConfiguration());
         modelBuilder.ApplyConfiguration(new VoucherEntryConfiguration());
         modelBuilder.ApplyConfiguration(new ChartOfAccountConfiguration());
+        modelBuilder.ApplyConfiguration(new LoanAccountConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
         {
             modelBuilder.Entity<DepositAccount>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<TellerDrawer>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<LoanAccount>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -73,6 +77,7 @@ public class CbsDbContext : DbContext
         {
             modelBuilder.Entity<DepositAccount>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<TellerDrawer>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<LoanAccount>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)

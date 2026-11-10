@@ -39,4 +39,9 @@ public class InMemoryLoanAccountRepository : ILoanAccountRepository
         _loans[loan.Id.Value] = loan;
         return Task.CompletedTask;
     }
+
+    public Task<IEnumerable<LoanAccount>> GetAllLoansAsync(CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<IEnumerable<LoanAccount>>(_loans.Values.ToList());
+    }
 }

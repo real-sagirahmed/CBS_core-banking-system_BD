@@ -94,6 +94,36 @@ public interface IGeneralLedgerService
         string? checkerUserId = null,
         CancellationToken ct = default);
 
+    Task<FinancialVoucher> PostLoanDisbursementAsync(
+        string branchSol,
+        string loanAccountNumber,
+        decimal amount,
+        bool isMurabahaVendor,
+        string? vendorBeneficiary,
+        string makerUserId,
+        string? checkerUserId = null,
+        CancellationToken ct = default);
+
+    Task<FinancialVoucher> PostLoanInterestAccrualAsync(
+        string branchSol,
+        string loanAccountNumber,
+        decimal interestAmount,
+        bool isSuspenseClassified,
+        string makerUserId,
+        string? checkerUserId = null,
+        CancellationToken ct = default);
+
+    Task<FinancialVoucher> PostLoanRepaymentAsync(
+        string branchSol,
+        string loanAccountNumber,
+        decimal totalPayment,
+        decimal principalAllocated,
+        decimal interestAllocated,
+        decimal chargesAllocated,
+        string makerUserId,
+        string? checkerUserId = null,
+        CancellationToken ct = default);
+
     Task<FinancialVoucher> ReverseVoucherAsync(
         string voucherNumber,
         string reversalMakerUserId,

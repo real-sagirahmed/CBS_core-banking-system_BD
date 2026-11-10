@@ -320,6 +320,112 @@ public class GeneralLedgerService : IGeneralLedgerService
         return voucher;
     }
 
+    public async Task<FinancialVoucher> PostLoanDisbursementAsync(
+        string branchSol,
+        string loanAccountNumber,
+        decimal amount,
+        bool isMurabahaVendor,
+        string? vendorBeneficiary,
+        string makerUserId,
+        string? checkerUserId = null,
+        CancellationToken ct = default)
+    {
+        var voucherNumber = GenerateVoucherNumber(branchSol, VoucherType.Transfer);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var effectiveChecker = string.IsNullOrWhiteSpace(checkerUserId) || checkerUserId == makerUserId
+            ? "SYSTEM_GL_AUTOPOST"
+            : checkerUserId;
+
+        var voucher = new FinancialVoucher(voucherNumber, branchSol, VoucherType.Transfer, today, makerUserId);
+        voucher.AddEntry(StandardGlAccounts.CustomerLoansAdvances, DebitCredit.Debit, Money.Bdt(amount), 1.0m, $"Loan Facility Disbursement - Acct {loanAccountNumber}");
+
+        if (isMurabahaVendor)
+        {
+            voucher.AddEntry(StandardGlAccounts.PayOrderPayable, DebitCredit.Credit, Money.Bdt(amount), 1.0m, $"Murabaha Vendor Pay Order (BRPD 4.1.5-iv) - Vendor {vendorBeneficiary}");
+        }
+        else
+        {
+            voucher.AddEntry(StandardGlAccounts.CustomerCurrentDeposit, DebitCredit.Credit, Money.Bdt(amount), 1.0m, $"Loan Proceeds Credit to Customer Deposit Account - Acct {loanAccountNumber}");
+        }
+
+        voucher.AuthorizeAndPost(effectiveChecker);
+        await _voucherRepository.AddAsync(voucher, ct);
+        return voucher;
+    }
+
+    public async Task<FinancialVoucher> PostLoanInterestAccrualAsync(
+        string branchSol,
+        string loanAccountNumber,
+        decimal interestAmount,
+        bool isSuspenseClassified,
+        string makerUserId,
+        string? checkerUserId = null,
+        CancellationToken ct = default)
+    {
+        var voucherNumber = GenerateVoucherNumber(branchSol, VoucherType.SystemGenerated);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var effectiveChecker = string.IsNullOrWhiteSpace(checkerUserId) || checkerUserId == makerUserId
+            ? "SYSTEM_GL_AUTOPOST"
+            : checkerUserId;
+
+        var voucher = new FinancialVoucher(voucherNumber, branchSol, VoucherType.SystemGenerated, today, makerUserId);
+        voucher.AddEntry(StandardGlAccounts.CustomerLoansAdvances, DebitCredit.Debit, Money.Bdt(interestAmount), 1.0m, $"Loan Interest Accrual - Acct {loanAccountNumber}");
+
+        if (isSuspenseClassified)
+        {
+            // BRPD 4.1.11-iii: Non-Performing Classified Loans route to Suspense Liability, strictly ZERO P&L Income
+            voucher.AddEntry(StandardGlAccounts.LoanInterestSuspense, DebitCredit.Credit, Money.Bdt(interestAmount), 1.0m, $"Classified NPL Interest Suspense Accrual (BRPD 4.1.11-iii) - Acct {loanAccountNumber}");
+        }
+        else
+        {
+            voucher.AddEntry(StandardGlAccounts.LoanInterestIncome, DebitCredit.Credit, Money.Bdt(interestAmount), 1.0m, $"Performing Facility Interest Income - Acct {loanAccountNumber}");
+        }
+
+        voucher.AuthorizeAndPost(effectiveChecker);
+        await _voucherRepository.AddAsync(voucher, ct);
+        return voucher;
+    }
+
+    public async Task<FinancialVoucher> PostLoanRepaymentAsync(
+        string branchSol,
+        string loanAccountNumber,
+        decimal totalPayment,
+        decimal principalAllocated,
+        decimal interestAllocated,
+        decimal chargesAllocated,
+        string makerUserId,
+        string? checkerUserId = null,
+        CancellationToken ct = default)
+    {
+        var voucherNumber = GenerateVoucherNumber(branchSol, VoucherType.Cash);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var effectiveChecker = string.IsNullOrWhiteSpace(checkerUserId) || checkerUserId == makerUserId
+            ? "SYSTEM_GL_AUTOPOST"
+            : checkerUserId;
+
+        var voucher = new FinancialVoucher(voucherNumber, branchSol, VoucherType.Cash, today, makerUserId);
+        voucher.AddEntry(StandardGlAccounts.TellerTillCash, DebitCredit.Debit, Money.Bdt(totalPayment), 1.0m, $"Loan Repayment Cash Inflow - Acct {loanAccountNumber}");
+
+        if (principalAllocated > 0m)
+        {
+            voucher.AddEntry(StandardGlAccounts.CustomerLoansAdvances, DebitCredit.Credit, Money.Bdt(principalAllocated), 1.0m, $"Loan Principal Recovery - Acct {loanAccountNumber}");
+        }
+
+        if (interestAllocated > 0m)
+        {
+            voucher.AddEntry(StandardGlAccounts.CustomerLoansAdvances, DebitCredit.Credit, Money.Bdt(interestAllocated), 1.0m, $"Loan Interest Recovery - Acct {loanAccountNumber}");
+        }
+
+        if (chargesAllocated > 0m)
+        {
+            voucher.AddEntry(StandardGlAccounts.AccountMaintenanceHoveringFeeIncome, DebitCredit.Credit, Money.Bdt(chargesAllocated), 1.0m, $"Loan Charges Recovery - Acct {loanAccountNumber}");
+        }
+
+        voucher.AuthorizeAndPost(effectiveChecker);
+        await _voucherRepository.AddAsync(voucher, ct);
+        return voucher;
+    }
+
     public async Task<FinancialVoucher> ReverseVoucherAsync(
         string voucherNumber,
         string reversalMakerUserId,
