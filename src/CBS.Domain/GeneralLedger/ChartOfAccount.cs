@@ -13,6 +13,10 @@ public class ChartOfAccount : Entity<string>
     public bool IsActive { get; private set; }
     public string CurrencyCode { get; private set; }
 
+    #pragma warning disable CS8618
+    protected ChartOfAccount() : base(string.Empty) { }
+    #pragma warning restore CS8618
+
     public ChartOfAccount(
         string code,
         string name,

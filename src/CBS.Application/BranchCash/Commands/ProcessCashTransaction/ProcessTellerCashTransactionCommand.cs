@@ -1,5 +1,6 @@
 using CBS.Application.BranchCash.DTOs;
 using CBS.Application.Common.Interfaces;
+using CBS.Application.GeneralLedger.Services;
 using CBS.Domain.Accounts;
 using CBS.Domain.Enums;
 using CBS.Domain.Exceptions;
@@ -20,17 +21,20 @@ public class ProcessTellerCashTransactionCommandHandler
     private readonly ITellerDrawerRepository _drawerRepository;
     private readonly IAccountRepository _accountRepository;
     private readonly ICustomerRepository _customerRepository;
+    private readonly IGeneralLedgerService _glService;
     private readonly IUnitOfWork _unitOfWork;
 
     public ProcessTellerCashTransactionCommandHandler(
         ITellerDrawerRepository drawerRepository,
         IAccountRepository accountRepository,
         ICustomerRepository customerRepository,
+        IGeneralLedgerService glService,
         IUnitOfWork unitOfWork)
     {
         _drawerRepository = drawerRepository ?? throw new ArgumentNullException(nameof(drawerRepository));
         _accountRepository = accountRepository ?? throw new ArgumentNullException(nameof(accountRepository));
         _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
+        _glService = glService ?? throw new ArgumentNullException(nameof(glService));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
@@ -39,7 +43,7 @@ public class ProcessTellerCashTransactionCommandHandler
         var req = command.Request;
 
         // ARCHITECTURAL INTENT: Multi-aggregate atomic transaction boundary.
-        // TellerDrawer and DepositAccount must mutate atomically within a single ACID transaction.
+        // TellerDrawer, DepositAccount and GeneralLedger vouchers must mutate atomically within a single ACID transaction.
         await using var tx = await _unitOfWork.BeginTransactionAsync(ct);
         try
         {
@@ -124,20 +128,44 @@ public class ProcessTellerCashTransactionCommandHandler
                     throw new InvalidOperationException($"Unsupported cash movement type: {req.MovementType}");
             }
 
-            // 5. Atomic Account Balance Mutation (only executes after all drawer checks and limits pass cleanly)
+            // 5. Atomic Account Balance Mutation & GL Voucher Generation
             if (account is not null)
             {
                 if (req.MovementType == CashMovementType.CustomerCashDeposit)
                 {
                     account.Credit(cashAmount, $"Teller Cash Deposit by {command.CashierUserId}");
+                    await _glService.PostCashDepositAsync(
+                        drawer.BranchCode,
+                        account.Id.Value,
+                        req.Amount,
+                        command.CashierUserId,
+                        req.SupervisorApprovalId,
+                        ct);
                 }
                 else if (req.MovementType == CashMovementType.CustomerCashWithdrawal)
                 {
                     account.Debit(cashAmount, $"Teller Cash Withdrawal by {command.CashierUserId}");
+                    await _glService.PostCashWithdrawalAsync(
+                        drawer.BranchCode,
+                        account.Id.Value,
+                        req.Amount,
+                        command.CashierUserId,
+                        req.SupervisorApprovalId,
+                        ct);
                 }
 
                 await _accountRepository.UpdateAsync(account, ct);
                 updatedAccountBalance = account.Balance.Amount;
+            }
+            else if (req.MovementType == CashMovementType.TellerToVault)
+            {
+                await _glService.PostVaultMovementAsync(
+                    drawer.BranchCode,
+                    req.Amount,
+                    isVaultToTeller: false,
+                    command.CashierUserId,
+                    req.SupervisorApprovalId,
+                    ct);
             }
 
             await _drawerRepository.UpdateAsync(drawer, ct);

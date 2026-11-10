@@ -1,4 +1,5 @@
 using CBS.Application.Common.Interfaces;
+using CBS.Application.GeneralLedger.Services;
 using CBS.Application.PaymentRails.DTOs;
 using CBS.Domain.Enums;
 using CBS.Domain.PaymentRails;
@@ -12,15 +13,18 @@ public class InitiateBeftnTransferCommandHandler
 {
     private readonly IBeftnRepository _beftnRepository;
     private readonly IAccountRepository _accountRepository;
+    private readonly IGeneralLedgerService _glService;
     private readonly IUnitOfWork _unitOfWork;
 
     public InitiateBeftnTransferCommandHandler(
         IBeftnRepository beftnRepository,
         IAccountRepository accountRepository,
+        IGeneralLedgerService glService,
         IUnitOfWork unitOfWork)
     {
         _beftnRepository = beftnRepository ?? throw new ArgumentNullException(nameof(beftnRepository));
         _accountRepository = accountRepository ?? throw new ArgumentNullException(nameof(accountRepository));
+        _glService = glService ?? throw new ArgumentNullException(nameof(glService));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
@@ -36,6 +40,18 @@ public class InitiateBeftnTransferCommandHandler
         // Debit originating customer account for outgoing fund transfer
         origAccount.Debit(amount, $"BEFTN Transfer to {req.BeneficiaryName} ({req.DestinationAccount})");
         await _accountRepository.UpdateAsync(origAccount, ct);
+
+        // Auto-post balanced BEFTN Payment Rail GL voucher (BRPD Module 1.3)
+        await _glService.PostPaymentRailTransferAsync(
+            origAccount.BranchCode,
+            req.OriginatingAccount,
+            req.Amount,
+            "BEFTN",
+            req.BatchId,
+            "SYSTEM_BEFTN",
+            null,
+            ct);
+
         await _unitOfWork.SaveChangesAsync(ct);
 
         var origRouting = RoutingNumber.From(req.OriginatingRouting);

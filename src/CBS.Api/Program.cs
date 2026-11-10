@@ -15,6 +15,8 @@ using CBS.Application.Customers.Commands.CreateCustomerDraft;
 using CBS.Application.Customers.Commands.VerifyCustomer;
 using CBS.Application.Customers.DTOs;
 using CBS.Application.GeneralBanking.Commands.RunBranchEodBatch;
+using CBS.Application.GeneralLedger.DTOs;
+using CBS.Application.GeneralLedger.Services;
 using CBS.Application.Lending.Commands;
 using CBS.Application.Lending.DTOs;
 using CBS.Application.PaymentRails.Commands.InitiateBeftn;
@@ -31,6 +33,7 @@ using CBS.Application.Treasury.DTOs;
 using CBS.Domain.Accounts;
 using CBS.Domain.BranchCash;
 using CBS.Domain.Exceptions;
+using CBS.Domain.GeneralLedger;
 using CBS.Domain.Lending;
 using CBS.Domain.AiIntelligence;
 using CBS.Domain.PaymentRails;
@@ -185,6 +188,14 @@ public partial class Program
             {
                 return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                return Results.Conflict(new { error = "Database Concurrency Conflict: Resource locked by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
+            {
+                return Results.Conflict(new { error = "Database Transaction Contention: Resource busy or transaction conflict.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -247,6 +258,14 @@ public partial class Program
             {
                 return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                return Results.Conflict(new { error = "Database Concurrency Conflict: Resource locked by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
+            {
+                return Results.Conflict(new { error = "Database Transaction Contention: Resource busy or transaction conflict.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -297,6 +316,14 @@ public partial class Program
             catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
             {
                 return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                return Results.Conflict(new { error = "Database Concurrency Conflict: Resource locked by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
+            {
+                return Results.Conflict(new { error = "Database Transaction Contention: Resource busy or transaction conflict.", details = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
@@ -449,6 +476,14 @@ public partial class Program
             {
                 return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                return Results.Conflict(new { error = "Database Concurrency Conflict: Resource locked by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
+            {
+                return Results.Conflict(new { error = "Database Transaction Contention: Resource busy or transaction conflict.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -480,6 +515,14 @@ public partial class Program
             catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
             {
                 return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                return Results.Conflict(new { error = "Database Concurrency Conflict: Resource locked by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
+            {
+                return Results.Conflict(new { error = "Database Transaction Contention: Resource busy or transaction conflict.", details = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
@@ -552,6 +595,14 @@ public partial class Program
             {
                 return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                return Results.Conflict(new { error = "Database Concurrency Conflict: Resource locked by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
+            {
+                return Results.Conflict(new { error = "Database Transaction Contention: Resource busy or transaction conflict.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -584,6 +635,14 @@ public partial class Program
             {
                 return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                return Results.Conflict(new { error = "Database Concurrency Conflict: Resource locked by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
+            {
+                return Results.Conflict(new { error = "Database Transaction Contention: Resource busy or transaction conflict.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -615,6 +674,14 @@ public partial class Program
             catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
             {
                 return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                return Results.Conflict(new { error = "Database Concurrency Conflict: Resource locked by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
+            {
+                return Results.Conflict(new { error = "Database Transaction Contention: Resource busy or transaction conflict.", details = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
@@ -715,6 +782,14 @@ public partial class Program
             {
                 return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                return Results.Conflict(new { error = "Database Concurrency Conflict: Resource locked by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
+            {
+                return Results.Conflict(new { error = "Database Transaction Contention: Resource busy or transaction conflict.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -745,6 +820,14 @@ public partial class Program
             {
                 return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                return Results.Conflict(new { error = "Database Concurrency Conflict: Resource locked by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
+            {
+                return Results.Conflict(new { error = "Database Transaction Contention: Resource busy or transaction conflict.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -772,6 +855,14 @@ public partial class Program
             catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
             {
                 return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                return Results.Conflict(new { error = "Database Concurrency Conflict: Resource locked by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
+            {
+                return Results.Conflict(new { error = "Database Transaction Contention: Resource busy or transaction conflict.", details = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
@@ -819,6 +910,14 @@ public partial class Program
             {
                 return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                return Results.Conflict(new { error = "Database Concurrency Conflict: Resource locked by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
+            {
+                return Results.Conflict(new { error = "Database Transaction Contention: Resource busy or transaction conflict.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -862,6 +961,14 @@ public partial class Program
             {
                 return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                return Results.Conflict(new { error = "Database Concurrency Conflict: Resource locked by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
+            {
+                return Results.Conflict(new { error = "Database Transaction Contention: Resource busy or transaction conflict.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -894,6 +1001,14 @@ public partial class Program
             {
                 return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                return Results.Conflict(new { error = "Database Concurrency Conflict: Resource locked by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
+            {
+                return Results.Conflict(new { error = "Database Transaction Contention: Resource busy or transaction conflict.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -923,6 +1038,14 @@ public partial class Program
             {
                 return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                return Results.Conflict(new { error = "Database Concurrency Conflict: Resource locked by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
+            {
+                return Results.Conflict(new { error = "Database Transaction Contention: Resource busy or transaction conflict.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -951,6 +1074,14 @@ public partial class Program
             catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
             {
                 return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                return Results.Conflict(new { error = "Database Concurrency Conflict: Resource locked by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
+            {
+                return Results.Conflict(new { error = "Database Transaction Contention: Resource busy or transaction conflict.", details = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
@@ -1004,6 +1135,14 @@ public partial class Program
             catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
             {
                 return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                return Results.Conflict(new { error = "Database Concurrency Conflict: Resource locked by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
+            {
+                return Results.Conflict(new { error = "Database Transaction Contention: Resource busy or transaction conflict.", details = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
@@ -1082,6 +1221,14 @@ public partial class Program
             {
                 return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                return Results.Conflict(new { error = "Database Concurrency Conflict: Resource locked by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
+            {
+                return Results.Conflict(new { error = "Database Transaction Contention: Resource busy or transaction conflict.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -1110,6 +1257,14 @@ public partial class Program
             catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
             {
                 return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                return Results.Conflict(new { error = "Database Concurrency Conflict: Resource locked by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
+            {
+                return Results.Conflict(new { error = "Database Transaction Contention: Resource busy or transaction conflict.", details = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
@@ -1161,6 +1316,14 @@ public partial class Program
             {
                 return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                return Results.Conflict(new { error = "Database Concurrency Conflict: Resource locked by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
+            {
+                return Results.Conflict(new { error = "Database Transaction Contention: Resource busy or transaction conflict.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -1189,6 +1352,14 @@ public partial class Program
             catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
             {
                 return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                return Results.Conflict(new { error = "Database Concurrency Conflict: Resource locked by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
+            {
+                return Results.Conflict(new { error = "Database Transaction Contention: Resource busy or transaction conflict.", details = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
@@ -1260,6 +1431,14 @@ public partial class Program
             {
                 return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                return Results.Conflict(new { error = "Database Concurrency Conflict: Resource locked by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
+            {
+                return Results.Conflict(new { error = "Database Transaction Contention: Resource busy or transaction conflict.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -1288,6 +1467,14 @@ public partial class Program
             catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
             {
                 return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                return Results.Conflict(new { error = "Database Concurrency Conflict: Resource locked by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
+            {
+                return Results.Conflict(new { error = "Database Transaction Contention: Resource busy or transaction conflict.", details = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
@@ -1406,6 +1593,14 @@ public partial class Program
             {
                 return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                return Results.Conflict(new { error = "Database Concurrency Conflict: Resource locked by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
+            {
+                return Results.Conflict(new { error = "Database Transaction Contention: Resource busy or transaction conflict.", details = ex.Message });
+            }
             catch (KeyNotFoundException ex)
             {
                 return Results.NotFound(new { error = ex.Message });
@@ -1434,6 +1629,14 @@ public partial class Program
             catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
             {
                 return Results.Conflict(new { error = "Concurrency Conflict: Balance modified by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                return Results.Conflict(new { error = "Database Concurrency Conflict: Resource locked by another transaction.", details = ex.Message });
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
+            {
+                return Results.Conflict(new { error = "Database Transaction Contention: Resource busy or transaction conflict.", details = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
@@ -1585,6 +1788,143 @@ public partial class Program
             var command = new PiiSanitizeCommand(request);
             var result = handler.HandlePiiSanitizeAsync(command);
             return Results.Ok(result.Result);
+        });
+
+        // --- GENERAL LEDGER & CHART OF ACCOUNTS APIS (BRPD Circular 12/2024 Module 1) ---
+        var glApi = app.MapGroup("/api/v1/gl").AddEndpointFilter<FinancialAuthorizationFilter>();
+
+        glApi.MapGet("/chart-of-accounts", async (
+            IChartOfAccountsRepository coaRepo,
+            CancellationToken ct) =>
+        {
+            var accounts = await coaRepo.GetAllAsync(ct);
+            var dtos = accounts.Select(a => new ChartOfAccountDto(
+                a.Id,
+                a.Name,
+                a.Category,
+                a.ParentCode,
+                a.Level,
+                a.IsLeaf,
+                a.IsActive,
+                a.CurrencyCode)).ToList();
+            return Results.Ok(dtos);
+        });
+
+        glApi.MapGet("/vouchers/{voucherNumber}", async (
+            string voucherNumber,
+            IFinancialVoucherRepository voucherRepo,
+            CancellationToken ct) =>
+        {
+            var voucher = await voucherRepo.GetByVoucherNumberAsync(voucherNumber, ct);
+            if (voucher is null)
+            {
+                return Results.NotFound(new { error = $"Voucher '{voucherNumber}' not found." });
+            }
+
+            var entries = voucher.Entries.Select(e => new VoucherEntryDto(
+                e.Id,
+                e.AccountCode,
+                e.Type,
+                e.Amount.Amount,
+                e.Amount.Currency.Code,
+                e.ExchangeRate,
+                e.BaseAmount.Amount,
+                e.Narration)).ToList();
+
+            var dto = new FinancialVoucherResponseDto(
+                voucher.Id,
+                voucher.VoucherNumber,
+                voucher.BranchSol,
+                voucher.Type,
+                voucher.ValueDate,
+                voucher.CreatedAtUtc,
+                voucher.Status,
+                voucher.Audit.MakerUserId,
+                voucher.Audit.CheckerUserId,
+                voucher.ReversalOfVoucherId,
+                entries);
+
+            return Results.Ok(dto);
+        });
+
+        glApi.MapGet("/trial-balance", async (
+            string? asOfDate,
+            string? branchSol,
+            IFinancialVoucherRepository voucherRepo,
+            CancellationToken ct) =>
+        {
+            var date = string.IsNullOrWhiteSpace(asOfDate)
+                ? DateOnly.FromDateTime(DateTime.UtcNow)
+                : DateOnly.Parse(asOfDate);
+
+            var trialBalance = await voucherRepo.GenerateTrialBalanceAsync(date, branchSol, ct);
+            return Results.Ok(trialBalance);
+        });
+
+        glApi.MapPost("/vouchers/{voucherNumber}/reverse", async (
+            string voucherNumber,
+            ReverseVoucherRequest request,
+            IGeneralLedgerService glService,
+            IUnitOfWork unitOfWork,
+            CancellationToken ct) =>
+        {
+            if (string.IsNullOrWhiteSpace(request.Reason))
+            {
+                return Results.BadRequest(new { error = "Reversal reason is required (BRPD 1.3.6)." });
+            }
+            if (string.IsNullOrWhiteSpace(request.ReversalMakerUserId) || string.IsNullOrWhiteSpace(request.ReversalCheckerUserId))
+            {
+                return Results.BadRequest(new { error = "Reversal Maker and Checker user IDs are required." });
+            }
+            if (request.ReversalMakerUserId == request.ReversalCheckerUserId)
+            {
+                return Results.BadRequest(new { error = "Maker cannot act as Checker for reversal voucher (BRPD 1.3.13)." });
+            }
+
+            try
+            {
+                var reversalVoucher = await glService.ReverseVoucherAsync(
+                    voucherNumber,
+                    request.ReversalMakerUserId,
+                    request.ReversalCheckerUserId,
+                    request.Reason,
+                    ct);
+
+                await unitOfWork.SaveChangesAsync(ct);
+
+                var entries = reversalVoucher.Entries.Select(e => new VoucherEntryDto(
+                    e.Id,
+                    e.AccountCode,
+                    e.Type,
+                    e.Amount.Amount,
+                    e.Amount.Currency.Code,
+                    e.ExchangeRate,
+                    e.BaseAmount.Amount,
+                    e.Narration)).ToList();
+
+                var dto = new FinancialVoucherResponseDto(
+                    reversalVoucher.Id,
+                    reversalVoucher.VoucherNumber,
+                    reversalVoucher.BranchSol,
+                    reversalVoucher.Type,
+                    reversalVoucher.ValueDate,
+                    reversalVoucher.CreatedAtUtc,
+                    reversalVoucher.Status,
+                    reversalVoucher.Audit.MakerUserId,
+                    reversalVoucher.Audit.CheckerUserId,
+                    reversalVoucher.ReversalOfVoucherId,
+                    entries);
+
+                return Results.Ok(dto);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Conflict(new { error = ex.Message });
+            }
         });
 
         app.Services.InitializeCbsDatabase();

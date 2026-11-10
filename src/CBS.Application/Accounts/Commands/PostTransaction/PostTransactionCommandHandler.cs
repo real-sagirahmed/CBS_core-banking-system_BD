@@ -1,5 +1,6 @@
 using CBS.Application.Accounts.DTOs;
 using CBS.Application.Common.Interfaces;
+using CBS.Application.GeneralLedger.Services;
 using CBS.Domain.Enums;
 using CBS.Domain.ValueObjects;
 
@@ -8,11 +9,16 @@ namespace CBS.Application.Accounts.Commands.PostTransaction;
 public class PostTransactionCommandHandler
 {
     private readonly IAccountRepository _accountRepository;
+    private readonly IGeneralLedgerService _glService;
     private readonly IUnitOfWork _unitOfWork;
 
-    public PostTransactionCommandHandler(IAccountRepository accountRepository, IUnitOfWork unitOfWork)
+    public PostTransactionCommandHandler(
+        IAccountRepository accountRepository,
+        IGeneralLedgerService glService,
+        IUnitOfWork unitOfWork)
     {
         _accountRepository = accountRepository ?? throw new ArgumentNullException(nameof(accountRepository));
+        _glService = glService ?? throw new ArgumentNullException(nameof(glService));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
@@ -38,10 +44,24 @@ public class PostTransactionCommandHandler
         {
             var recovered = account.Credit(Money.Bdt(req.Amount), req.Narration, req.IsCustomerInduced);
             recoveredHovering = recovered.Amount;
+            await _glService.PostCashDepositAsync(
+                account.BranchCode,
+                account.Id.Value,
+                req.Amount,
+                command.UserId,
+                null,
+                cancellationToken);
         }
         else
         {
             account.Debit(Money.Bdt(req.Amount), req.Narration, req.IsCustomerInduced);
+            await _glService.PostCashWithdrawalAsync(
+                account.BranchCode,
+                account.Id.Value,
+                req.Amount,
+                command.UserId,
+                null,
+                cancellationToken);
         }
 
         await _accountRepository.UpdateAsync(account, cancellationToken);

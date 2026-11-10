@@ -1,4 +1,5 @@
 using CBS.Application.Common.Interfaces;
+using CBS.Application.GeneralLedger.Services;
 using CBS.Application.PaymentRails.DTOs;
 using CBS.Domain.Accounts;
 using CBS.Domain.Enums;
@@ -13,15 +14,18 @@ public class ProcessInwardChequeClearingCommandHandler
 {
     private readonly IChequeClearingRepository _chequeRepository;
     private readonly IAccountRepository _accountRepository;
+    private readonly IGeneralLedgerService _glService;
     private readonly IUnitOfWork _unitOfWork;
 
     public ProcessInwardChequeClearingCommandHandler(
         IChequeClearingRepository chequeRepository,
         IAccountRepository accountRepository,
+        IGeneralLedgerService glService,
         IUnitOfWork unitOfWork)
     {
         _chequeRepository = chequeRepository ?? throw new ArgumentNullException(nameof(chequeRepository));
         _accountRepository = accountRepository ?? throw new ArgumentNullException(nameof(accountRepository));
+        _glService = glService ?? throw new ArgumentNullException(nameof(glService));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
@@ -86,6 +90,17 @@ public class ProcessInwardChequeClearingCommandHandler
             // Valid presentment: Debit drawee account and settle
             draweeAccount.Debit(amount, $"BACH Inward Cheque #{req.ChequeNumber}");
             await _accountRepository.UpdateAsync(draweeAccount, ct);
+
+            // Auto-post balanced Clearing GL voucher (BRPD Module 1.3)
+            await _glService.PostChequeClearingAsync(
+                draweeAccount.BranchCode,
+                req.DraweeAccountNumber,
+                req.Amount,
+                req.ChequeNumber,
+                "SYSTEM_BACH_CLEARING",
+                null,
+                ct);
+
             await _unitOfWork.SaveChangesAsync(ct);
             remainingBalance = draweeAccount.Balance.Amount;
 

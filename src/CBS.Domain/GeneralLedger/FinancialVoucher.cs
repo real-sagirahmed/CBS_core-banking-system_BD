@@ -7,13 +7,17 @@ namespace CBS.Domain.GeneralLedger;
 
 public sealed class VoucherEntry
 {
-    public Guid Id { get; }
-    public string AccountCode { get; }
-    public DebitCredit Type { get; }
-    public Money Amount { get; }
-    public decimal ExchangeRate { get; }
-    public Money BaseAmount { get; }
-    public string Narration { get; }
+    public Guid Id { get; private set; }
+    public string AccountCode { get; private set; }
+    public DebitCredit Type { get; private set; }
+    public Money Amount { get; private set; }
+    public decimal ExchangeRate { get; private set; }
+    public Money BaseAmount { get; private set; }
+    public string Narration { get; private set; }
+
+    #pragma warning disable CS8618
+    private VoucherEntry() { }
+    #pragma warning restore CS8618
 
     public VoucherEntry(
         string accountCode,
@@ -46,16 +50,20 @@ public class FinancialVoucher : AggregateRoot<Guid>
 {
     private readonly List<VoucherEntry> _entries = [];
 
-    public string VoucherNumber { get; }
-    public string BranchSol { get; }
-    public VoucherType Type { get; }
-    public DateOnly ValueDate { get; }
-    public DateTime CreatedAtUtc { get; }
+    public string VoucherNumber { get; private set; }
+    public string BranchSol { get; private set; }
+    public VoucherType Type { get; private set; }
+    public DateOnly ValueDate { get; private set; }
+    public DateTime CreatedAtUtc { get; private set; }
     public VoucherStatus Status { get; private set; }
     public MakerCheckerAudit Audit { get; private set; }
     public Guid? ReversalOfVoucherId { get; private set; }
 
     public IReadOnlyCollection<VoucherEntry> Entries => _entries.AsReadOnly();
+
+    #pragma warning disable CS8618
+    protected FinancialVoucher() : base(Guid.Empty) { }
+    #pragma warning restore CS8618
 
     public FinancialVoucher(
         string voucherNumber,

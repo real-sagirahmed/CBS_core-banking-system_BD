@@ -1,5 +1,6 @@
 using CBS.Application.BranchCash.DTOs;
 using CBS.Application.Common.Interfaces;
+using CBS.Application.GeneralLedger.Services;
 using CBS.Domain.BranchCash;
 using CBS.Domain.ValueObjects;
 
@@ -18,13 +19,19 @@ public class IssueRemittanceInstrumentCommandHandler
 {
     private readonly IRemittanceInstrumentRepository _instrumentRepository;
     private readonly ISecurityStationeryRepository _stationeryRepository;
+    private readonly IGeneralLedgerService _glService;
+    private readonly IUnitOfWork _unitOfWork;
 
     public IssueRemittanceInstrumentCommandHandler(
         IRemittanceInstrumentRepository instrumentRepository,
-        ISecurityStationeryRepository stationeryRepository)
+        ISecurityStationeryRepository stationeryRepository,
+        IGeneralLedgerService glService,
+        IUnitOfWork unitOfWork)
     {
         _instrumentRepository = instrumentRepository;
         _stationeryRepository = stationeryRepository;
+        _glService = glService;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<RemittanceInstrumentResponseDto> HandleAsync(IssueRemittanceInstrumentCommand command, CancellationToken ct = default)
@@ -86,6 +93,21 @@ public class IssueRemittanceInstrumentCommandHandler
             DateOnly.FromDateTime(DateTime.UtcNow));
 
         await _instrumentRepository.AddAsync(instrument, ct);
+
+        // Auto-post balanced 4-legged double-entry GL voucher (BRPD Module 1.3, 1.7)
+        await _glService.PostRemittanceIssueAsync(
+            req.BranchCode,
+            instrumentNumber,
+            instrument.Amount.Amount,
+            instrument.Commission.Amount,
+            instrument.VatAmount.Amount,
+            isCash: true,
+            customerAccount: null,
+            command.MakerUserId,
+            command.CheckerUserId,
+            ct);
+
+        await _unitOfWork.SaveChangesAsync(ct);
 
         return MapToDto(instrument);
     }

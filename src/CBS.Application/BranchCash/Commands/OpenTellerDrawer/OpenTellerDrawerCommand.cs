@@ -1,5 +1,6 @@
 using CBS.Application.BranchCash.DTOs;
 using CBS.Application.Common.Interfaces;
+using CBS.Application.GeneralLedger.Services;
 using CBS.Domain.BranchCash;
 using CBS.Domain.ValueObjects;
 
@@ -16,13 +17,16 @@ public record OpenTellerDrawerCommand(
 public class OpenTellerDrawerCommandHandler
 {
     private readonly ITellerDrawerRepository _drawerRepository;
+    private readonly IGeneralLedgerService _glService;
     private readonly IUnitOfWork _unitOfWork;
 
     public OpenTellerDrawerCommandHandler(
         ITellerDrawerRepository drawerRepository,
+        IGeneralLedgerService glService,
         IUnitOfWork unitOfWork)
     {
         _drawerRepository = drawerRepository ?? throw new ArgumentNullException(nameof(drawerRepository));
+        _glService = glService ?? throw new ArgumentNullException(nameof(glService));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
@@ -42,6 +46,18 @@ public class OpenTellerDrawerCommandHandler
         drawer.Open(Money.Bdt(req.InitialVaultAllocation), bundle, command.SupervisorUserId);
 
         await _drawerRepository.AddAsync(drawer, ct);
+
+        if (req.InitialVaultAllocation > 0m)
+        {
+            await _glService.PostVaultMovementAsync(
+                req.BranchCode,
+                req.InitialVaultAllocation,
+                isVaultToTeller: true,
+                req.CashierUserId,
+                command.SupervisorUserId,
+                ct);
+        }
+
         await _unitOfWork.SaveChangesAsync(ct);
 
         return new TellerDrawerResponseDto(

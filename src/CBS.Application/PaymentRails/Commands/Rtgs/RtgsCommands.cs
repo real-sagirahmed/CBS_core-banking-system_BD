@@ -1,4 +1,5 @@
 using CBS.Application.Common.Interfaces;
+using CBS.Application.GeneralLedger.Services;
 using CBS.Application.PaymentRails.DTOs;
 using CBS.Domain.PaymentRails;
 using CBS.Domain.ValueObjects;
@@ -12,15 +13,18 @@ public class RtgsCommandHandler
 {
     private readonly IRtgsRepository _rtgsRepository;
     private readonly IAccountRepository _accountRepository;
+    private readonly IGeneralLedgerService _glService;
     private readonly IUnitOfWork _unitOfWork;
 
     public RtgsCommandHandler(
         IRtgsRepository rtgsRepository,
         IAccountRepository accountRepository,
+        IGeneralLedgerService glService,
         IUnitOfWork unitOfWork)
     {
         _rtgsRepository = rtgsRepository ?? throw new ArgumentNullException(nameof(rtgsRepository));
         _accountRepository = accountRepository ?? throw new ArgumentNullException(nameof(accountRepository));
+        _glService = glService ?? throw new ArgumentNullException(nameof(glService));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
@@ -36,6 +40,18 @@ public class RtgsCommandHandler
         // Debit debtor account for RTGS transfer
         debtorAccount.Debit(amount, $"RTGS Transfer to {req.CreditorName} (Ref: {req.EndToEndId})");
         await _accountRepository.UpdateAsync(debtorAccount, ct);
+
+        // Auto-post balanced RTGS Payment Rail GL voucher (BRPD Module 1.3)
+        await _glService.PostPaymentRailTransferAsync(
+            debtorAccount.BranchCode,
+            req.DebtorAccount,
+            req.Amount,
+            "RTGS",
+            req.EndToEndId,
+            "SYSTEM_RTGS",
+            null,
+            ct);
+
         await _unitOfWork.SaveChangesAsync(ct);
 
         var debtorRouting = RoutingNumber.From(req.DebtorAgentRouting);

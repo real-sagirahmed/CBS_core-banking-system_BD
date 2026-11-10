@@ -1,6 +1,7 @@
 using CBS.Domain.Accounts;
 using CBS.Domain.BranchCash;
 using CBS.Domain.Customers;
+using CBS.Domain.GeneralLedger;
 using CBS.Domain.SecurityAudit;
 using CBS.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +14,9 @@ public class CbsDbContext : DbContext
     public DbSet<TellerDrawer> TellerDrawers => Set<TellerDrawer>();
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<UserSession> UserSessions => Set<UserSession>();
+    public DbSet<FinancialVoucher> FinancialVouchers => Set<FinancialVoucher>();
+    public DbSet<VoucherEntry> VoucherEntries => Set<VoucherEntry>();
+    public DbSet<ChartOfAccount> ChartOfAccounts => Set<ChartOfAccount>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -49,6 +53,9 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new TellerDrawerConfiguration());
         modelBuilder.ApplyConfiguration(new CustomerConfiguration());
         modelBuilder.ApplyConfiguration(new UserSessionConfiguration());
+        modelBuilder.ApplyConfiguration(new FinancialVoucherConfiguration());
+        modelBuilder.ApplyConfiguration(new VoucherEntryConfiguration());
+        modelBuilder.ApplyConfiguration(new ChartOfAccountConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -64,8 +71,8 @@ public class CbsDbContext : DbContext
         }
         else
         {
-            modelBuilder.Entity<DepositAccount>().Property<byte[]>("RowVersion").IsRowVersion();
-            modelBuilder.Entity<TellerDrawer>().Property<byte[]>("RowVersion").IsRowVersion();
+            modelBuilder.Entity<DepositAccount>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<TellerDrawer>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)

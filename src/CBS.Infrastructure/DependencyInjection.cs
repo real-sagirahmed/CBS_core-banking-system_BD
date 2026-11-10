@@ -1,4 +1,6 @@
 using CBS.Application.Common.Interfaces;
+using CBS.Application.GeneralLedger.Services;
+using CBS.Infrastructure.GeneralLedger;
 using CBS.Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -41,6 +43,9 @@ public static class DependencyInjection
         services.AddScoped<IAccountRepository, EfAccountRepository>();
         services.AddScoped<ITellerDrawerRepository, EfTellerDrawerRepository>();
         services.AddScoped<ICustomerRepository, EfCustomerRepository>();
+        services.AddScoped<IFinancialVoucherRepository, EfFinancialVoucherRepository>();
+        services.AddScoped<IChartOfAccountsRepository, EfChartOfAccountsRepository>();
+        services.AddScoped<IGeneralLedgerService, GeneralLedgerService>();
 
         return services;
     }
@@ -50,5 +55,8 @@ public static class DependencyInjection
         using var scope = serviceProvider.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<CbsDbContext>();
         dbContext.Database.EnsureCreated();
+
+        var coaRepo = scope.ServiceProvider.GetRequiredService<IChartOfAccountsRepository>();
+        coaRepo.SeedDefaultAccountsAsync().GetAwaiter().GetResult();
     }
 }
