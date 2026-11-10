@@ -43,6 +43,7 @@ using CBS.Application.TradeFinance.Commands;
 using CBS.Application.TradeFinance.DTOs;
 using CBS.Application.Treasury.Commands;
 using CBS.Application.Treasury.DTOs;
+using CBS.Application.Remittance;
 using CBS.Domain.Accounts;
 using CBS.Domain.Adc;
 using CBS.Domain.BranchCash;
@@ -129,6 +130,7 @@ public partial class Program
         builder.Services.AddTransient<ChequeCommandHandler>();
         builder.Services.AddTransient<TermDepositCommandHandler>();
         builder.Services.AddTransient<DpsCommandHandler>();
+        builder.Services.AddTransient<ForeignRemittanceCommandHandler>();
 
         builder.Services.ConfigureHttpJsonOptions(options =>
         {
@@ -3026,6 +3028,152 @@ public partial class Program
             {
                 return Results.Conflict(new { error = ex.Message });
             }
+        });
+
+        // --- FOREIGN REMITTANCE & 2.5% CASH INCENTIVE ENGINE (BRPD Circular 12/2024 Module 2.2) ---
+        var foreignRemittanceApi = app.MapGroup("/api/v1/remittance/foreign").AddEndpointFilter<FinancialAuthorizationFilter>();
+
+        foreignRemittanceApi.MapPost("/inward/process", async (
+            ProcessInwardRemittanceRequest request,
+            ForeignRemittanceCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.ProcessInwardAsync(request, ct);
+                return Results.Created($"/api/v1/remittance/foreign/{result.Id}", result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        foreignRemittanceApi.MapPost("/inward/{id:guid}/authorize", async (
+            Guid id,
+            AuthorizeInwardRemittanceRequest request,
+            ForeignRemittanceCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.AuthorizeInwardAsync(id, request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        foreignRemittanceApi.MapPost("/outward/initiate", async (
+            InitiateOutwardRemittanceRequest request,
+            ForeignRemittanceCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.InitiateOutwardAsync(request, ct);
+                return Results.Created($"/api/v1/remittance/foreign/{result.Id}", result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        foreignRemittanceApi.MapPost("/outward/{id:guid}/authorize", async (
+            Guid id,
+            AuthorizeOutwardRemittanceRequest request,
+            ForeignRemittanceCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.AuthorizeOutwardAsync(id, request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        foreignRemittanceApi.MapPost("/{id:guid}/cancel", async (
+            Guid id,
+            CancelRemittanceRequest request,
+            ForeignRemittanceCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.CancelAsync(id, request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        foreignRemittanceApi.MapPost("/incentives/batch-claims", async (
+            BatchIncentiveClaimRequest request,
+            ForeignRemittanceCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.BatchIncentivesAsync(request, ct);
+                return Results.Created($"/api/v1/remittance/foreign/incentives/batches/{result.Id}", result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        foreignRemittanceApi.MapPost("/incentives/batches/{batchId:guid}/submit", async (
+            Guid batchId,
+            SubmitIncentiveClaimRequest request,
+            ForeignRemittanceCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.SubmitClaimBatchAsync(batchId, request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        foreignRemittanceApi.MapGet("/{id:guid}", async (
+            Guid id,
+            ForeignRemittanceCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var result = await handler.GetByIdAsync(id, ct);
+            return result is null ? Results.NotFound(new { error = $"Remittance transaction '{id}' not found." }) : Results.Ok(result);
+        });
+
+        foreignRemittanceApi.MapGet("/inward/register", async (
+            DateTime? fromUtc,
+            DateTime? toUtc,
+            ForeignRemittanceCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var result = await handler.GetInwardRegisterAsync(fromUtc, toUtc, ct);
+            return Results.Ok(result);
+        });
+
+        foreignRemittanceApi.MapGet("/incentives/batches", async (
+            ForeignRemittanceCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var result = await handler.GetAllClaimBatchesAsync(ct);
+            return Results.Ok(result);
         });
 
         app.Services.InitializeCbsDatabase();

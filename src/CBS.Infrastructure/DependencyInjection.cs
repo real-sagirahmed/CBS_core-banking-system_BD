@@ -1,9 +1,11 @@
 using CBS.Application.Accounts.Services;
 using CBS.Application.Common.Interfaces;
 using CBS.Application.GeneralLedger.Services;
+using CBS.Application.Remittance;
 using CBS.Infrastructure.Accounts;
 using CBS.Infrastructure.GeneralLedger;
 using CBS.Infrastructure.Persistence;
+using CBS.Infrastructure.Persistence.Repositories;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -67,6 +69,7 @@ public static class DependencyInjection
         services.AddScoped<ITermDepositRepository, EfTermDepositRepository>();
         services.AddScoped<IDpsRepository, EfDpsRepository>();
         services.AddScoped<IDepositLienRepository, EfDepositLienRepository>();
+        services.AddScoped<IForeignRemittanceRepository, EfForeignRemittanceRepository>();
         services.AddHttpClient();
 
         return services;

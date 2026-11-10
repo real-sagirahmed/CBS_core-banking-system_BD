@@ -9,6 +9,7 @@ using CBS.Domain.GeneralLedger;
 using CBS.Domain.Lending;
 using CBS.Domain.PaymentRails;
 using CBS.Domain.Reconciliation;
+using CBS.Domain.Remittance;
 using CBS.Domain.SecurityAudit;
 using CBS.Domain.StandingInstructions;
 using CBS.Domain.TermDeposits;
@@ -58,6 +59,8 @@ public class CbsDbContext : DbContext
     public DbSet<DpsAccount> DpsAccounts => Set<DpsAccount>();
     public DbSet<DpsInstallmentSchedule> DpsInstallments => Set<DpsInstallmentSchedule>();
     public DbSet<DepositLienFacility> DepositLiens => Set<DepositLienFacility>();
+    public DbSet<ForeignRemittanceTransaction> ForeignRemittanceTransactions => Set<ForeignRemittanceTransaction>();
+    public DbSet<GovernmentIncentiveClaimBatch> GovernmentIncentiveClaimBatches => Set<GovernmentIncentiveClaimBatch>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -126,6 +129,8 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new DpsAccountConfiguration());
         modelBuilder.ApplyConfiguration(new DpsInstallmentScheduleConfiguration());
         modelBuilder.ApplyConfiguration(new DepositLienFacilityConfiguration());
+        modelBuilder.ApplyConfiguration(new ForeignRemittanceTransactionConfiguration());
+        modelBuilder.ApplyConfiguration(new GovernmentIncentiveClaimBatchConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -148,6 +153,8 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<TermDepositContract>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<DpsAccount>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<DepositLienFacility>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<ForeignRemittanceTransaction>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<GovernmentIncentiveClaimBatch>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -175,6 +182,8 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<TermDepositContract>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<DpsAccount>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<DepositLienFacility>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<ForeignRemittanceTransaction>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<GovernmentIncentiveClaimBatch>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
