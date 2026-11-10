@@ -12,7 +12,8 @@ public sealed record SwiftMt700Message
     public string RawMessageText { get; }
     public DateTime GeneratedAtUtc { get; }
 
-    private SwiftMt700Message(string senderBic, string receiverBic, string lcNumber, string rawMessageText, DateTime generatedAtUtc)
+    [System.Text.Json.Serialization.JsonConstructor]
+    public SwiftMt700Message(string senderBic, string receiverBic, string lcNumber, string rawMessageText, DateTime generatedAtUtc)
     {
         SenderBic = senderBic;
         ReceiverBic = receiverBic;

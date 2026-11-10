@@ -426,6 +426,168 @@ public class GeneralLedgerService : IGeneralLedgerService
         return voucher;
     }
 
+    public async Task<FinancialVoucher> PostDocumentaryCreditIssuanceAsync(
+        string branchSol,
+        string lcNumber,
+        decimal lcAmount,
+        decimal cashMarginAmount,
+        string? customerAccountNumber,
+        string makerUserId,
+        string? checkerUserId = null,
+        CancellationToken ct = default)
+    {
+        var voucherNumber = GenerateVoucherNumber(branchSol, VoucherType.Transfer);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var effectiveChecker = string.IsNullOrWhiteSpace(checkerUserId) || checkerUserId == makerUserId
+            ? "SYSTEM_GL_AUTOPOST"
+            : checkerUserId;
+
+        var voucher = new FinancialVoucher(voucherNumber, branchSol, VoucherType.Transfer, today, makerUserId);
+
+        // 1. Off-Balance Sheet Contingent Liability (BRPD 5.1.1-xi, 5.1.8-i)
+        voucher.AddEntry(
+            StandardGlAccounts.CustomerLiabilityForLettersOfCredit,
+            DebitCredit.Debit,
+            Money.Bdt(lcAmount),
+            1.0m,
+            $"Contingent Asset: Customer Liability for LC {lcNumber}");
+
+        voucher.AddEntry(
+            StandardGlAccounts.BankAcceptanceAndLcLiability,
+            DebitCredit.Credit,
+            Money.Bdt(lcAmount),
+            1.0m,
+            $"Contingent Liability: Bank Letter of Credit Liability {lcNumber}");
+
+        // 2. Cash Margin hold (if cash margin > 0 and customer deposit account provided)
+        if (cashMarginAmount > 0 && !string.IsNullOrWhiteSpace(customerAccountNumber))
+        {
+            voucher.AddEntry(
+                StandardGlAccounts.CustomerCurrentDeposit,
+                DebitCredit.Debit,
+                Money.Bdt(cashMarginAmount),
+                1.0m,
+                $"Cash Margin Debit from Acct {customerAccountNumber} for LC {lcNumber}");
+
+            voucher.AddEntry(
+                StandardGlAccounts.CustomerCashMarginDeposit,
+                DebitCredit.Credit,
+                Money.Bdt(cashMarginAmount),
+                1.0m,
+                $"Cash Margin Deposit Liability on LC {lcNumber}");
+        }
+
+        voucher.AuthorizeAndPost(effectiveChecker);
+        await _voucherRepository.AddAsync(voucher, ct);
+        return voucher;
+    }
+
+    public async Task<FinancialVoucher> PostShippingGuaranteeIssuanceAsync(
+        string branchSol,
+        string sgReference,
+        decimal guaranteeAmount,
+        decimal cashMarginAmount,
+        string customerAccountNumber,
+        string makerUserId,
+        string? checkerUserId = null,
+        CancellationToken ct = default)
+    {
+        var voucherNumber = GenerateVoucherNumber(branchSol, VoucherType.Transfer);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var effectiveChecker = string.IsNullOrWhiteSpace(checkerUserId) || checkerUserId == makerUserId
+            ? "SYSTEM_GL_AUTOPOST"
+            : checkerUserId;
+
+        var voucher = new FinancialVoucher(voucherNumber, branchSol, VoucherType.Transfer, today, makerUserId);
+
+        // BRPD 5.1.2-iii: Mandatory 100% Cash Margin hold for Shipping Guarantee
+        voucher.AddEntry(
+            StandardGlAccounts.CustomerCurrentDeposit,
+            DebitCredit.Debit,
+            Money.Bdt(cashMarginAmount),
+            1.0m,
+            $"100% Cash Margin Debit from Acct {customerAccountNumber} for SG {sgReference}");
+
+        voucher.AddEntry(
+            StandardGlAccounts.CustomerCashMarginDeposit,
+            DebitCredit.Credit,
+            Money.Bdt(cashMarginAmount),
+            1.0m,
+            $"Cash Margin Deposit Liability on SG {sgReference}");
+
+        voucher.AuthorizeAndPost(effectiveChecker);
+        await _voucherRepository.AddAsync(voucher, ct);
+        return voucher;
+    }
+
+    public async Task<FinancialVoucher> PostDocumentaryCreditSettlementAsync(
+        string branchSol,
+        string lcNumber,
+        decimal billAmount,
+        decimal cashMarginAmount,
+        string customerAccountNumber,
+        string makerUserId,
+        string? checkerUserId = null,
+        CancellationToken ct = default)
+    {
+        var voucherNumber = GenerateVoucherNumber(branchSol, VoucherType.Transfer);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var effectiveChecker = string.IsNullOrWhiteSpace(checkerUserId) || checkerUserId == makerUserId
+            ? "SYSTEM_GL_AUTOPOST"
+            : checkerUserId;
+
+        var voucher = new FinancialVoucher(voucherNumber, branchSol, VoucherType.Transfer, today, makerUserId);
+
+        // 1. Derecognize Contingent Liability
+        voucher.AddEntry(
+            StandardGlAccounts.BankAcceptanceAndLcLiability,
+            DebitCredit.Debit,
+            Money.Bdt(billAmount),
+            1.0m,
+            $"Derecognition of Contingent Liability for settled LC {lcNumber}");
+
+        voucher.AddEntry(
+            StandardGlAccounts.CustomerLiabilityForLettersOfCredit,
+            DebitCredit.Credit,
+            Money.Bdt(billAmount),
+            1.0m,
+            $"Derecognition of Contingent Asset for settled LC {lcNumber}");
+
+        // 2. Settlement of Bill (Adjust Margin + Debit Customer for remainder -> Credit Nostro Settlement)
+        decimal remainingDebit = billAmount - cashMarginAmount;
+
+        if (cashMarginAmount > 0)
+        {
+            voucher.AddEntry(
+                StandardGlAccounts.CustomerCashMarginDeposit,
+                DebitCredit.Debit,
+                Money.Bdt(cashMarginAmount),
+                1.0m,
+                $"Margin Release Adjustment for LC {lcNumber} Retirement");
+        }
+
+        if (remainingDebit > 0)
+        {
+            voucher.AddEntry(
+                StandardGlAccounts.CustomerCurrentDeposit,
+                DebitCredit.Debit,
+                Money.Bdt(remainingDebit),
+                1.0m,
+                $"Settlement Balance Debit from Acct {customerAccountNumber} for LC {lcNumber}");
+        }
+
+        voucher.AddEntry(
+            StandardGlAccounts.BangladeshBankSettlement,
+            DebitCredit.Credit,
+            Money.Bdt(billAmount),
+            1.0m,
+            $"Nostro Settlement Outflow for LC {lcNumber} Retirement");
+
+        voucher.AuthorizeAndPost(effectiveChecker);
+        await _voucherRepository.AddAsync(voucher, ct);
+        return voucher;
+    }
+
     public async Task<FinancialVoucher> ReverseVoucherAsync(
         string voucherNumber,
         string reversalMakerUserId,

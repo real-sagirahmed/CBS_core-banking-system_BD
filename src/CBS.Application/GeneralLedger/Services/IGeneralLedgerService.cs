@@ -124,6 +124,36 @@ public interface IGeneralLedgerService
         string? checkerUserId = null,
         CancellationToken ct = default);
 
+    Task<FinancialVoucher> PostDocumentaryCreditIssuanceAsync(
+        string branchSol,
+        string lcNumber,
+        decimal lcAmount,
+        decimal cashMarginAmount,
+        string? customerAccountNumber,
+        string makerUserId,
+        string? checkerUserId = null,
+        CancellationToken ct = default);
+
+    Task<FinancialVoucher> PostShippingGuaranteeIssuanceAsync(
+        string branchSol,
+        string sgReference,
+        decimal guaranteeAmount,
+        decimal cashMarginAmount,
+        string customerAccountNumber,
+        string makerUserId,
+        string? checkerUserId = null,
+        CancellationToken ct = default);
+
+    Task<FinancialVoucher> PostDocumentaryCreditSettlementAsync(
+        string branchSol,
+        string lcNumber,
+        decimal billAmount,
+        decimal cashMarginAmount,
+        string customerAccountNumber,
+        string makerUserId,
+        string? checkerUserId = null,
+        CancellationToken ct = default);
+
     Task<FinancialVoucher> ReverseVoucherAsync(
         string voucherNumber,
         string reversalMakerUserId,

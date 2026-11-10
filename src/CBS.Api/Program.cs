@@ -87,8 +87,6 @@ public partial class Program
         builder.Services.AddSingleton<IChequeClearingRepository, InMemoryChequeClearingRepository>();
         builder.Services.AddSingleton<IBeftnRepository, InMemoryBeftnRepository>();
         builder.Services.AddSingleton<IRtgsRepository, InMemoryRtgsRepository>();
-        builder.Services.AddSingleton<ILoanAccountRepository, InMemoryLoanAccountRepository>();
-        builder.Services.AddSingleton<ITradeFinanceRepository, InMemoryTradeFinanceRepository>();
         builder.Services.AddSingleton<ITreasuryRepository, InMemoryTreasuryRepository>();
         builder.Services.AddSingleton<ISecurityAuditRepository, InMemorySecurityAuditRepository>();
         builder.Services.AddSingleton<IAiKnowledgeRepository, InMemoryAiKnowledgeRepository>();
@@ -275,6 +273,10 @@ public partial class Program
             {
                 return Results.BadRequest(new { error = ex.Message });
             }
+            catch (Exception ex)
+            {
+                return Results.Conflict(new { error = "Transaction Execution Conflict: Resource contention or concurrency conflict.", details = ex.Message });
+            }
         });
 
         accountApi.MapGet("/{accountNumber}", async (string accountNumber, IAccountRepository repo, CancellationToken ct) =>
@@ -333,6 +335,10 @@ public partial class Program
             catch (ArgumentException ex)
             {
                 return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.Conflict(new { error = "Transaction Execution Conflict: Resource contention or concurrency conflict.", details = ex.Message });
             }
         });
 
@@ -1583,6 +1589,40 @@ public partial class Program
             {
                 return Results.BadRequest(new { error = ex.Message });
             }
+        });
+
+        tradeApi.MapPost("/exp/eod-batch", async (
+            ExpEodBatchRequest request,
+            TradeFinanceCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleExpEodBatchAsync(request.BranchCode, request.EvaluationDate, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        tradeApi.MapGet("/reports/overdue-exp", async (
+            string? branchCode,
+            TradeFinanceCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var report = await handler.GetOverdueExpReportAsync(branchCode, ct);
+            return Results.Ok(report);
+        });
+
+        tradeApi.MapGet("/reports/tbml-audit", async (
+            string? branchCode,
+            TradeFinanceCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var report = await handler.GetTbmlAuditReportAsync(branchCode, ct);
+            return Results.Ok(report);
         });
 
         // --- TREASURY & ALM APIS (BRPD Circular 12 Module 6) ---

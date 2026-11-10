@@ -10,6 +10,7 @@ public static class StandardGlAccounts
     public const string BangladeshBankSettlement = "102010000";
     public const string BachClearingAdjustment = "102020000";
     public const string CustomerLoansAdvances = "103010000";
+    public const string CustomerLiabilityForLettersOfCredit = "103020000";
     public const string CashDiscrepancyShortage = "109010000";
 
     // LIABILITIES (200000000)
@@ -23,11 +24,14 @@ public static class StandardGlAccounts
     public const string StatutoryVatPayable = "203030000";
     public const string BangladeshBankUnclaimedFunds = "203040000";
     public const string LoanInterestSuspense = "203050000";
+    public const string CustomerCashMarginDeposit = "203060000";
+    public const string BankAcceptanceAndLcLiability = "204010000";
     public const string CashDiscrepancyExcess = "209010000";
 
     // REVENUE (400000000)
     public const string RemittanceCommissionIncome = "401010000";
     public const string AccountMaintenanceHoveringFeeIncome = "401020000";
+    public const string TradeCommissionAndFeeIncome = "401030000";
     public const string LoanInterestIncome = "402010000";
 
     // EXPENSES (500000000)

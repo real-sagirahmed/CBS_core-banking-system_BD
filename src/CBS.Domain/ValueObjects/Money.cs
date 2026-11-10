@@ -30,8 +30,25 @@ public sealed record Currency
 
     public static Currency Create(string code, string name, string symbol, int decimalPlaces = 2, bool isBaseCurrency = false)
     {
+        if (string.Equals(code, "BDT", StringComparison.OrdinalIgnoreCase)) return BDT;
+        if (string.Equals(code, "USD", StringComparison.OrdinalIgnoreCase)) return USD;
+        if (string.Equals(code, "EUR", StringComparison.OrdinalIgnoreCase)) return EUR;
+        if (string.Equals(code, "GBP", StringComparison.OrdinalIgnoreCase)) return GBP;
         return new Currency(code, name, symbol, decimalPlaces, isBaseCurrency);
     }
+
+    public static Currency FromCode(string code)
+    {
+        return Create(code, code, code);
+    }
+
+    public bool Equals(Currency? other)
+    {
+        if (other is null) return false;
+        return string.Equals(Code, other.Code, StringComparison.OrdinalIgnoreCase);
+    }
+
+    public override int GetHashCode() => StringComparer.OrdinalIgnoreCase.GetHashCode(Code);
 
     public override string ToString() => Code;
 }

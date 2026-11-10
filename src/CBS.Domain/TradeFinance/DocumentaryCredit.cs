@@ -11,6 +11,8 @@ namespace CBS.Domain.TradeFinance;
 public sealed class DocumentaryCredit : AggregateRoot<string>
 {
     public string LcNumber => Id;
+    public string BranchCode { get; private set; } = null!;
+    public string? CustomerDepositAccountNumber { get; private set; }
     public LcType Type { get; private set; }
     public Guid ApplicantId { get; private set; }
     public string BeneficiaryName { get; private set; } = null!;
@@ -44,6 +46,10 @@ public sealed class DocumentaryCredit : AggregateRoot<string>
     public string MakerUserId { get; private set; } = null!;
     public string? CheckerUserId { get; private set; }
     public DateTime? AuthorizedAtUtc { get; private set; }
+
+    #pragma warning disable CS8618
+    private DocumentaryCredit() : base(string.Empty) { }
+    #pragma warning restore CS8618
 
     private DocumentaryCredit(string lcNumber) : base(lcNumber) { }
 
@@ -81,6 +87,8 @@ public sealed class DocumentaryCredit : AggregateRoot<string>
         bool isCibDefaulter,
         TbmlScreeningResult tbmlResult,
         string makerUserId,
+        string branchCode = "001",
+        string? customerDepositAccountNumber = null,
         string? masterLcNumber = null,
         Money? masterLcAmount = null,
         DateTime? masterLcShipmentDate = null,
@@ -160,7 +168,9 @@ public sealed class DocumentaryCredit : AggregateRoot<string>
             MasterLcShipmentDate = masterLcShipmentDate,
             MasterLcExpiryDate = masterLcExpiryDate,
             EdfRefinanced = edfRefinanced,
-            MakerUserId = makerUserId.Trim()
+            MakerUserId = makerUserId.Trim(),
+            BranchCode = string.IsNullOrWhiteSpace(branchCode) ? "001" : branchCode.Trim(),
+            CustomerDepositAccountNumber = customerDepositAccountNumber?.Trim()
         };
 
         return lc;

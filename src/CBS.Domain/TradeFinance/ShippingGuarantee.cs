@@ -16,6 +16,8 @@ namespace CBS.Domain.TradeFinance;
 public sealed class ShippingGuarantee : AggregateRoot<string>
 {
     public string SgReference => Id;
+    public string BranchCode { get; private set; } = null!;
+    public string? CustomerDepositAccountNumber { get; private set; }
     public string LcNumber { get; private set; } = null!;
     public Guid ApplicantId { get; private set; }
     public string CarrierName { get; private set; } = null!;
@@ -31,6 +33,10 @@ public sealed class ShippingGuarantee : AggregateRoot<string>
     public DateTime CreatedAtUtc { get; private set; }
     public DateTime? AuthorizedAtUtc { get; private set; }
 
+    #pragma warning disable CS8618
+    private ShippingGuarantee() : base(string.Empty) { }
+    #pragma warning restore CS8618
+
     private ShippingGuarantee(string sgReference) : base(sgReference) { }
 
     public static ShippingGuarantee Issue(
@@ -42,7 +48,9 @@ public sealed class ShippingGuarantee : AggregateRoot<string>
         string portOfDischarge,
         Money guaranteeAmount,
         Money cashMarginAmount,
-        string makerUserId)
+        string makerUserId,
+        string branchCode = "001",
+        string? customerDepositAccountNumber = null)
     {
         if (string.IsNullOrWhiteSpace(sgReference))
             throw new ArgumentException("SG Reference is required.", nameof(sgReference));
@@ -73,6 +81,8 @@ public sealed class ShippingGuarantee : AggregateRoot<string>
             CashMarginAmount = cashMarginAmount,
             Status = ShippingGuaranteeStatus.Active,
             MakerUserId = makerUserId.Trim(),
+            BranchCode = string.IsNullOrWhiteSpace(branchCode) ? "001" : branchCode.Trim(),
+            CustomerDepositAccountNumber = customerDepositAccountNumber?.Trim(),
             CreatedAtUtc = DateTime.UtcNow
         };
     }

@@ -110,8 +110,8 @@ public class ConcurrencyAndUnitOfWorkPlaywrightTests : IClassFixture<CbsApiServe
         });
 
         // 5. Assert: Concurrency and Balance invariants guaranteed ZERO double-spending
-        statuses.Count(s => s == 200).Should().Be(1, "Exactly one 10,000 BDT debit can succeed with 12,000 BDT initial balance.");
-        statuses.Count(s => s is 400 or 409).Should().Be(4, "All other 4 parallel debits must be rejected without overdraft (insufficient funds or concurrency conflict).");
+        statuses.Count(s => s == 200).Should().Be(1, $"Exactly one 10,000 BDT debit can succeed with 12,000 BDT initial balance. Statuses: [{string.Join(", ", statuses)}]");
+        statuses.Count(s => s is 400 or 409).Should().Be(4, $"All other 4 parallel debits must be rejected without overdraft (insufficient funds or concurrency conflict). Statuses: [{string.Join(", ", statuses)}], Errors: [{string.Join(" | ", errors)}]");
 
         // 6. Verify final ledger balance in database is exactly 2,000 BDT
         var finalAccRes = await api.GetAsync($"/api/v1/accounts/{account.AccountNumber}");

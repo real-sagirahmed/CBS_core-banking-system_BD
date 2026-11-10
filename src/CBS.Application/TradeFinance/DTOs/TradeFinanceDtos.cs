@@ -33,6 +33,8 @@ public sealed record DraftDocumentaryCreditRequest(
     decimal BenchmarkMaxPrice,
     bool IsSanctionHit = false,
     bool IsDualUseHsCode = false,
+    string BranchCode = "001",
+    string? CustomerDepositAccountNumber = null,
     string? MasterLcNumber = null,
     decimal? MasterLcAmount = null,
     DateTime? MasterLcShipmentDate = null,
@@ -69,7 +71,9 @@ public sealed record IssueShippingGuaranteeRequest(
     decimal GuaranteeAmount,
     string Currency,
     decimal CashMarginAmount,
-    string MakerUserId);
+    string MakerUserId,
+    string BranchCode = "001",
+    string? CustomerDepositAccountNumber = null);
 
 public sealed record AuthorizeShippingGuaranteeRequest(
     string SgReference,
@@ -101,7 +105,8 @@ public sealed record RegisterExpRequest(
     decimal InvoiceAmount,
     string Currency,
     DateTime ShipmentDate,
-    string MakerUserId);
+    string MakerUserId,
+    string BranchCode = "001");
 
 public sealed record RealizeExpRequest(
     string ExpNumber,
@@ -142,3 +147,39 @@ public sealed record TbmlScreeningResponse(
     decimal UnitPriceVariancePercentage,
     string RiskRating,
     string RiskSummary);
+
+public sealed record ExpEodBatchRequest(
+    string BranchCode,
+    string? EvaluationDate = null);
+
+public sealed record ExpEodBatchResponseDto(
+    string BranchCode,
+    int TotalProcessed,
+    int OverdueCount,
+    decimal TotalOverdueAmount,
+    string Message);
+
+public sealed record OverdueExpReportDto(
+    string ExpNumber,
+    string ExportLcNumber,
+    Guid ExporterCustomerId,
+    string DestinationCountry,
+    decimal InvoiceAmount,
+    decimal RealizedAmount,
+    string Currency,
+    DateTime ShipmentDate,
+    DateTime RealizationDeadlineDate,
+    int DaysOverdue,
+    string BranchCode);
+
+public sealed record TbmlAuditRecordDto(
+    string LcNumber,
+    string ApplicantInfo,
+    string BeneficiaryInfo,
+    decimal DeclaredPrice,
+    decimal BenchmarkMin,
+    decimal BenchmarkMax,
+    decimal VariancePercentage,
+    string RiskRating,
+    string RiskSummary,
+    DateTime IssueDate);

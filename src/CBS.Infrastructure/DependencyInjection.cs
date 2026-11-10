@@ -50,6 +50,7 @@ public static class DependencyInjection
         services.AddScoped<IGeneralLedgerService, GeneralLedgerService>();
         services.AddScoped<IDepositLifecycleService, DepositLifecycleService>();
         services.AddScoped<ILoanAccountRepository, EfLoanAccountRepository>();
+        services.AddScoped<ITradeFinanceRepository, EfTradeFinanceRepository>();
 
         return services;
     }

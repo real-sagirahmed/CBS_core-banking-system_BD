@@ -47,6 +47,7 @@ public class EfChartOfAccountsRepository : IChartOfAccountsRepository
             new(StandardGlAccounts.BangladeshBankSettlement, "Bangladesh Bank Clearing Settlement Account", AccountCategory.Asset),
             new(StandardGlAccounts.BachClearingAdjustment, "BACH Clearing Adjustment Account", AccountCategory.Asset),
             new(StandardGlAccounts.CustomerLoansAdvances, "Customer Loans and Advances", AccountCategory.Asset),
+            new(StandardGlAccounts.CustomerLiabilityForLettersOfCredit, "Customer Liability for Letters of Credit (Contingent)", AccountCategory.Asset),
             new(StandardGlAccounts.CashDiscrepancyShortage, "Cash Discrepancy - Teller Shortage", AccountCategory.Asset),
 
             // Liabilities (200000000)
@@ -60,11 +61,14 @@ public class EfChartOfAccountsRepository : IChartOfAccountsRepository
             new(StandardGlAccounts.StatutoryVatPayable, "Statutory 15% VAT Payable", AccountCategory.Liability),
             new(StandardGlAccounts.BangladeshBankUnclaimedFunds, "Bangladesh Bank Unclaimed Funds Government Account", AccountCategory.Liability),
             new(StandardGlAccounts.LoanInterestSuspense, "Loan Interest Suspense Liability Account", AccountCategory.Liability),
+            new(StandardGlAccounts.CustomerCashMarginDeposit, "Customer Cash Margin on Letters of Credit & Guarantees", AccountCategory.Liability),
+            new(StandardGlAccounts.BankAcceptanceAndLcLiability, "Bank Acceptance and Letters of Credit Liability (Contingent)", AccountCategory.Liability),
             new(StandardGlAccounts.CashDiscrepancyExcess, "Cash Discrepancy - Teller Excess", AccountCategory.Liability),
 
             // Income (400000000)
             new(StandardGlAccounts.RemittanceCommissionIncome, "Remittance Issuance Commission Income", AccountCategory.Income),
             new(StandardGlAccounts.AccountMaintenanceHoveringFeeIncome, "Account Maintenance & Hovering Fee Income", AccountCategory.Income),
+            new(StandardGlAccounts.TradeCommissionAndFeeIncome, "Trade Services Commission and Fee Income", AccountCategory.Income),
             new(StandardGlAccounts.LoanInterestIncome, "Loan and Advance Interest Income", AccountCategory.Income),
 
             // Expenses (500000000)

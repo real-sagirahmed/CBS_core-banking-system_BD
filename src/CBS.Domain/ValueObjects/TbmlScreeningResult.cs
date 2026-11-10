@@ -16,7 +16,8 @@ public sealed record TbmlScreeningResult
     public TbmlRiskRating RiskRating { get; }
     public string RiskSummary { get; }
 
-    private TbmlScreeningResult(
+    [System.Text.Json.Serialization.JsonConstructor]
+    public TbmlScreeningResult(
         bool hasSanctionHit,
         bool hasPriceVarianceAnomaly,
         bool hasHighRiskPortRoute,

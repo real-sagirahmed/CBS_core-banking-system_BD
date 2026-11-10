@@ -15,6 +15,7 @@ namespace CBS.Domain.TradeFinance;
 public sealed class ExpRegulatoryTracking : AggregateRoot<string>
 {
     public string ExpNumber => Id;
+    public string BranchCode { get; private set; } = null!;
     public string ExportLcOrContractNumber { get; private set; } = null!;
     public Guid ExporterCustomerId { get; private set; }
     public string DestinationCountry { get; private set; } = null!;
@@ -28,6 +29,10 @@ public sealed class ExpRegulatoryTracking : AggregateRoot<string>
     public string MakerUserId { get; private set; } = null!;
     public DateTime CreatedAtUtc { get; private set; }
 
+    #pragma warning disable CS8618
+    private ExpRegulatoryTracking() : base(string.Empty) { }
+    #pragma warning restore CS8618
+
     private ExpRegulatoryTracking(string expNumber) : base(expNumber) { }
 
     public static ExpRegulatoryTracking Register(
@@ -37,7 +42,8 @@ public sealed class ExpRegulatoryTracking : AggregateRoot<string>
         string destinationCountry,
         Money invoiceAmount,
         DateTime shipmentDate,
-        string makerUserId)
+        string makerUserId,
+        string branchCode = "001")
     {
         if (string.IsNullOrWhiteSpace(expNumber))
             throw new ArgumentException("EXP Number is required.", nameof(expNumber));
@@ -63,6 +69,7 @@ public sealed class ExpRegulatoryTracking : AggregateRoot<string>
             Status = ExpTrackingStatus.InTransit,
             ReportedToBangladeshBank = false,
             MakerUserId = makerUserId.Trim(),
+            BranchCode = string.IsNullOrWhiteSpace(branchCode) ? "001" : branchCode.Trim(),
             CreatedAtUtc = DateTime.UtcNow
         };
     }
