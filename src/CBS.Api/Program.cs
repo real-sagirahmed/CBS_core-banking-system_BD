@@ -35,6 +35,8 @@ using CBS.Application.StandingInstructions.Commands;
 using CBS.Application.StandingInstructions.DTOs;
 using CBS.Application.Cheques.Commands;
 using CBS.Application.Cheques.DTOs;
+using CBS.Application.Deposits.Commands;
+using CBS.Application.Deposits.DTOs;
 using CBS.Application.TermDeposits.Commands;
 using CBS.Application.TermDeposits.DTOs;
 using CBS.Application.TradeFinance.Commands;
@@ -126,6 +128,7 @@ public partial class Program
         builder.Services.AddTransient<StandingInstructionCommandHandler>();
         builder.Services.AddTransient<ChequeCommandHandler>();
         builder.Services.AddTransient<TermDepositCommandHandler>();
+        builder.Services.AddTransient<DpsCommandHandler>();
 
         builder.Services.ConfigureHttpJsonOptions(options =>
         {
@@ -2748,6 +2751,144 @@ public partial class Program
         {
             var result = await handler.HandleGetByIdAsync(contractId, ct);
             return result is null ? Results.NotFound(new { error = $"FDR contract '{contractId}' not found." }) : Results.Ok(result);
+        });
+
+        // --- DEPOSIT PENSION SCHEME (DPS) & RECURRING DEPOSITS (BRPD Circular 12/2024 Module 3.7 & 3.8) ---
+        var dpsApi = app.MapGroup("/api/v1/dps").AddEndpointFilter<FinancialAuthorizationFilter>();
+
+        dpsApi.MapPost("/open", async (
+            OpenDpsRequest request,
+            DpsCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleOpenDpsAccountAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.ToString(), statusCode: 500);
+            }
+        });
+
+        dpsApi.MapGet("/{dpsAccountId}", async (
+            string dpsAccountId,
+            DpsCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var result = await handler.HandleGetDpsAccountAsync(dpsAccountId, ct);
+            return result is null ? Results.NotFound(new { error = $"DPS account '{dpsAccountId}' not found." }) : Results.Ok(result);
+        });
+
+        dpsApi.MapPost("/{dpsAccountId}/collect-installment", async (
+            string dpsAccountId,
+            CollectInstallmentRequest request,
+            DpsCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleCollectInstallmentAsync(dpsAccountId, request, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+        });
+
+        dpsApi.MapGet("/{dpsAccountId}/premature-quote", async (
+            string dpsAccountId,
+            DateOnly encashmentDate,
+            bool hasTaxIdNumber,
+            DpsCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleGetPrematureQuoteAsync(dpsAccountId, encashmentDate, hasTaxIdNumber, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+        });
+
+        dpsApi.MapPost("/{dpsAccountId}/premature-encash", async (
+            string dpsAccountId,
+            PrematureEncashDpsRequest request,
+            DpsCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandlePrematureEncashAsync(dpsAccountId, request, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+        });
+
+        dpsApi.MapPost("/eod-batch/process-sweeps", async (
+            ProcessDpsSweepsRequest request,
+            DpsCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var count = await handler.HandleExecuteDueDpsSweepsAsync(request.EvaluationDate, ct);
+            return Results.Ok(new { processedCount = count, evaluationDate = request.EvaluationDate });
+        });
+
+        // --- DEPOSIT LIEN & DLAD FACILITY APIS (BRPD Circular 12/2024 Module 3.8.10 & 3.6.1) ---
+        var lienApi = app.MapGroup("/api/v1/deposits/liens").AddEndpointFilter<FinancialAuthorizationFilter>();
+
+        lienApi.MapPost("/place", async (
+            PlaceDepositLienRequest request,
+            DpsCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandlePlaceDepositLienAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+        });
+
+        lienApi.MapPost("/{lienId}/release", async (
+            string lienId,
+            ReleaseDepositLienRequest request,
+            DpsCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleReleaseDepositLienAsync(lienId, request, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+        });
+
+        lienApi.MapGet("/{depositAccountId}", async (
+            string depositAccountId,
+            DpsCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var result = await handler.HandleGetActiveLienAsync(depositAccountId, ct);
+            return result is null ? Results.NotFound(new { error = $"No active lien found for deposit account '{depositAccountId}'." }) : Results.Ok(result);
         });
 
         // --- GENERAL LEDGER & CHART OF ACCOUNTS APIS (BRPD Circular 12/2024 Module 1) ---

@@ -4,6 +4,7 @@ using CBS.Domain.AiIntelligence;
 using CBS.Domain.BranchCash;
 using CBS.Domain.Cheques;
 using CBS.Domain.Customers;
+using CBS.Domain.Deposits;
 using CBS.Domain.GeneralLedger;
 using CBS.Domain.Lending;
 using CBS.Domain.PaymentRails;
@@ -54,6 +55,9 @@ public class CbsDbContext : DbContext
     public DbSet<ChequeBook> ChequeBooks => Set<ChequeBook>();
     public DbSet<ChequeLeaf> ChequeLeaves => Set<ChequeLeaf>();
     public DbSet<TermDepositContract> TermDepositContracts => Set<TermDepositContract>();
+    public DbSet<DpsAccount> DpsAccounts => Set<DpsAccount>();
+    public DbSet<DpsInstallmentSchedule> DpsInstallments => Set<DpsInstallmentSchedule>();
+    public DbSet<DepositLienFacility> DepositLiens => Set<DepositLienFacility>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -119,6 +123,9 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new ChequeBookConfiguration());
         modelBuilder.ApplyConfiguration(new ChequeLeafConfiguration());
         modelBuilder.ApplyConfiguration(new TermDepositContractConfiguration());
+        modelBuilder.ApplyConfiguration(new DpsAccountConfiguration());
+        modelBuilder.ApplyConfiguration(new DpsInstallmentScheduleConfiguration());
+        modelBuilder.ApplyConfiguration(new DepositLienFacilityConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -139,6 +146,8 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<ChequeBook>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<ChequeLeaf>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<TermDepositContract>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<DpsAccount>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<DepositLienFacility>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -164,6 +173,8 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<ChequeBook>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<ChequeLeaf>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<TermDepositContract>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<DpsAccount>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<DepositLienFacility>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
