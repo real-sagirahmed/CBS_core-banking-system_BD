@@ -38,6 +38,12 @@ public sealed class BfiuRegulatoryReport : AggregateRoot<string>
     public IReadOnlyList<StrAlertItem> StrAlerts { get; private set; } = [];
     public DateTime GeneratedAtUtc { get; private set; }
     public string GeneratedByUserId { get; private set; } = null!;
+    public string BranchCode { get; private set; } = "001";
+    public string? GoAmlPayload { get; private set; }
+    public string? GoAmlFormat { get; private set; }
+
+    // Parameterless constructor for EF Core ORM materialization
+    private BfiuRegulatoryReport() : base(string.Empty) { }
 
     private BfiuRegulatoryReport(string reportReference) : base(reportReference) { }
 
@@ -45,7 +51,8 @@ public sealed class BfiuRegulatoryReport : AggregateRoot<string>
         string reportReference,
         DateTime reportDate,
         IEnumerable<(string Cif, string Name, int TxCount, decimal TotalCash)> customerCashAggregates,
-        string generatedByUserId)
+        string generatedByUserId,
+        string branchCode = "001")
     {
         if (string.IsNullOrWhiteSpace(reportReference))
             throw new ArgumentException("Report reference is required.", nameof(reportReference));
@@ -65,7 +72,8 @@ public sealed class BfiuRegulatoryReport : AggregateRoot<string>
             Status = ComplianceReportStatus.Generated,
             CtrItems = qualifiedItems.AsReadOnly(),
             GeneratedAtUtc = DateTime.UtcNow,
-            GeneratedByUserId = generatedByUserId.Trim()
+            GeneratedByUserId = generatedByUserId.Trim(),
+            BranchCode = string.IsNullOrWhiteSpace(branchCode) ? "001" : branchCode.Trim()
         };
     }
 
@@ -73,7 +81,8 @@ public sealed class BfiuRegulatoryReport : AggregateRoot<string>
         string reportReference,
         DateTime reportDate,
         IEnumerable<StrAlertItem> alerts,
-        string generatedByUserId)
+        string generatedByUserId,
+        string branchCode = "001")
     {
         if (string.IsNullOrWhiteSpace(reportReference))
             throw new ArgumentException("Report reference is required.", nameof(reportReference));
@@ -89,8 +98,16 @@ public sealed class BfiuRegulatoryReport : AggregateRoot<string>
             Status = ComplianceReportStatus.Generated,
             StrAlerts = alertList.AsReadOnly(),
             GeneratedAtUtc = DateTime.UtcNow,
-            GeneratedByUserId = generatedByUserId.Trim()
+            GeneratedByUserId = generatedByUserId.Trim(),
+            BranchCode = string.IsNullOrWhiteSpace(branchCode) ? "001" : branchCode.Trim()
         };
+    }
+
+    public void SetGoAmlExportPayload(string payload, string format)
+    {
+        GoAmlPayload = payload;
+        GoAmlFormat = format.Trim().ToLowerInvariant();
+        Status = ComplianceReportStatus.SubmittedToGoAml;
     }
 
     public void MarkSubmittedToGoAml()

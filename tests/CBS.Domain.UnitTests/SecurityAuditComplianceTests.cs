@@ -170,4 +170,55 @@ public class SecurityAuditComplianceTests
         str.MarkSubmittedToGoAml();
         str.Status.Should().Be(ComplianceReportStatus.SubmittedToGoAml);
     }
+
+    [Fact]
+    public void AuditJournalEntry_WhenHashOrPayloadTampered_VerifyHashReturnsFalse()
+    {
+        var entry = AuditJournalEntry.Create(
+            sequenceNumber: 1,
+            userId: "MAKER01",
+            role: UserRole.BranchTeller,
+            branchCode: "001",
+            eventCategory: AuditEventCategory.FinancialTransaction,
+            action: "CASH_DEPOSIT",
+            targetEntityName: "DepositAccount",
+            targetEntityId: "0011200000018",
+            beforeStateJson: "{\"balance\":5000}",
+            afterStateJson: "{\"balance\":15000}",
+            terminalIp: "192.168.1.105",
+            previousEntryHash: AuditJournalEntry.GenesisHash);
+
+        entry.VerifyHash().Should().BeTrue();
+
+        // Tamper with state JSON
+        var tampered = entry with { BeforeStateJson = "{\"balance\":9999999}" };
+        tampered.VerifyHash().Should().BeFalse("Modifying internal state payload must break cryptographic hash verification");
+    }
+
+    [Fact]
+    public void GoAmlXmlBuilder_BuildXml_GeneratesWellFormedXmlWithCorrectTransactions()
+    {
+        var aggregates = new List<(string Cif, string Name, int TxCount, decimal TotalCash)>
+        {
+            ("1001", "Abdul Karim", 2, 1500000m),
+            ("1003", "Apex Tannery Ltd", 1, 2000000m)
+        };
+
+        var ctr = BfiuRegulatoryReport.GenerateCtr(
+            reportReference: "CTR-2026-001-002",
+            reportDate: new DateTime(2026, 7, 10),
+            customerCashAggregates: aggregates,
+            generatedByUserId: "COMPLIANCE_01",
+            branchCode: "001");
+
+        string xml = GoAmlXmlBuilder.BuildXml(ctr);
+
+        xml.Should().Contain("<report xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">");
+        xml.Should().Contain("<rentity_id>BFIU-BANK-001</rentity_id>");
+        xml.Should().Contain("<report_code>CTR</report_code>");
+        xml.Should().Contain("<party_cif>1001</party_cif>");
+        xml.Should().Contain("<amount_local>1500000.00</amount_local>");
+        xml.Should().Contain("<party_cif>1003</party_cif>");
+        xml.Should().Contain("<amount_local>2000000.00</amount_local>");
+    }
 }

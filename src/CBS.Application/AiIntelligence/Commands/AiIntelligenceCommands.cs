@@ -15,15 +15,18 @@ public class AiIntelligenceCommandHandler
     private readonly IAiKnowledgeRepository _aiRepository;
     private readonly IGeminiAiService _geminiAiService;
     private readonly ISecurityAuditRepository _auditRepository;
+    private readonly IUnitOfWork? _unitOfWork;
 
     public AiIntelligenceCommandHandler(
         IAiKnowledgeRepository aiRepository,
         IGeminiAiService geminiAiService,
-        ISecurityAuditRepository auditRepository)
+        ISecurityAuditRepository auditRepository,
+        IUnitOfWork? unitOfWork = null)
     {
         _aiRepository = aiRepository;
         _geminiAiService = geminiAiService;
         _auditRepository = auditRepository;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<AiAdvisoryResponse> HandleAskAdvisoryAsync(AskAiAdvisoryCommand command, CancellationToken ct = default)
@@ -90,6 +93,10 @@ public class AiIntelligenceCommandHandler
             previousEntryHash: latestHash);
 
         await _auditRepository.AddAuditEntryAsync(auditEntry, ct);
+        if (_unitOfWork != null)
+        {
+            await _unitOfWork.SaveChangesAsync(ct);
+        }
 
         return new AiAdvisoryResponse(
             query.QueryId,
@@ -146,6 +153,10 @@ public class AiIntelligenceCommandHandler
             previousEntryHash: latestHash);
 
         await _auditRepository.AddAuditEntryAsync(auditEntry, ct);
+        if (_unitOfWork != null)
+        {
+            await _unitOfWork.SaveChangesAsync(ct);
+        }
 
         return new TbmlAssessmentResponse(
             assessment.AssessmentId,

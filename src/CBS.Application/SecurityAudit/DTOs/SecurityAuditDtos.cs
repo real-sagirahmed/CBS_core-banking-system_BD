@@ -107,4 +107,28 @@ public sealed record BfiuReportResponse(
     string Status,
     int TotalItems,
     IReadOnlyList<CtrItemResponse>? CtrItems,
-    IReadOnlyList<StrItemResponse>? StrAlerts);
+    IReadOnlyList<StrItemResponse>? StrAlerts,
+    string? BranchCode = null,
+    string? GoAmlFormat = null,
+    string? GoAmlPayload = null);
+
+public sealed record AutoAggregateCtrRequest(
+    string? ReportReference,
+    DateTime ReportDate,
+    string GeneratedByUserId,
+    string BranchCode = "001",
+    IReadOnlyList<CustomerCashAggregateInput>? Aggregates = null);
+
+public sealed record CaatsIntegrityVerificationResultDto(
+    int TotalRecordsEvaluated,
+    bool IsChainIntegrityValid,
+    long? TamperDetectedAtSequence,
+    string LastVerifiedHash,
+    string Remarks);
+
+public sealed record GoAmlExportResponseDto(
+    string ReportReference,
+    string ReportType,
+    string Format,
+    string Payload,
+    DateTime ExportedAtUtc);

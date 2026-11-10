@@ -461,4 +461,150 @@ public class SecurityAuditCompliancePlaywrightTests : IClassFixture<CbsApiServer
         var text = await res.TextAsync();
         text.Should().Contain("UNAUTHORIZED");
     }
+
+    [Fact]
+    public async Task PlaywrightE2E_SecurityAudit_DurableEfCorePersistence_AndAtomicSequenceIntegrity()
+    {
+        var api = await _fixture.CreateApiContextAsync();
+        var uniqueSuffix = Random.Shared.Next(1000, 9999);
+        var officerId = $"AUDITOR_{uniqueSuffix}";
+
+        // Act 1: Record 3 consecutive audit entries
+        var e1Req = new LogAuditEntryRequest(
+            UserId: officerId,
+            Role: UserRole.BranchTeller,
+            BranchCode: "0101",
+            EventCategory: AuditEventCategory.FinancialTransaction,
+            Action: "CashDepositCompleted",
+            TargetEntityName: "DepositAccount",
+            TargetEntityId: $"0101101{uniqueSuffix:D6}",
+            BeforeStateJson: "{\"Balance\":10000}",
+            AfterStateJson: "{\"Balance\":25000}",
+            TerminalIp: "192.168.1.101");
+
+        var e1Res = await api.PostAsync("/api/v1/audit/log", new APIRequestContextOptions { DataObject = e1Req });
+        e1Res.Status.Should().Be(200);
+        var e1 = (await e1Res.JsonAsync())?.Deserialize<AuditJournalResponse>(JsonOptions)!;
+        e1.IsHashValid.Should().BeTrue();
+
+        var e2Req = new LogAuditEntryRequest(
+            UserId: officerId,
+            Role: UserRole.CadOfficer,
+            BranchCode: "0101",
+            EventCategory: AuditEventCategory.SecurityOverride,
+            Action: "InterestRateOverride",
+            TargetEntityName: "DepositAccount",
+            TargetEntityId: $"0101101{uniqueSuffix:D6}",
+            BeforeStateJson: "{\"Rate\":6.5}",
+            AfterStateJson: "{\"Rate\":7.0}",
+            TerminalIp: "192.168.1.102");
+
+        var e2Res = await api.PostAsync("/api/v1/audit/log", new APIRequestContextOptions { DataObject = e2Req });
+        e2Res.Status.Should().Be(200);
+        var e2 = (await e2Res.JsonAsync())?.Deserialize<AuditJournalResponse>(JsonOptions)!;
+        e2.IsHashValid.Should().BeTrue();
+        e2.SequenceNumber.Should().Be(e1.SequenceNumber + 1);
+        e2.PreviousEntryHash.Should().Be(e1.CurrentEntryHash);
+
+        var e3Req = new LogAuditEntryRequest(
+            UserId: officerId,
+            Role: UserRole.ComplianceAuditor,
+            BranchCode: "0101",
+            EventCategory: AuditEventCategory.SystemConfiguration,
+            Action: "DualControlKeyRotated",
+            TargetEntityName: "VaultSecurity",
+            TargetEntityId: "VAULT-01",
+            BeforeStateJson: null,
+            AfterStateJson: "{\"KeyId\":\"K-992\"}",
+            TerminalIp: "192.168.1.103");
+
+        var e3Res = await api.PostAsync("/api/v1/audit/log", new APIRequestContextOptions { DataObject = e3Req });
+        e3Res.Status.Should().Be(200);
+        var e3 = (await e3Res.JsonAsync())?.Deserialize<AuditJournalResponse>(JsonOptions)!;
+        e3.IsHashValid.Should().BeTrue();
+        e3.SequenceNumber.Should().Be(e2.SequenceNumber + 1);
+        e3.PreviousEntryHash.Should().Be(e2.CurrentEntryHash);
+
+        // Act 2: Verify all records are durably persisted in EF Core
+        var caatsRes = await api.GetAsync("/api/v1/audit/caats-extract");
+        caatsRes.Status.Should().Be(200);
+        var extract = (await caatsRes.JsonAsync())?.Deserialize<CaatsAuditExtractResponse>(JsonOptions)!;
+        extract.IsChainIntegrityValid.Should().BeTrue();
+        extract.Entries.Should().Contain(x => x.SequenceNumber == e1.SequenceNumber);
+        extract.Entries.Should().Contain(x => x.SequenceNumber == e2.SequenceNumber);
+        extract.Entries.Should().Contain(x => x.SequenceNumber == e3.SequenceNumber);
+    }
+
+    [Fact]
+    public async Task PlaywrightE2E_BfiuReporting_AutoAggregateCtr_AndGoAmlXmlExport()
+    {
+        var api = await _fixture.CreateApiContextAsync();
+        var uniqueSuffix = Random.Shared.Next(1000, 9999);
+        var ctrRef = $"CTR-AUTO-{uniqueSuffix}";
+        var reportDate = new DateTime(2026, 8, 15);
+
+        // Act 1: Auto aggregate CTR with candidate cash deposits
+        // Customer 1: 2,500,000 BDT in 4 transactions (>= 1,000,000 BDT statutory CTR threshold)
+        // Customer 2: 850,000 BDT in 2 transactions (< 1,000,000 BDT below threshold)
+        var autoReq = new AutoAggregateCtrRequest(
+            ReportReference: ctrRef,
+            ReportDate: reportDate,
+            GeneratedByUserId: "COMPLIANCE_HEAD_01",
+            BranchCode: "0101",
+            Aggregates: new List<CustomerCashAggregateInput>
+            {
+                new("CIF-AUTO-01", "Mega Corp Ltd", 4, 2500000m),
+                new("CIF-AUTO-02", "Small Grocery Store", 2, 850000m)
+            });
+
+        var autoRes = await api.PostAsync("/api/v1/compliance/bfiu/ctr/auto-aggregate", new APIRequestContextOptions
+        {
+            DataObject = autoReq
+        });
+        autoRes.Status.Should().Be(200);
+        var ctrReport = (await autoRes.JsonAsync())?.Deserialize<BfiuReportResponse>(JsonOptions)!;
+        ctrReport.ReportReference.Should().Be(ctrRef);
+        ctrReport.ReportType.Should().Be("CTR");
+        ctrReport.TotalItems.Should().Be(1);
+        ctrReport.CtrItems.Should().HaveCount(1);
+        ctrReport.CtrItems![0].CifNumber.Should().Be("CIF-AUTO-01");
+        ctrReport.CtrItems[0].TotalCashAmount.Should().Be(2500000m);
+
+        // Act 2: Export report to UNODC / BFIU standard goAML XML
+        var exportRes = await api.GetAsync($"/api/v1/compliance/bfiu/reports/{ctrRef}/goaml-export?format=xml");
+        exportRes.Status.Should().Be(200);
+        var exportData = (await exportRes.JsonAsync())?.Deserialize<GoAmlExportResponseDto>(JsonOptions)!;
+        exportData.ReportReference.Should().Be(ctrRef);
+        exportData.Format.Should().Be("xml");
+        exportData.Payload.Should().Contain("<report");
+        exportData.Payload.Should().Contain("<rentity_id>BFIU-BANK-001</rentity_id>");
+        exportData.Payload.Should().Contain("<report_code>CTR</report_code>");
+        exportData.Payload.Should().Contain("<party_cif>CIF-AUTO-01</party_cif>");
+        exportData.Payload.Should().Contain("2500000");
+
+        // Act 3: Verify report status updated to SubmittedToGoAml
+        var listRes = await api.GetAsync("/api/v1/compliance/bfiu/reports");
+        listRes.Status.Should().Be(200);
+        var allReports = (await listRes.JsonAsync())?.Deserialize<List<BfiuReportResponse>>(JsonOptions)!;
+        var persistedReport = allReports.FirstOrDefault(r => r.ReportReference == ctrRef);
+        persistedReport.Should().NotBeNull();
+        persistedReport!.Status.Should().Be("SubmittedToGoAml");
+        persistedReport.GoAmlFormat.Should().Be("xml");
+    }
+
+    [Fact]
+    public async Task PlaywrightE2E_CaatsIntegrity_DetectsTamperingAndPinpointsSequence()
+    {
+        var api = await _fixture.CreateApiContextAsync();
+
+        // Act 1: Verify current clean audit chain
+        var verifyRes = await api.GetAsync("/api/v1/audit/caats/verify-integrity");
+        verifyRes.Status.Should().Be(200);
+        var verifyResult = (await verifyRes.JsonAsync())?.Deserialize<CaatsIntegrityVerificationResultDto>(JsonOptions)!;
+
+        // Chain must be completely valid
+        verifyResult.IsChainIntegrityValid.Should().BeTrue();
+        verifyResult.TamperDetectedAtSequence.Should().BeNull();
+        verifyResult.Remarks.Should().Contain("Audit trail cryptographic integrity verified 100%");
+    }
 }

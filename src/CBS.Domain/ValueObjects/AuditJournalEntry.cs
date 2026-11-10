@@ -14,20 +14,37 @@ public sealed record AuditJournalEntry
 {
     public const string GenesisHash = "0000000000000000000000000000000000000000000000000000000000000000";
 
-    public long SequenceNumber { get; }
-    public DateTime TimestampUtc { get; }
-    public string UserId { get; }
-    public UserRole Role { get; }
-    public string BranchCode { get; }
-    public AuditEventCategory EventCategory { get; }
-    public string Action { get; }
-    public string TargetEntityName { get; }
-    public string TargetEntityId { get; }
-    public string? BeforeStateJson { get; }
-    public string? AfterStateJson { get; }
-    public string TerminalIp { get; }
-    public string PreviousEntryHash { get; }
-    public string CurrentEntryHash { get; }
+    public long SequenceNumber { get; init; }
+    public DateTime TimestampUtc { get; init; }
+    public string UserId { get; init; } = string.Empty;
+    public UserRole Role { get; init; }
+    public string BranchCode { get; init; } = "001";
+    public AuditEventCategory EventCategory { get; init; }
+    public string Action { get; init; } = string.Empty;
+    public string TargetEntityName { get; init; } = string.Empty;
+    public string TargetEntityId { get; init; } = string.Empty;
+    public string? BeforeStateJson { get; init; }
+    public string? AfterStateJson { get; init; }
+    public string TerminalIp { get; init; } = "127.0.0.1";
+    public string PreviousEntryHash { get; init; } = GenesisHash;
+    public string CurrentEntryHash { get; init; } = GenesisHash;
+
+    // Parameterless constructor for EF Core ORM materialization
+    private AuditJournalEntry()
+    {
+        SequenceNumber = 0;
+        TimestampUtc = DateTime.UtcNow;
+        UserId = string.Empty;
+        Role = UserRole.BranchTeller;
+        BranchCode = "001";
+        EventCategory = AuditEventCategory.FinancialTransaction;
+        Action = string.Empty;
+        TargetEntityName = string.Empty;
+        TargetEntityId = string.Empty;
+        TerminalIp = "127.0.0.1";
+        PreviousEntryHash = GenesisHash;
+        CurrentEntryHash = GenesisHash;
+    }
 
     private AuditJournalEntry(
         long sequenceNumber,
@@ -86,8 +103,9 @@ public sealed record AuditJournalEntry
 
         var timestamp = DateTime.UtcNow;
         var prevHash = string.IsNullOrWhiteSpace(previousEntryHash) ? GenesisHash : previousEntryHash.Trim();
+        string tsStr = timestamp.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ", System.Globalization.CultureInfo.InvariantCulture);
 
-        var payload = $"{prevHash}|{sequenceNumber}|{timestamp:O}|{userId.Trim()}|{role}|{branchCode.Trim()}|{eventCategory}|{action.Trim()}|{targetEntityName.Trim()}|{targetEntityId.Trim()}|{beforeStateJson}|{afterStateJson}|{terminalIp.Trim()}";
+        var payload = $"{prevHash}|{sequenceNumber}|{tsStr}|{userId.Trim()}|{role}|{branchCode.Trim()}|{eventCategory}|{action.Trim()}|{targetEntityName.Trim()}|{targetEntityId.Trim()}|{beforeStateJson}|{afterStateJson}|{terminalIp.Trim()}";
         var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(payload));
         var currentHash = Convert.ToHexString(hashBytes).ToLowerInvariant();
 
@@ -110,7 +128,8 @@ public sealed record AuditJournalEntry
 
     public bool VerifyHash()
     {
-        var payload = $"{PreviousEntryHash}|{SequenceNumber}|{TimestampUtc:O}|{UserId}|{Role}|{BranchCode}|{EventCategory}|{Action}|{TargetEntityName}|{TargetEntityId}|{BeforeStateJson}|{AfterStateJson}|{TerminalIp}";
+        string tsStr = TimestampUtc.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ", System.Globalization.CultureInfo.InvariantCulture);
+        var payload = $"{PreviousEntryHash}|{SequenceNumber}|{tsStr}|{UserId}|{Role}|{BranchCode}|{EventCategory}|{Action}|{TargetEntityName}|{TargetEntityId}|{BeforeStateJson}|{AfterStateJson}|{TerminalIp}";
         var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(payload));
         var recomputedHash = Convert.ToHexString(hashBytes).ToLowerInvariant();
         return string.Equals(CurrentEntryHash, recomputedHash, StringComparison.OrdinalIgnoreCase);

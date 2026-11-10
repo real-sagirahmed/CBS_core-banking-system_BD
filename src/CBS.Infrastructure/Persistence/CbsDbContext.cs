@@ -6,6 +6,7 @@ using CBS.Domain.Lending;
 using CBS.Domain.SecurityAudit;
 using CBS.Domain.TradeFinance;
 using CBS.Domain.Treasury;
+using CBS.Domain.ValueObjects;
 using CBS.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,6 +27,8 @@ public class CbsDbContext : DbContext
     public DbSet<ExpRegulatoryTracking> ExpRegulatoryTrackings => Set<ExpRegulatoryTracking>();
     public DbSet<TreasuryDeal> TreasuryDeals => Set<TreasuryDeal>();
     public DbSet<TreasurySecurity> TreasurySecurities => Set<TreasurySecurity>();
+    public DbSet<AuditJournalEntry> AuditJournalEntries => Set<AuditJournalEntry>();
+    public DbSet<BfiuRegulatoryReport> BfiuRegulatoryReports => Set<BfiuRegulatoryReport>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -71,6 +74,8 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new ExpRegulatoryTrackingConfiguration());
         modelBuilder.ApplyConfiguration(new TreasuryDealConfiguration());
         modelBuilder.ApplyConfiguration(new TreasurySecurityConfiguration());
+        modelBuilder.ApplyConfiguration(new AuditJournalEntryConfiguration());
+        modelBuilder.ApplyConfiguration(new BfiuRegulatoryReportConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -83,6 +88,7 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<ExpRegulatoryTracking>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<TreasuryDeal>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<TreasurySecurity>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<BfiuRegulatoryReport>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -100,6 +106,7 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<ExpRegulatoryTracking>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<TreasuryDeal>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<TreasurySecurity>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<BfiuRegulatoryReport>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)

@@ -65,43 +65,62 @@ public class FinancialAuthorizationFilter : IEndpointFilter
         // If user ID is available, verify against active session in repository
         if (!string.IsNullOrWhiteSpace(userId))
         {
-            var session = !string.IsNullOrWhiteSpace(sessionId)
-                ? await auditRepository.GetSessionByIdAsync(sessionId)
-                : await auditRepository.GetActiveSessionByUserIdAsync(userId);
-
-            if (session is not null)
+            try
             {
-                if (!session.IsActive)
-                {
-                    return Results.Json(new
-                    {
-                        error = "Unauthorized: User session is terminated or inactive.",
-                        code = "SESSION_INACTIVE"
-                    }, statusCode: StatusCodes.Status401Unauthorized);
-                }
+                var session = !string.IsNullOrWhiteSpace(sessionId)
+                    ? await auditRepository.GetSessionByIdAsync(sessionId)
+                    : await auditRepository.GetActiveSessionByUserIdAsync(userId);
 
-                try
+                if (session is not null)
                 {
-                    session.AssertCanPerformFinancialTransaction();
+                    if (!session.IsActive)
+                    {
+                        return Results.Json(new
+                        {
+                            error = "Unauthorized: User session is terminated or inactive.",
+                            code = "SESSION_INACTIVE"
+                        }, statusCode: StatusCodes.Status401Unauthorized);
+                    }
+
+                    try
+                    {
+                        session.AssertCanPerformFinancialTransaction();
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        return Results.Json(new
+                        {
+                            error = ex.Message,
+                            code = "BRPD_10_3_5_VII"
+                        }, statusCode: StatusCodes.Status403Forbidden);
+                    }
                 }
-                catch (InvalidOperationException ex)
+                else if (userId.Contains("ADMIN", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(userId, "SUPERUSER", StringComparison.OrdinalIgnoreCase))
                 {
+                    // Safety net: Block known admin usernames even if session isn't explicitly initialized
                     return Results.Json(new
                     {
-                        error = ex.Message,
+                        error = "Security Invariant Violation [BRPD 10.3.5-vii]: Super/Admin users in CBS shall not be authorized to perform or approve financial transactions.",
                         code = "BRPD_10_3_5_VII"
                     }, statusCode: StatusCodes.Status403Forbidden);
                 }
             }
-            else if (userId.Contains("ADMIN", StringComparison.OrdinalIgnoreCase) ||
-                     string.Equals(userId, "SUPERUSER", StringComparison.OrdinalIgnoreCase))
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
             {
-                // Safety net: Block known admin usernames even if session isn't explicitly initialized
                 return Results.Json(new
                 {
-                    error = "Security Invariant Violation [BRPD 10.3.5-vii]: Super/Admin users in CBS shall not be authorized to perform or approve financial transactions.",
-                    code = "BRPD_10_3_5_VII"
-                }, statusCode: StatusCodes.Status403Forbidden);
+                    error = "Database Transaction Contention: Resource busy or transaction conflict.",
+                    details = ex.Message
+                }, statusCode: StatusCodes.Status409Conflict);
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                return Results.Json(new
+                {
+                    error = "Database Concurrency Conflict: Resource locked by another transaction.",
+                    details = ex.Message
+                }, statusCode: StatusCodes.Status409Conflict);
             }
         }
 

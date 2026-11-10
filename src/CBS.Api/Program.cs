@@ -87,7 +87,6 @@ public partial class Program
         builder.Services.AddSingleton<IChequeClearingRepository, InMemoryChequeClearingRepository>();
         builder.Services.AddSingleton<IBeftnRepository, InMemoryBeftnRepository>();
         builder.Services.AddSingleton<IRtgsRepository, InMemoryRtgsRepository>();
-        builder.Services.AddSingleton<ISecurityAuditRepository, InMemorySecurityAuditRepository>();
         builder.Services.AddSingleton<IAiKnowledgeRepository, InMemoryAiKnowledgeRepository>();
         builder.Services.AddSingleton<IGeminiAiService, GeminiAiService>();
         builder.Services.AddSingleton<IElectionCommissionGateway, MockElectionCommissionGateway>();
@@ -2050,6 +2049,22 @@ public partial class Program
             }
         });
 
+        auditApi.MapGet("/caats/verify-integrity", async (
+            SecurityAuditCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new CaatsVerifyIntegrityCommand();
+                var result = await handler.HandleCaatsVerifyIntegrityAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
         complianceApi.MapPost("/bfiu/ctr/generate", async (
             GenerateCtrReportRequest request,
             SecurityAuditCommandHandler handler,
@@ -2059,6 +2074,60 @@ public partial class Program
             {
                 var command = new GenerateCtrReportCommand(request);
                 var result = await handler.HandleGenerateCtrAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        complianceApi.MapPost("/bfiu/ctr/auto-aggregate", async (
+            AutoAggregateCtrRequest request,
+            SecurityAuditCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new AutoAggregateCtrCommand(request);
+                var result = await handler.HandleAutoAggregateCtrAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        complianceApi.MapGet("/bfiu/reports/{reportReference}/goaml-export", async (
+            string reportReference,
+            string? format,
+            SecurityAuditCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new ExportGoAmlReportCommand(reportReference, format ?? "xml");
+                var result = await handler.HandleGoAmlExportAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        complianceApi.MapGet("/bfiu/reports", async (
+            SecurityAuditCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleGetAllBfiuReportsAsync(ct);
                 return Results.Ok(result);
             }
             catch (Exception ex)
