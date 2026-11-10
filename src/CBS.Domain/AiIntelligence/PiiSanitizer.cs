@@ -26,6 +26,11 @@ public static class PiiSanitizer
     private static readonly Regex Standalone10DigitNidRegex = new(@"\b\d{10}\b", RegexOptions.Compiled);
     private static readonly Regex Standalone13DigitRegex = new(@"\b\d{13}\b", RegexOptions.Compiled);
 
+    // Payment Cards (16 digits) and Passports (PCI-DSS & BRPD 9.1.1-xxv)
+    private static readonly Regex CardPanHyphenRegex = new(@"\b\d{4}[-\s]\d{4}[-\s]\d{4}[-\s]\d{4}\b", RegexOptions.Compiled);
+    private static readonly Regex Standalone16DigitCardRegex = new(@"\b\d{16}\b", RegexOptions.Compiled);
+    private static readonly Regex PassportPrefixedRegex = new(@"(?i:\b(?:passport|pass\s*no|pp)\b[\s:#-]*)([A-Za-z]{1,2}\d{7,8})\b", RegexOptions.Compiled);
+
     public static string SanitizePrompt(string input)
     {
         if (string.IsNullOrWhiteSpace(input))
@@ -86,6 +91,20 @@ public static class PiiSanitizer
         // 9. Remaining Standalone 13-digit numbers are CBS Account Numbers (ACCT-***-XXXX)
         result = Standalone13DigitRegex.Replace(result, m => $"ACCT-***-{m.Value[^4..]}");
 
+        // 10. Mask 16-digit Payment Card PANs (with hyphens/spaces: CARD-***-XXXX)
+        result = CardPanHyphenRegex.Replace(result, m => $"CARD-***-{m.Value.Replace("-", "").Replace(" ", "")[^4..]}");
+
+        // 11. Mask Standalone 16-digit Card PANs (CARD-***-XXXX)
+        result = Standalone16DigitCardRegex.Replace(result, m => $"CARD-***-{m.Value[^4..]}");
+
+        // 12. Mask Context-Prefixed Passport Numbers (PASS-***-XXXX)
+        result = PassportPrefixedRegex.Replace(result, m =>
+        {
+            var docId = m.Groups[1].Value;
+            var prefix = m.Value[..^docId.Length];
+            return $"{prefix}PASS-***-{docId[^4..]}";
+        });
+
         return result;
     }
 
@@ -96,6 +115,9 @@ public static class PiiSanitizer
                Standalone17DigitNidRegex.IsMatch(input) ||
                Standalone12DigitTinRegex.IsMatch(input) ||
                Standalone10DigitNidRegex.IsMatch(input) ||
-               Standalone13DigitRegex.IsMatch(input);
+               Standalone13DigitRegex.IsMatch(input) ||
+               CardPanHyphenRegex.IsMatch(input) ||
+               Standalone16DigitCardRegex.IsMatch(input) ||
+               PassportPrefixedRegex.IsMatch(input);
     }
 }

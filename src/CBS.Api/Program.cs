@@ -42,6 +42,11 @@ using CBS.Infrastructure.AiIntelligence;
 using CBS.Infrastructure.Gateways;
 using CBS.Infrastructure.Persistence;
 using CBS.Infrastructure.Security;
+using CBS.Application.Common.Security;
+using CBS.Api.Filters;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var app = Program.CreateWebApplication(args);
 app.Run();
@@ -53,6 +58,23 @@ public partial class Program
         var builder = WebApplication.CreateBuilder(args);
 
         // 1. Register Core Infrastructure & Application Services
+        builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
+        builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(JwtTokenService.DefaultSecretKey)),
+                    ValidateIssuer = true,
+                    ValidIssuer = JwtTokenService.Issuer,
+                    ValidateAudience = true,
+                    ValidAudience = JwtTokenService.Audience,
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.FromSeconds(30)
+                };
+            });
+        builder.Services.AddAuthorization();
         builder.Services.AddSingleton<ICustomerRepository, InMemoryCustomerRepository>();
         builder.Services.AddSingleton<IAccountRepository, InMemoryAccountRepository>();
         builder.Services.AddSingleton<IBranchOperatingDayRepository, InMemoryBranchOperatingDayRepository>();
@@ -108,6 +130,9 @@ public partial class Program
 
         app.UseDefaultFiles();
         app.UseStaticFiles();
+
+        app.UseAuthentication();
+        app.UseAuthorization();
 
         // --- CUSTOMER APIS ---
         var customerApi = app.MapGroup("/api/v1/customers");
@@ -193,7 +218,7 @@ public partial class Program
         });
 
         // --- ACCOUNT APIS (PHASE 2) ---
-        var accountApi = app.MapGroup("/api/v1/accounts");
+        var accountApi = app.MapGroup("/api/v1/accounts").AddEndpointFilter<FinancialAuthorizationFilter>();
 
         accountApi.MapPost("", async (
             OpenDepositAccountRequest request,
@@ -342,7 +367,7 @@ public partial class Program
         });
 
         // --- BRANCH CASH & TELLER APIS (PHASE 3) ---
-        var tellerApi = app.MapGroup("/api/v1/teller");
+        var tellerApi = app.MapGroup("/api/v1/teller").AddEndpointFilter<FinancialAuthorizationFilter>();
 
         tellerApi.MapPost("/drawers/open", async (
             OpenTellerDrawerRequest request,
@@ -447,7 +472,7 @@ public partial class Program
         });
 
         // --- REMITTANCE & INSTRUMENTS APIS (PHASE 3) ---
-        var remittanceApi = app.MapGroup("/api/v1/remittance");
+        var remittanceApi = app.MapGroup("/api/v1/remittance").AddEndpointFilter<FinancialAuthorizationFilter>();
 
         remittanceApi.MapPost("/issue", async (
             IssueRemittanceInstrumentRequest request,
@@ -596,7 +621,7 @@ public partial class Program
         });
 
         // --- PAYMENT RAILS & CLEARING APIS (PHASE 4) ---
-        var bachApi = app.MapGroup("/api/v1/clearing/bach");
+        var bachApi = app.MapGroup("/api/v1/clearing/bach").AddEndpointFilter<FinancialAuthorizationFilter>();
 
         bachApi.MapPost("/outward/present", async (
             PresentChequeRequest request,
@@ -638,7 +663,7 @@ public partial class Program
             }
         });
 
-        var beftnApi = app.MapGroup("/api/v1/clearing/beftn");
+        var beftnApi = app.MapGroup("/api/v1/clearing/beftn").AddEndpointFilter<FinancialAuthorizationFilter>();
 
         beftnApi.MapPost("/transfer", async (
             InitiateBeftnTransferRequest request,
@@ -664,7 +689,7 @@ public partial class Program
             }
         });
 
-        var rtgsApi = app.MapGroup("/api/v1/clearing/rtgs");
+        var rtgsApi = app.MapGroup("/api/v1/clearing/rtgs").AddEndpointFilter<FinancialAuthorizationFilter>();
 
         rtgsApi.MapPost("/transfer", async (
             InitiateRtgsTransferRequest request,
@@ -726,7 +751,7 @@ public partial class Program
         });
 
         // --- LENDING & CREDIT FACILITIES APIS (PHASE 5) ---
-        var lendingApi = app.MapGroup("/api/v1/lending");
+        var lendingApi = app.MapGroup("/api/v1/lending").AddEndpointFilter<FinancialAuthorizationFilter>();
 
         lendingApi.MapPost("/accounts", async (
             CreateLoanAccountRequest request,
@@ -874,7 +899,7 @@ public partial class Program
         });
 
         // --- TRADE FINANCE & TBML APIS (BRPD Circular 12 Module 5) ---
-        var tradeApi = app.MapGroup("/api/v1/trade");
+        var tradeApi = app.MapGroup("/api/v1/trade").AddEndpointFilter<FinancialAuthorizationFilter>();
 
         tradeApi.MapPost("/lc/draft", async (
             DraftDocumentaryCreditRequest request,
@@ -1109,7 +1134,7 @@ public partial class Program
         });
 
         // --- TREASURY & ALM APIS (BRPD Circular 12 Module 6) ---
-        var treasuryApi = app.MapGroup("/api/v1/treasury");
+        var treasuryApi = app.MapGroup("/api/v1/treasury").AddEndpointFilter<FinancialAuthorizationFilter>();
 
         treasuryApi.MapPost("/deals/capture", async (
             CaptureTreasuryDealRequest request,

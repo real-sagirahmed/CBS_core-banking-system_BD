@@ -1,4 +1,6 @@
 using System.Text.Json;
+using CBS.Application.Accounts.DTOs;
+using CBS.Application.Customers.DTOs;
 using CBS.Application.SecurityAudit.DTOs;
 using CBS.Domain.Enums;
 using CBS.Domain.ValueObjects;
@@ -247,5 +249,216 @@ public class SecurityAuditCompliancePlaywrightTests : IClassFixture<CbsApiServer
         strReport.StrAlerts.Should().HaveCount(1);
         strReport.StrAlerts![0].CifNumber.Should().Be("CIF009");
         strReport.StrAlerts[0].Reason.Should().Be("StructuringSmurfing");
+    }
+
+    [Fact]
+    public async Task PlaywrightE2E_FinancialEndpoint_RejectsSystemAdmin_WithForbidden403_BRPD10_3_5_vii()
+    {
+        var api = await _fixture.CreateApiContextAsync();
+        var uniqueSuffix = Random.Shared.Next(10000, 99999);
+        var adminUser = $"ADMIN_PROHIBITED_{uniqueSuffix}";
+        var sessionId = $"SES-ADM-FIN-{uniqueSuffix}";
+
+        // 1. Admin logs in and receives cryptographically signed JWT Bearer token
+        var loginReq = new LoginSessionRequest(
+            SessionId: sessionId,
+            UserId: adminUser,
+            Role: UserRole.SystemAdmin,
+            BranchCode: "0000",
+            TerminalIp: "10.0.0.1");
+
+        var loginRes = await api.PostAsync("/api/v1/security/sessions/login", new APIRequestContextOptions
+        {
+            DataObject = loginReq
+        });
+        loginRes.Status.Should().Be(200);
+        var session = (await loginRes.JsonAsync())?.Deserialize<UserSessionResponse>(JsonOptions);
+        session.Should().NotBeNull();
+        session!.Token.Should().NotBeNullOrWhiteSpace();
+
+        // 2. Admin attempts financial deposit/transaction using Bearer token (BRPD 10.3.5-vii)
+        var txReq = new PostTransactionRequest(
+            AccountNumber: "0101101000015",
+            Type: DebitCredit.Credit,
+            Amount: 50000m,
+            Narration: "Unauthorized Admin Deposit");
+
+        var finRes = await api.PostAsync("/api/v1/accounts/0101101000015/transactions", new APIRequestContextOptions
+        {
+            Headers = new Dictionary<string, string>
+            {
+                ["Authorization"] = $"Bearer {session.Token}"
+            },
+            DataObject = txReq
+        });
+
+        // 3. Must be strictly rejected with HTTP 403 Forbidden
+        finRes.Status.Should().Be(403);
+        var errorBody = await finRes.TextAsync();
+        errorBody.Should().Contain("BRPD_10_3_5_VII");
+        errorBody.Should().Contain("shall not be authorized to perform");
+    }
+
+    [Fact]
+    public async Task PlaywrightE2E_FinancialEndpoint_AllowsBranchTeller_WithSuccess200()
+    {
+        var api = await _fixture.CreateApiContextAsync();
+        var uniqueSuffix = Random.Shared.Next(10000, 99999);
+        var tellerUser = $"TELLER_AUTH_{uniqueSuffix}";
+        var sessionId = $"SES-TEL-FIN-{uniqueSuffix}";
+
+        // 1. Teller logs in and receives JWT Bearer token
+        var loginReq = new LoginSessionRequest(
+            SessionId: sessionId,
+            UserId: tellerUser,
+            Role: UserRole.BranchTeller,
+            BranchCode: "0101",
+            TerminalIp: "192.168.1.15");
+
+        var loginRes = await api.PostAsync("/api/v1/security/sessions/login", new APIRequestContextOptions
+        {
+            DataObject = loginReq
+        });
+        loginRes.Status.Should().Be(200);
+        var session = (await loginRes.JsonAsync())?.Deserialize<UserSessionResponse>(JsonOptions);
+        session.Should().NotBeNull();
+        session!.Token.Should().NotBeNullOrWhiteSpace();
+
+        // 2. Onboard verified customer
+        string uniqueNid = $"9{Random.Shared.Next(100000000, 999999999)}";
+        string uniqueTin = $"8{Random.Shared.Next(10000000, 99999999)}123";
+        var draftReq = new CreateCustomerDraftRequest(
+            Type: CustomerType.Individual,
+            FullName: "Security Authorized Customer",
+            DateOfBirth: new DateOnly(1990, 5, 20),
+            Gender: "Male",
+            FatherName: "Father",
+            MotherName: "Mother",
+            StreetAddress: "123 Banking Road",
+            ThanaOrUpazila: "Motijheel",
+            District: "Dhaka",
+            PostalCode: "1000",
+            MobileNumber: "+8801700112233",
+            SectorCode: "9901",
+            NationalId: uniqueNid,
+            TaxId: uniqueTin);
+
+        var draftRes = await api.PostAsync("/api/v1/customers/draft", new APIRequestContextOptions
+        {
+            Headers = new Dictionary<string, string> { { "X-User-Id", "MAKER01" } },
+            DataObject = draftReq
+        });
+        draftRes.Status.Should().Be(201);
+        var draft = (await draftRes.JsonAsync())?.Deserialize<CustomerResponseDto>(JsonOptions)!;
+
+        var verifyRes = await api.PostAsync($"/api/v1/customers/{draft.CifNumber}/verify", new APIRequestContextOptions
+        {
+            Headers = new Dictionary<string, string> { { "X-User-Id", "CHECKER01" } },
+            DataObject = new { isApproved = true }
+        });
+        verifyRes.Status.Should().Be(200);
+
+        // 3. Teller opens account using Bearer token
+        var openAccReq = new OpenDepositAccountRequest(
+            CifNumber: draft.CifNumber,
+            ProductType: DepositProductType.SavingsAccount,
+            BranchCode: "0101",
+            InitialDeposit: 5000m,
+            HasTin: true);
+
+        var openRes = await api.PostAsync("/api/v1/accounts", new APIRequestContextOptions
+        {
+            Headers = new Dictionary<string, string>
+            {
+                ["Authorization"] = $"Bearer {session.Token}"
+            },
+            DataObject = openAccReq
+        });
+        openRes.Status.Should().Be(201);
+        var acc = (await openRes.JsonAsync())?.Deserialize<AccountResponseDto>(JsonOptions)!;
+
+        // 4. Teller posts financial deposit using Bearer token
+        var txReq = new PostTransactionRequest(
+            AccountNumber: acc.AccountNumber,
+            Type: DebitCredit.Credit,
+            Amount: 10000m,
+            Narration: "Authorized Teller Deposit");
+
+        var finRes = await api.PostAsync($"/api/v1/accounts/{acc.AccountNumber}/transactions", new APIRequestContextOptions
+        {
+            Headers = new Dictionary<string, string>
+            {
+                ["Authorization"] = $"Bearer {session.Token}"
+            },
+            DataObject = txReq
+        });
+
+        // 5. Teller operation succeeds with HTTP 200
+        finRes.Status.Should().Be(200);
+        var txBody = await finRes.TextAsync();
+        txBody.Should().Contain(acc.AccountNumber);
+    }
+
+    [Fact]
+    public async Task PlaywrightE2E_ConcurrentLogin_ParallelRaceCondition_BlocksSimultaneousLogins()
+    {
+        var api = await _fixture.CreateApiContextAsync();
+        var uniqueSuffix = Random.Shared.Next(10000, 99999);
+        var targetUser = $"PARALLEL_USER_{uniqueSuffix}";
+
+        var statuses = new System.Collections.Concurrent.ConcurrentBag<int>();
+        var errors = new System.Collections.Concurrent.ConcurrentBag<string>();
+
+        // Act: 5 simultaneous login attempts for the exact same user ID
+        await Parallel.ForEachAsync(Enumerable.Range(1, 5), async (i, ct) =>
+        {
+            var req = new LoginSessionRequest(
+                SessionId: $"SES-PAR-{uniqueSuffix}-{i}",
+                UserId: targetUser,
+                Role: UserRole.BranchTeller,
+                BranchCode: "0101",
+                TerminalIp: $"192.168.1.{i + 50}");
+
+            var res = await api.PostAsync("/api/v1/security/sessions/login", new APIRequestContextOptions
+            {
+                DataObject = req
+            });
+
+            statuses.Add(res.Status);
+            if (res.Status != 200)
+            {
+                errors.Add(await res.TextAsync());
+            }
+        });
+
+        // Assert: Atomic race-condition lock guarantees exactly 1 success, remaining 4 rejected
+        statuses.Count(s => s == 200).Should().Be(1);
+        statuses.Count(s => s == 400).Should().Be(4);
+        errors.Should().AllSatisfy(err => err.Should().Contain("BRPD 10.3.5-viii"));
+    }
+
+    [Fact]
+    public async Task PlaywrightE2E_FinancialEndpoint_RejectsInvalidOrExpiredBearerToken_WithUnauthorized401()
+    {
+        var api = await _fixture.CreateApiContextAsync();
+
+        var txReq = new PostTransactionRequest(
+            AccountNumber: "0101101000015",
+            Type: DebitCredit.Credit,
+            Amount: 5000m,
+            Narration: "Attempt with Fake Token");
+
+        var res = await api.PostAsync("/api/v1/accounts/0101101000015/transactions", new APIRequestContextOptions
+        {
+            Headers = new Dictionary<string, string>
+            {
+                ["Authorization"] = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.invalid.signature"
+            },
+            DataObject = txReq
+        });
+
+        res.Status.Should().Be(401);
+        var text = await res.TextAsync();
+        text.Should().Contain("UNAUTHORIZED");
     }
 }

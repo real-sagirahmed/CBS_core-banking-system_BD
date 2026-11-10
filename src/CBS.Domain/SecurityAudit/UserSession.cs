@@ -52,18 +52,20 @@ public sealed class UserSession : AggregateRoot<string>
         };
     }
 
+    public bool CanPerformFinancialTransactions => IsActive && Role != UserRole.SystemAdmin && Role != UserRole.ComplianceAuditor;
+
     /// <summary>
     /// Validates whether the user's role is permitted to perform a financial transaction.
-    /// Invariant: Super/Admin users in CBS shall NOT be authorized to perform any financial transactions (BRPD 10.3.5-vii).
+    /// Invariant: Super/Admin and Audit users in CBS shall NOT be authorized to perform or approve any financial transactions (BRPD 10.3.5-vii).
     /// </summary>
     public void AssertCanPerformFinancialTransaction()
     {
         if (!IsActive)
             throw new InvalidOperationException("Session is expired or inactive.");
 
-        if (Role == UserRole.SystemAdmin)
+        if (Role == UserRole.SystemAdmin || Role == UserRole.ComplianceAuditor)
         {
-            throw new InvalidOperationException("Security Invariant Violation [BRPD 10.3.5-vii]: Super/Admin users in CBS shall not be authorized to perform any financial transactions.");
+            throw new InvalidOperationException($"Security Invariant Violation [BRPD 10.3.5-vii]: Super/Admin users in CBS shall not be authorized to perform any financial transactions. Role '{Role}' is blocked from financial transactions.");
         }
     }
 

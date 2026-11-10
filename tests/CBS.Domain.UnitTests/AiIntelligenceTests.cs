@@ -170,4 +170,27 @@ public class AiIntelligenceTests
         sanctionedRisk.AnomalyRiskScore.Should().Be(0.95m);
         sanctionedRisk.RequiresMakerCheckerReview.Should().BeTrue();
     }
+
+    [Fact]
+    public void PiiSanitizer_MasksCardPan_AndPassportNumbers_ConformingToPciDssAndBrpdCircular12()
+    {
+        var rawPrompt = "Officer inquiry for customer holding Visa Card: 4111-2222-3333-4444 (Standalone: 5500123456789012) " +
+                         "and Passport: A01234567 traveling abroad.";
+
+        bool containsPiiBefore = PiiSanitizer.ContainsRawPii(rawPrompt);
+        string sanitized = PiiSanitizer.SanitizePrompt(rawPrompt);
+        bool containsPiiAfter = PiiSanitizer.ContainsRawPii(sanitized);
+
+        containsPiiBefore.Should().BeTrue();
+        containsPiiAfter.Should().BeFalse();
+
+        sanitized.Should().NotContain("4111-2222-3333-4444");
+        sanitized.Should().Contain("CARD-***-4444");
+
+        sanitized.Should().NotContain("5500123456789012");
+        sanitized.Should().Contain("CARD-***-9012");
+
+        sanitized.Should().NotContain("A01234567");
+        sanitized.Should().Contain("PASS-***-4567");
+    }
 }

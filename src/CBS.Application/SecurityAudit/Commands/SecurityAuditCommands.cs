@@ -1,4 +1,5 @@
 using CBS.Application.Common.Interfaces;
+using CBS.Application.Common.Security;
 using CBS.Application.SecurityAudit.DTOs;
 using CBS.Domain.Enums;
 using CBS.Domain.SecurityAudit;
@@ -17,10 +18,14 @@ public sealed record EvaluateStrAlertsCommand(EvaluateStrAlertsRequest Request);
 public class SecurityAuditCommandHandler
 {
     private readonly ISecurityAuditRepository _repository;
+    private readonly IJwtTokenService? _jwtTokenService;
 
-    public SecurityAuditCommandHandler(ISecurityAuditRepository repository)
+    public SecurityAuditCommandHandler(
+        ISecurityAuditRepository repository,
+        IJwtTokenService? jwtTokenService = null)
     {
         _repository = repository;
+        _jwtTokenService = jwtTokenService;
     }
 
     public async Task<UserSessionResponse> HandleLoginAsync(LoginSessionCommand command, CancellationToken ct = default)
@@ -41,6 +46,9 @@ public class SecurityAuditCommandHandler
 
         await _repository.AddSessionAsync(session, ct);
 
+        string? token = _jwtTokenService?.GenerateToken(session.UserId, session.Role, session.BranchCode, session.SessionId);
+        DateTime? expiresAtUtc = token is not null ? DateTime.UtcNow.AddMinutes(15) : null;
+
         return new UserSessionResponse(
             session.SessionId,
             session.UserId,
@@ -48,7 +56,9 @@ public class SecurityAuditCommandHandler
             session.BranchCode,
             session.TerminalIp,
             session.LoggedInAtUtc,
-            session.IsActive);
+            session.IsActive,
+            token,
+            expiresAtUtc);
     }
 
     public async Task<UserSessionResponse> HandleLogoutAsync(LogoutSessionCommand command, CancellationToken ct = default)

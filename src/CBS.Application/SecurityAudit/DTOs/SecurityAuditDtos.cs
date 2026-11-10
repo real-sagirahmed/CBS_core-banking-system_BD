@@ -19,7 +19,9 @@ public sealed record UserSessionResponse(
     string BranchCode,
     string TerminalIp,
     DateTime LoggedInAtUtc,
-    bool IsActive);
+    bool IsActive,
+    string? Token = null,
+    DateTime? ExpiresAtUtc = null);
 
 public sealed record AssertFinancialPermissionRequest(
     string SessionId);

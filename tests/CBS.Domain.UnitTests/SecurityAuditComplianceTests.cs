@@ -40,7 +40,23 @@ public class SecurityAuditComplianceTests
         // Act & Assert (BRPD 10.3.5-vii: Super/Admin prohibited from financial transactions)
         var act = () => adminSession.AssertCanPerformFinancialTransaction();
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Super/Admin users in CBS shall not be authorized to perform any financial transactions*");
+            .WithMessage("*Super/Admin*shall not be authorized to perform*");
+    }
+
+    [Fact]
+    public void UserSession_WhenComplianceAuditorAttemptsFinancialTransaction_ShouldThrowAuditorBlockedViolation()
+    {
+        var auditorSession = UserSession.StartSession(
+            sessionId: "SESS-AUDIT-01",
+            userId: "AUDITOR_01",
+            role: UserRole.ComplianceAuditor,
+            branchCode: "HO",
+            terminalIp: "10.0.0.5",
+            hasExistingActiveSession: false);
+
+        var act = () => auditorSession.AssertCanPerformFinancialTransaction();
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Role 'ComplianceAuditor'*is blocked from financial transactions*");
     }
 
     [Fact]
