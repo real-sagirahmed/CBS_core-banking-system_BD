@@ -2,12 +2,15 @@ using CBS.Domain.Accounts;
 using CBS.Domain.Adc;
 using CBS.Domain.AiIntelligence;
 using CBS.Domain.BranchCash;
+using CBS.Domain.Cheques;
 using CBS.Domain.Customers;
 using CBS.Domain.GeneralLedger;
 using CBS.Domain.Lending;
 using CBS.Domain.PaymentRails;
 using CBS.Domain.Reconciliation;
 using CBS.Domain.SecurityAudit;
+using CBS.Domain.StandingInstructions;
+using CBS.Domain.TermDeposits;
 using CBS.Domain.TradeFinance;
 using CBS.Domain.Treasury;
 using CBS.Domain.ValueObjects;
@@ -46,6 +49,11 @@ public class CbsDbContext : DbContext
     public DbSet<RemittanceInstrument> RemittanceInstruments => Set<RemittanceInstrument>();
     public DbSet<SecurityStationeryInventory> SecurityStationeryInventories => Set<SecurityStationeryInventory>();
     public DbSet<BranchOperatingDay> BranchOperatingDays => Set<BranchOperatingDay>();
+    public DbSet<StandingInstruction> StandingInstructions => Set<StandingInstruction>();
+    public DbSet<SweepAccountRule> SweepAccountRules => Set<SweepAccountRule>();
+    public DbSet<ChequeBook> ChequeBooks => Set<ChequeBook>();
+    public DbSet<ChequeLeaf> ChequeLeaves => Set<ChequeLeaf>();
+    public DbSet<TermDepositContract> TermDepositContracts => Set<TermDepositContract>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -106,6 +114,11 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new RemittanceInstrumentConfiguration());
         modelBuilder.ApplyConfiguration(new SecurityStationeryConfiguration());
         modelBuilder.ApplyConfiguration(new BranchOperatingDayConfiguration());
+        modelBuilder.ApplyConfiguration(new StandingInstructionConfiguration());
+        modelBuilder.ApplyConfiguration(new SweepAccountRuleConfiguration());
+        modelBuilder.ApplyConfiguration(new ChequeBookConfiguration());
+        modelBuilder.ApplyConfiguration(new ChequeLeafConfiguration());
+        modelBuilder.ApplyConfiguration(new TermDepositContractConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -121,6 +134,11 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<BfiuRegulatoryReport>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<AiAdvisoryQuery>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<TbmlSemanticAssessment>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<StandingInstruction>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<SweepAccountRule>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<ChequeBook>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<ChequeLeaf>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<TermDepositContract>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -141,6 +159,11 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<BfiuRegulatoryReport>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<AiAdvisoryQuery>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<TbmlSemanticAssessment>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<StandingInstruction>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<SweepAccountRule>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<ChequeBook>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<ChequeLeaf>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<TermDepositContract>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)

@@ -62,6 +62,9 @@ public static class DependencyInjection
         services.AddScoped<IRemittanceInstrumentRepository, EfRemittanceInstrumentRepository>();
         services.AddScoped<ISecurityStationeryRepository, EfSecurityStationeryRepository>();
         services.AddScoped<IBranchOperatingDayRepository, EfBranchOperatingDayRepository>();
+        services.AddScoped<IStandingInstructionRepository, EfStandingInstructionRepository>();
+        services.AddScoped<IChequeBookRepository, EfChequeBookRepository>();
+        services.AddScoped<ITermDepositRepository, EfTermDepositRepository>();
         services.AddHttpClient();
 
         return services;

@@ -31,6 +31,12 @@ using CBS.Application.Reconciliation.Commands;
 using CBS.Application.Reconciliation.DTOs;
 using CBS.Application.SecurityAudit.Commands;
 using CBS.Application.SecurityAudit.DTOs;
+using CBS.Application.StandingInstructions.Commands;
+using CBS.Application.StandingInstructions.DTOs;
+using CBS.Application.Cheques.Commands;
+using CBS.Application.Cheques.DTOs;
+using CBS.Application.TermDeposits.Commands;
+using CBS.Application.TermDeposits.DTOs;
 using CBS.Application.TradeFinance.Commands;
 using CBS.Application.TradeFinance.DTOs;
 using CBS.Application.Treasury.Commands;
@@ -38,6 +44,9 @@ using CBS.Application.Treasury.DTOs;
 using CBS.Domain.Accounts;
 using CBS.Domain.Adc;
 using CBS.Domain.BranchCash;
+using CBS.Domain.Cheques;
+using CBS.Domain.StandingInstructions;
+using CBS.Domain.TermDeposits;
 using CBS.Domain.Exceptions;
 using CBS.Domain.GeneralLedger;
 using CBS.Domain.Lending;
@@ -114,6 +123,9 @@ public partial class Program
         builder.Services.AddTransient<AiIntelligenceCommandHandler>();
         builder.Services.AddTransient<AdcCommandHandler>();
         builder.Services.AddTransient<ReconciliationCommandHandler>();
+        builder.Services.AddTransient<StandingInstructionCommandHandler>();
+        builder.Services.AddTransient<ChequeCommandHandler>();
+        builder.Services.AddTransient<TermDepositCommandHandler>();
 
         builder.Services.ConfigureHttpJsonOptions(options =>
         {
@@ -2428,6 +2440,314 @@ public partial class Program
                 d.CreatedAtUtc,
                 d.ResolvedAtUtc)).ToList();
             return Results.Ok(dtos);
+        });
+
+        // --- STANDING INSTRUCTIONS & SWEEP ACCOUNTS APIS (BRPD Circular 12/2024 Module 1.8 & 1.6) ---
+        var siApi = app.MapGroup("/api/v1/standing-instructions");
+
+        siApi.MapPost("/", async (
+            CreateStandingInstructionRequest request,
+            StandingInstructionCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleCreateAsync(new CreateStandingInstructionCommand(request), ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        siApi.MapPost("/sweep/rule", async (
+            ConfigureSweepRuleRequest request,
+            StandingInstructionCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleConfigureSweepRuleAsync(new ConfigureSweepRuleCommand(request), ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        siApi.MapPost("/sweep/execute/{ruleId}", async (
+            string ruleId,
+            StandingInstructionCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleExecuteSweepAsync(new ExecuteSweepRuleCommand(ruleId), ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        siApi.MapPost("/batch/execute-due", async (
+            DateOnly asOfDate,
+            StandingInstructionCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var count = await handler.HandleExecuteDueStandingInstructionsAsync(new ExecuteDueStandingInstructionsCommand(asOfDate), ct);
+            return Results.Ok(new { processedCount = count, asOfDate });
+        });
+
+        siApi.MapPost("/{id}/pause", async (
+            string id,
+            string reason,
+            StandingInstructionCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandlePauseAsync(new PauseStandingInstructionCommand(id, reason), ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        siApi.MapPost("/{id}/resume", async (
+            string id,
+            StandingInstructionCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleResumeAsync(new ResumeStandingInstructionCommand(id), ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        siApi.MapGet("/account/{accountNumber}", async (
+            string accountNumber,
+            IStandingInstructionRepository repo,
+            CancellationToken ct) =>
+        {
+            var list = await repo.GetBySourceAccountAsync(accountNumber, ct);
+            return Results.Ok(list.Select(s => new StandingInstructionResponseDto(
+                s.Id, s.SourceAccountNumber.Value, s.TargetAccountNumber.Value, s.Type.ToString(), s.Frequency.ToString(),
+                s.TransferAmount.Amount, s.ExecutionFee.Amount, s.StartDate, s.EndDate, s.NextExecutionDate, s.Status.ToString(),
+                s.ConsecutiveFailureCount, s.PauseReason, s.Narrative)));
+        });
+
+        // --- CHEQUE BOOK & LEAF LIFECYCLE APIS (BRPD Circular 12/2024 Module 1.5 & 3.1.14) ---
+        var chequeApi = app.MapGroup("/api/v1/cheques");
+
+        chequeApi.MapPost("/requisition", async (
+            RequisitionChequeBookRequest request,
+            ChequeCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleRequisitionAsync(new RequisitionChequeBookCommand(request), ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        chequeApi.MapPost("/books/{bookId}/deliver", async (
+            string bookId,
+            ChequeCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleDeliverBookAsync(new DeliverChequeBookCommand(bookId), ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        chequeApi.MapPost("/stop-payment", async (
+            ChequeStopPaymentRequest request,
+            ChequeCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleStopPaymentAsync(new StopPaymentCommand(request), ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        chequeApi.MapPost("/stop-payment/revoke", async (
+            ChequeRevokeStopPaymentRequest request,
+            ChequeCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleRevokeStopPaymentAsync(new RevokeStopPaymentCommand(request), ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        chequeApi.MapGet("/leaf/status", async (
+            string accountNumber,
+            long leafNumber,
+            ChequeCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var result = await handler.HandleGetLeafStatusAsync(accountNumber, leafNumber, ct);
+            return result is null ? Results.NotFound(new { error = $"Cheque leaf '{leafNumber}' not found for account '{accountNumber}'." }) : Results.Ok(result);
+        });
+
+        chequeApi.MapGet("/undelivered/report", async (
+            ChequeCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var result = await handler.HandleGetUndeliveredBooksReportAsync(DateOnly.FromDateTime(DateTime.UtcNow), ct);
+            return Results.Ok(result);
+        });
+
+        // --- TERM DEPOSIT & FDR LIFECYCLE APIS (BRPD Circular 12/2024 Module 3.5 & 3.6) ---
+        var tdApi = app.MapGroup("/api/v1/term-deposits");
+
+        tdApi.MapPost("/open", async (
+            OpenTermDepositRequest request,
+            TermDepositCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleOpenAsync(new OpenTermDepositCommand(request), ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        tdApi.MapPost("/{contractId}/accrue", async (
+            string contractId,
+            DateOnly calculationDate,
+            TermDepositCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var accrued = await handler.HandleAccrueDailyInterestAsync(new AccrueDailyInterestCommand(contractId, calculationDate), ct);
+                return Results.Ok(new { contractId, accruedAmount = accrued, calculationDate });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        tdApi.MapPost("/{contractId}/premature-encash", async (
+            string contractId,
+            PrematureEncashmentRequest request,
+            TermDepositCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandlePrematureEncashmentAsync(new PrematureEncashmentCommand(contractId, request), ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, code = ex.InvariantName });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        tdApi.MapPost("/{contractId}/rollover", async (
+            string contractId,
+            decimal prevailingInterestRate,
+            bool hasTin,
+            TermDepositCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleMaturityRolloverAsync(new ExecuteMaturityRolloverCommand(contractId, prevailingInterestRate, hasTin), ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        tdApi.MapPost("/{contractId}/lien", async (
+            string contractId,
+            MarkLienRequest request,
+            TermDepositCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleMarkLienAsync(new MarkLienCommand(contractId, request), ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        tdApi.MapPost("/{contractId}/lien/release", async (
+            string contractId,
+            string releaseReference,
+            TermDepositCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleReleaseLienAsync(new ReleaseLienCommand(contractId, releaseReference), ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        tdApi.MapGet("/{contractId}", async (
+            string contractId,
+            TermDepositCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var result = await handler.HandleGetByIdAsync(contractId, ct);
+            return result is null ? Results.NotFound(new { error = $"FDR contract '{contractId}' not found." }) : Results.Ok(result);
         });
 
         // --- GENERAL LEDGER & CHART OF ACCOUNTS APIS (BRPD Circular 12/2024 Module 1) ---
