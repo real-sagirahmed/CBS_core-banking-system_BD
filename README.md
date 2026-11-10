@@ -76,12 +76,13 @@ CBS_core-banking-system_BD/
 │   └── CBS.Api/                   # ASP.NET Core APIs & channel gateways
 ├── tests/
 │   ├── CBS.Domain.UnitTests/      # Domain & invariant unit test locks
-│   └── CBS.ArchitectureTests/    # NetArchTest architectural boundary locks
+│   ├── CBS.ArchitectureTests/    # NetArchTest architectural boundary locks
+│   └── CBS.PlaywrightTests/       # Playwright E2E API & browser UI integration suites
 ├── CBS.sln                        # .NET 9 solution
 ├── .gitignore                     # Production .NET gitignore
 ├── LICENSE                        # MIT License
 ├── README.md                      # Repository overview
-└── build_cbs_documentation.py     # PDF to MD documentation pipeline
+└── task.md                        # Engineering task & invariant tracking journal
 ```
 
 ---
