@@ -26,6 +26,16 @@ public sealed record TbmlSemanticAssessment
     public bool RequiresMakerCheckerReview { get; init; } = true;
     public DateTime EvaluatedAtUtc { get; init; }
 
+    // Parameterless constructor for EF Core ORM materialization
+    private TbmlSemanticAssessment()
+    {
+        AssessmentId = string.Empty;
+        LcReference = string.Empty;
+        GoodsDescription = string.Empty;
+        Rationale = string.Empty;
+        EvaluatedAtUtc = DateTime.UtcNow;
+    }
+
     public TbmlSemanticAssessment(
         string assessmentId,
         string lcReference,

@@ -53,6 +53,8 @@ public static class DependencyInjection
         services.AddScoped<ITradeFinanceRepository, EfTradeFinanceRepository>();
         services.AddScoped<ITreasuryRepository, EfTreasuryRepository>();
         services.AddScoped<ISecurityAuditRepository, EfSecurityAuditRepository>();
+        services.AddScoped<IAiKnowledgeRepository, EfAiKnowledgeRepository>();
+        services.AddHttpClient();
 
         return services;
     }
@@ -65,5 +67,8 @@ public static class DependencyInjection
 
         var coaRepo = scope.ServiceProvider.GetRequiredService<IChartOfAccountsRepository>();
         coaRepo.SeedDefaultAccountsAsync().GetAwaiter().GetResult();
+
+        var aiRepo = scope.ServiceProvider.GetRequiredService<IAiKnowledgeRepository>() as EfAiKnowledgeRepository;
+        aiRepo?.EnsureSeededAsync().GetAwaiter().GetResult();
     }
 }

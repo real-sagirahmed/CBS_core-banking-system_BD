@@ -87,8 +87,7 @@ public partial class Program
         builder.Services.AddSingleton<IChequeClearingRepository, InMemoryChequeClearingRepository>();
         builder.Services.AddSingleton<IBeftnRepository, InMemoryBeftnRepository>();
         builder.Services.AddSingleton<IRtgsRepository, InMemoryRtgsRepository>();
-        builder.Services.AddSingleton<IAiKnowledgeRepository, InMemoryAiKnowledgeRepository>();
-        builder.Services.AddSingleton<IGeminiAiService, GeminiAiService>();
+        builder.Services.AddScoped<IGeminiAiService, GeminiAiService>();
         builder.Services.AddSingleton<IElectionCommissionGateway, MockElectionCommissionGateway>();
         builder.Services.AddSingleton<ISanctionScreeningService, MockSanctionScreeningService>();
 
@@ -2194,6 +2193,14 @@ public partial class Program
             }
         });
 
+        aiApi.MapGet("/advisory", async (
+            AiIntelligenceCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var results = await handler.HandleGetAllAdvisoryQueriesAsync(ct);
+            return Results.Ok(results);
+        });
+
         aiApi.MapGet("/advisory/{queryId}", async (
             string queryId,
             IAiKnowledgeRepository aiRepo,
@@ -2215,6 +2222,36 @@ public partial class Program
                 query.CreatedAtUtc);
 
             return Results.Ok(response);
+        });
+
+        aiApi.MapGet("/tbml/{assessmentId}", async (
+            string assessmentId,
+            AiIntelligenceCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var result = await handler.HandleGetTbmlAssessmentAsync(assessmentId, ct);
+            if (result is null)
+                return Results.NotFound(new { error = $"TBML Semantic Assessment '{assessmentId}' not found." });
+
+            return Results.Ok(result);
+        });
+
+        aiApi.MapGet("/knowledge/documents", async (
+            AiIntelligenceCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var docs = await handler.HandleGetAllKnowledgeDocumentsAsync(ct);
+            return Results.Ok(docs);
+        });
+
+        aiApi.MapGet("/knowledge/search", async (
+            string? query,
+            int? topK,
+            AiIntelligenceCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var docs = await handler.HandleSearchKnowledgeAsync(query ?? string.Empty, topK ?? 3, ct);
+            return Results.Ok(docs);
         });
 
         aiApi.MapPost("/tools/pii-sanitize", (

@@ -10,6 +10,9 @@ public interface IAiKnowledgeRepository
         int topK = 3,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<RegulatoryKnowledgeDocument>> GetAllKnowledgeDocumentsAsync(
+        CancellationToken cancellationToken = default);
+
     Task SaveAdvisoryQueryAsync(
         AiAdvisoryQuery query,
         CancellationToken cancellationToken = default);

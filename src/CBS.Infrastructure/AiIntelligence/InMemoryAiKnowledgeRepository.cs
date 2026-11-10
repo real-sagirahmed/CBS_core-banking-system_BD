@@ -19,60 +19,60 @@ public class InMemoryAiKnowledgeRepository : IAiKnowledgeRepository
     private void SeedKnowledgeBase()
     {
         _knowledgeBase.Add(new RegulatoryKnowledgeDocument(
-            DocumentId: "BRPD-12-MOD-1",
-            CircularNo: "BRPD Circular No. 12 (13 May 2024)",
-            ModuleReference: "Module 1.3 & 10.3.5",
-            Title: "Core Accounting Double-Entry & Zero Financial Mutation Invariant",
-            Content: "All vouchers must self-balance (Sum Dr = Sum Cr). Direct financial ledger mutation or balance alteration by AI assistants or automated unvetted scripts is strictly prohibited.",
-            Tags: new[] { "voucher", "double-entry", "mutation", "accounting", "ledger" }));
+            documentId: "BRPD-12-MOD-1",
+            circularNo: "BRPD Circular No. 12 (13 May 2024)",
+            moduleReference: "Module 1.3 & 10.3.5",
+            title: "Core Accounting Double-Entry & Zero Financial Mutation Invariant",
+            content: "All vouchers must self-balance (Sum Dr = Sum Cr). Direct financial ledger mutation or balance alteration by AI assistants or automated unvetted scripts is strictly prohibited.",
+            tags: new[] { "voucher", "double-entry", "mutation", "accounting", "ledger" }));
 
         _knowledgeBase.Add(new RegulatoryKnowledgeDocument(
-            DocumentId: "BRPD-12-MOD-3",
-            CircularNo: "BRPD Circular No. 12 (13 May 2024)",
-            ModuleReference: "Module 3.1 & 3.10",
-            Title: "General Banking Dormancy & Walk-In Customer Due Diligence",
-            Content: "Savings accounts become dormant after 12 months and Current accounts after 6 months of customer-induced inactivity. Cash transactions of BDT 50,000 or above for non-account walk-in customers require mandatory NID, phone, and purpose verification.",
-            Tags: new[] { "dormancy", "walk-in", "cdd", "savings", "current", "cash" }));
+            documentId: "BRPD-12-MOD-3",
+            circularNo: "BRPD Circular No. 12 (13 May 2024)",
+            moduleReference: "Module 3.1 & 3.10",
+            title: "General Banking Dormancy & Walk-In Customer Due Diligence",
+            content: "Savings accounts become dormant after 12 months and Current accounts after 6 months of customer-induced inactivity. Cash transactions of BDT 50,000 or above for non-account walk-in customers require mandatory NID, phone, and purpose verification.",
+            tags: new[] { "dormancy", "walk-in", "cdd", "savings", "current", "cash" }));
 
         _knowledgeBase.Add(new RegulatoryKnowledgeDocument(
-            DocumentId: "BRPD-12-MOD-4",
-            CircularNo: "BRPD Circular No. 12 (13 May 2024)",
-            ModuleReference: "Module 4.1 & 4.3",
-            Title: "Credit Administration (CAD) & Islamic Financing Shariah Directives",
-            Content: "Three-tier segregation must be maintained: CRM approves, CAD verifies documentation/collateral and loads limits, and branch disburses. Bai-Murabaha disbursement must be direct to verified goods vendors via Pay Order/RTGS. Quard-e-Hasana contracts must charge strictly 0.00% interest.",
-            Tags: new[] { "cad", "loan", "lending", "murabaha", "quard", "islamic", "collateral" }));
+            documentId: "BRPD-12-MOD-4",
+            circularNo: "BRPD Circular No. 12 (13 May 2024)",
+            moduleReference: "Module 4.1 & 4.3",
+            title: "Credit Administration (CAD) & Islamic Financing Shariah Directives",
+            content: "Three-tier segregation must be maintained: CRM approves, CAD verifies documentation/collateral and loads limits, and branch disburses. Bai-Murabaha disbursement must be direct to verified goods vendors via Pay Order/RTGS. Quard-e-Hasana contracts must charge strictly 0.00% interest.",
+            tags: new[] { "cad", "loan", "lending", "murabaha", "quard", "islamic", "collateral" }));
 
         _knowledgeBase.Add(new RegulatoryKnowledgeDocument(
-            DocumentId: "BRPD-12-MOD-5",
-            CircularNo: "BRPD Circular No. 12 (13 May 2024)",
-            ModuleReference: "Module 5.1 & 5.4",
-            Title: "Trade Finance Documentary Credit, Shipping Guarantee & TBML Variance",
-            Content: "LC issuance requires pre-sanction screening and valid IRC. Shipping Guarantees require 100% cash margin lock and release strictly on original BL surrender. Unit price variances exceeding +/- 15% against global benchmarks trigger TBML price anomaly alerts.",
-            Tags: new[] { "trade", "lc", "shipping guarantee", "tbml", "under-invoicing", "over-invoicing", "export" }));
+            documentId: "BRPD-12-MOD-5",
+            circularNo: "BRPD Circular No. 12 (13 May 2024)",
+            moduleReference: "Module 5.1 & 5.4",
+            title: "Trade Finance Documentary Credit, Shipping Guarantee & TBML Variance",
+            content: "LC issuance requires pre-sanction screening and valid IRC. Shipping Guarantees require 100% cash margin lock and release strictly on original BL surrender. Unit price variances exceeding +/- 15% against global benchmarks trigger TBML price anomaly alerts.",
+            tags: new[] { "trade", "lc", "shipping guarantee", "tbml", "under-invoicing", "over-invoicing", "export" }));
 
         _knowledgeBase.Add(new RegulatoryKnowledgeDocument(
-            DocumentId: "BRPD-12-MOD-6",
-            CircularNo: "BRPD Circular No. 12 (13 May 2024)",
-            ModuleReference: "Module 6.2 & 6.5",
-            Title: "Treasury Deal Segregation & Statutory Reserves (CRR / SLR / ALM)",
-            Content: "Treasury mandates Front-Office dealer, Mid-Office risk officer, and Back-Office settlement segregation. CRR daily minimum is 3.50% (bi-weekly average 4.00%). SLR is 13.00% for Conventional and 5.50% for Islamic banks. Negative liquidity gaps in 1-14 days bucket exceeding 10% trigger prudential alerts.",
-            Tags: new[] { "treasury", "crr", "slr", "alm", "liquidity", "fx", "dealer" }));
+            documentId: "BRPD-12-MOD-6",
+            circularNo: "BRPD Circular No. 12 (13 May 2024)",
+            moduleReference: "Module 6.2 & 6.5",
+            title: "Treasury Deal Segregation & Statutory Reserves (CRR / SLR / ALM)",
+            content: "Treasury mandates Front-Office dealer, Mid-Office risk officer, and Back-Office settlement segregation. CRR daily minimum is 3.50% (bi-weekly average 4.00%). SLR is 13.00% for Conventional and 5.50% for Islamic banks. Negative liquidity gaps in 1-14 days bucket exceeding 10% trigger prudential alerts.",
+            tags: new[] { "treasury", "crr", "slr", "alm", "liquidity", "fx", "dealer" }));
 
         _knowledgeBase.Add(new RegulatoryKnowledgeDocument(
-            DocumentId: "BRPD-12-MOD-10",
-            CircularNo: "BRPD Circular No. 12 (13 May 2024)",
-            ModuleReference: "Module 10.3.5 & 10.3.6",
-            Title: "Information Security, Super/Admin Financial Prohibition & Cryptographic Audit Chains",
-            Content: "System Administrators are strictly prohibited from performing financial transactions. Concurrent sessions by single users are blocked. Audit logs must be linked with SHA-256 cryptographic hash chains for tamper-evident CAATs verification.",
-            Tags: new[] { "security", "admin", "audit", "hash chain", "session", "caats", "bfiu" }));
+            documentId: "BRPD-12-MOD-10",
+            circularNo: "BRPD Circular No. 12 (13 May 2024)",
+            moduleReference: "Module 10.3.5 & 10.3.6",
+            title: "Information Security, Super/Admin Financial Prohibition & Cryptographic Audit Chains",
+            content: "System Administrators are strictly prohibited from performing financial transactions. Concurrent sessions by single users are blocked. Audit logs must be linked with SHA-256 cryptographic hash chains for tamper-evident CAATs verification.",
+            tags: new[] { "security", "admin", "audit", "hash chain", "session", "caats", "bfiu" }));
 
         _knowledgeBase.Add(new RegulatoryKnowledgeDocument(
-            DocumentId: "BRPD-12-MOD-11",
-            CircularNo: "BRPD Circular No. 12 (13 May 2024)",
-            ModuleReference: "Module 11.1 & 11.2",
-            Title: "BFIU Regulatory Compliance Reporting (CTR and STR/SAR)",
-            Content: "Daily Cash Transaction Reports (CTR) are mandatory for cumulative daily customer cash transactions of BDT 1,000,000 or above. Suspicious Transaction Reports (STR) must be filed for transaction structuring (smurfing) and TP limit breaches.",
-            Tags: new[] { "bfiu", "ctr", "str", "aml", "cft", "structuring", "smurfing" }));
+            documentId: "BRPD-12-MOD-11",
+            circularNo: "BRPD Circular No. 12 (13 May 2024)",
+            moduleReference: "Module 11.1 & 11.2",
+            title: "BFIU Regulatory Compliance Reporting (CTR and STR/SAR)",
+            content: "Daily Cash Transaction Reports (CTR) are mandatory for cumulative daily customer cash transactions of BDT 1,000,000 or above. Suspicious Transaction Reports (STR) must be filed for transaction structuring (smurfing) and TP limit breaches.",
+            tags: new[] { "bfiu", "ctr", "str", "aml", "cft", "structuring", "smurfing" }));
     }
 
     public Task<IReadOnlyList<RegulatoryKnowledgeDocument>> SearchKnowledgeBaseAsync(
@@ -110,6 +110,11 @@ public class InMemoryAiKnowledgeRepository : IAiKnowledgeRepository
         .ToList();
 
         return Task.FromResult<IReadOnlyList<RegulatoryKnowledgeDocument>>(scored);
+    }
+
+    public Task<IReadOnlyList<RegulatoryKnowledgeDocument>> GetAllKnowledgeDocumentsAsync(CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<IReadOnlyList<RegulatoryKnowledgeDocument>>(_knowledgeBase.ToList());
     }
 
     public Task SaveAdvisoryQueryAsync(AiAdvisoryQuery query, CancellationToken cancellationToken = default)

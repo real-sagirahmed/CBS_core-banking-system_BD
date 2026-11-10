@@ -1,4 +1,5 @@
 using CBS.Domain.Accounts;
+using CBS.Domain.AiIntelligence;
 using CBS.Domain.BranchCash;
 using CBS.Domain.Customers;
 using CBS.Domain.GeneralLedger;
@@ -29,6 +30,9 @@ public class CbsDbContext : DbContext
     public DbSet<TreasurySecurity> TreasurySecurities => Set<TreasurySecurity>();
     public DbSet<AuditJournalEntry> AuditJournalEntries => Set<AuditJournalEntry>();
     public DbSet<BfiuRegulatoryReport> BfiuRegulatoryReports => Set<BfiuRegulatoryReport>();
+    public DbSet<AiAdvisoryQuery> AiAdvisoryQueries => Set<AiAdvisoryQuery>();
+    public DbSet<TbmlSemanticAssessment> TbmlSemanticAssessments => Set<TbmlSemanticAssessment>();
+    public DbSet<RegulatoryKnowledgeDocument> RegulatoryKnowledgeDocuments => Set<RegulatoryKnowledgeDocument>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -76,6 +80,9 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new TreasurySecurityConfiguration());
         modelBuilder.ApplyConfiguration(new AuditJournalEntryConfiguration());
         modelBuilder.ApplyConfiguration(new BfiuRegulatoryReportConfiguration());
+        modelBuilder.ApplyConfiguration(new AiAdvisoryQueryConfiguration());
+        modelBuilder.ApplyConfiguration(new TbmlSemanticAssessmentConfiguration());
+        modelBuilder.ApplyConfiguration(new RegulatoryKnowledgeDocumentConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -89,6 +96,8 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<TreasuryDeal>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<TreasurySecurity>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<BfiuRegulatoryReport>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<AiAdvisoryQuery>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<TbmlSemanticAssessment>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -107,6 +116,8 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<TreasuryDeal>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<TreasurySecurity>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<BfiuRegulatoryReport>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<AiAdvisoryQuery>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<TbmlSemanticAssessment>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)

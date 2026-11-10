@@ -67,3 +67,16 @@ public sealed record PiiSanitizeRequest(
 public sealed record PiiSanitizeResponse(
     string SanitizedText,
     bool HadRawPii);
+
+public sealed record RegulatoryKnowledgeDocumentDto(
+    string DocumentId,
+    string CircularNo,
+    string ModuleReference,
+    string Title,
+    string Content,
+    IReadOnlyList<string> Tags);
+
+public sealed record SearchKnowledgeBaseRequest(
+    string Query,
+    int TopK = 3);
+

@@ -26,6 +26,9 @@ public sealed class AiAdvisoryQuery : AggregateRoot<string>
     public bool RequiresMakerCheckerReview { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
 
+    // Parameterless constructor for EF Core ORM materialization
+    private AiAdvisoryQuery() : base(string.Empty) { }
+
     private AiAdvisoryQuery(string queryId) : base(queryId) { }
 
     public static AiAdvisoryQuery Create(
@@ -74,16 +77,28 @@ public sealed class AiAdvisoryQuery : AggregateRoot<string>
         string[] forbiddenPatterns =
         {
             "transfer money",
+            "transfer fund",
             "post voucher",
             "debit account",
             "credit account",
             "disburse loan",
             "disburse fund",
+            "disburse money",
+            "disburse amount",
+            "disburse to",
             "execute payment",
             "mutate balance",
             "override balance",
             "withdraw cash",
-            "deposit cash"
+            "deposit cash",
+            "drop table",
+            "truncate table",
+            "alter table",
+            "dan mode",
+            "jailbreak",
+            "ignore previous instructions",
+            "system override",
+            "bypass security"
         };
 
         foreach (var pattern in forbiddenPatterns)
@@ -92,6 +107,11 @@ public sealed class AiAdvisoryQuery : AggregateRoot<string>
             {
                 throw new InvalidOperationException($"Security Invariant Violation [BRPD 1.3.5, 10.3.5-vii]: AI Assistants are strictly prohibited from mutating financial ledgers or executing transactions. Detected forbidden intent: '{pattern}'.");
             }
+        }
+
+        if (System.Text.RegularExpressions.Regex.IsMatch(lower, @"\b(debit|credit|disburse)\s+\d+"))
+        {
+            throw new InvalidOperationException("Security Invariant Violation [BRPD 1.3.5, 10.3.5-vii]: AI Assistants are strictly prohibited from mutating financial ledgers or executing transactions. Detected forbidden intent.");
         }
     }
 }

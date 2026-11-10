@@ -181,4 +181,64 @@ public class AiIntelligenceCommandHandler
         string sanitized = PiiSanitizer.SanitizePrompt(raw);
         return Task.FromResult(new PiiSanitizeResponse(sanitized, hadRawPii));
     }
+
+    public async Task<IReadOnlyList<RegulatoryKnowledgeDocumentDto>> HandleSearchKnowledgeAsync(string query, int topK, CancellationToken ct = default)
+    {
+        var docs = await _aiRepository.SearchKnowledgeBaseAsync(query, topK, ct);
+        return docs.Select(d => new RegulatoryKnowledgeDocumentDto(
+            d.DocumentId,
+            d.CircularNo,
+            d.ModuleReference,
+            d.Title,
+            d.Content,
+            d.Tags)).ToList();
+    }
+
+    public async Task<IReadOnlyList<RegulatoryKnowledgeDocumentDto>> HandleGetAllKnowledgeDocumentsAsync(CancellationToken ct = default)
+    {
+        var docs = await _aiRepository.GetAllKnowledgeDocumentsAsync(ct);
+        return docs.Select(d => new RegulatoryKnowledgeDocumentDto(
+            d.DocumentId,
+            d.CircularNo,
+            d.ModuleReference,
+            d.Title,
+            d.Content,
+            d.Tags)).ToList();
+    }
+
+    public async Task<IReadOnlyList<AiAdvisoryResponse>> HandleGetAllAdvisoryQueriesAsync(CancellationToken ct = default)
+    {
+        var queries = await _aiRepository.GetAllAdvisoryQueriesAsync(ct);
+        return queries.Select(q => new AiAdvisoryResponse(
+            q.QueryId,
+            q.OfficerUserId,
+            q.Category.ToString(),
+            q.SanitizedQueryText,
+            q.AdvisoryResponse,
+            q.Citations.Select(c => new GroundedCitationDto(c.CircularReference, c.SectionTitle, c.RelevantExcerpt, c.RelevanceScore)).ToList(),
+            q.ConfidenceScore,
+            q.RequiresMakerCheckerReview,
+            q.CreatedAtUtc)).ToList();
+    }
+
+    public async Task<TbmlAssessmentResponse?> HandleGetTbmlAssessmentAsync(string assessmentId, CancellationToken ct = default)
+    {
+        var assessment = await _aiRepository.GetTbmlAssessmentByIdAsync(assessmentId, ct);
+        if (assessment is null) return null;
+
+        return new TbmlAssessmentResponse(
+            assessment.AssessmentId,
+            assessment.LcReference,
+            assessment.GoodsDescription,
+            assessment.DeclaredUnitPrice,
+            assessment.BenchmarkUnitPrice,
+            assessment.UnitPriceVariancePercentage,
+            assessment.DualUseRiskIdentified,
+            assessment.SanctionedRouteRiskIdentified,
+            assessment.Recommendation.ToString(),
+            assessment.AnomalyRiskScore,
+            assessment.Rationale,
+            assessment.RequiresMakerCheckerReview,
+            assessment.EvaluatedAtUtc);
+    }
 }
