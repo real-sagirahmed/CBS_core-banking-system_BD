@@ -54,6 +54,14 @@ public static class DependencyInjection
         services.AddScoped<ITreasuryRepository, EfTreasuryRepository>();
         services.AddScoped<ISecurityAuditRepository, EfSecurityAuditRepository>();
         services.AddScoped<IAiKnowledgeRepository, EfAiKnowledgeRepository>();
+        services.AddScoped<IAdcRepository, EfAdcRepository>();
+        services.AddScoped<IReconciliationRepository, EfReconciliationRepository>();
+        services.AddScoped<IChequeClearingRepository, EfChequeClearingRepository>();
+        services.AddScoped<IBeftnRepository, EfBeftnRepository>();
+        services.AddScoped<IRtgsRepository, EfRtgsRepository>();
+        services.AddScoped<IRemittanceInstrumentRepository, EfRemittanceInstrumentRepository>();
+        services.AddScoped<ISecurityStationeryRepository, EfSecurityStationeryRepository>();
+        services.AddScoped<IBranchOperatingDayRepository, EfBranchOperatingDayRepository>();
         services.AddHttpClient();
 
         return services;
@@ -70,5 +78,16 @@ public static class DependencyInjection
 
         var aiRepo = scope.ServiceProvider.GetRequiredService<IAiKnowledgeRepository>() as EfAiKnowledgeRepository;
         aiRepo?.EnsureSeededAsync().GetAwaiter().GetResult();
+
+        // Seed default ATM terminal for ADC testing
+        var adcRepo = scope.ServiceProvider.GetRequiredService<IAdcRepository>();
+        var existingAtm = adcRepo.GetTerminalByIdAsync("ATM-001").GetAwaiter().GetResult();
+        if (existingAtm is null)
+        {
+            var defaultAtm = new CBS.Domain.Adc.AtmTerminal("ATM-001", "Motijheel Main Branch ATM 01", "0101", "Dhaka", 1000000m, 5000000m);
+            adcRepo.AddTerminalAsync(defaultAtm).GetAwaiter().GetResult();
+            var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            uow.SaveChangesAsync().GetAwaiter().GetResult();
+        }
     }
 }

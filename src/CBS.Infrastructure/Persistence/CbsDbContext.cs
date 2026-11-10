@@ -1,9 +1,12 @@
 using CBS.Domain.Accounts;
+using CBS.Domain.Adc;
 using CBS.Domain.AiIntelligence;
 using CBS.Domain.BranchCash;
 using CBS.Domain.Customers;
 using CBS.Domain.GeneralLedger;
 using CBS.Domain.Lending;
+using CBS.Domain.PaymentRails;
+using CBS.Domain.Reconciliation;
 using CBS.Domain.SecurityAudit;
 using CBS.Domain.TradeFinance;
 using CBS.Domain.Treasury;
@@ -33,6 +36,16 @@ public class CbsDbContext : DbContext
     public DbSet<AiAdvisoryQuery> AiAdvisoryQueries => Set<AiAdvisoryQuery>();
     public DbSet<TbmlSemanticAssessment> TbmlSemanticAssessments => Set<TbmlSemanticAssessment>();
     public DbSet<RegulatoryKnowledgeDocument> RegulatoryKnowledgeDocuments => Set<RegulatoryKnowledgeDocument>();
+    public DbSet<AdcTransaction> AdcTransactions => Set<AdcTransaction>();
+    public DbSet<AtmTerminal> AtmTerminals => Set<AtmTerminal>();
+    public DbSet<SettlementReconciliationBatch> SettlementReconciliationBatches => Set<SettlementReconciliationBatch>();
+    public DbSet<DisputeClaim> DisputeClaims => Set<DisputeClaim>();
+    public DbSet<ChequeClearingItem> ChequeClearingItems => Set<ChequeClearingItem>();
+    public DbSet<BeftnBatchItem> BeftnBatchItems => Set<BeftnBatchItem>();
+    public DbSet<RtgsTransaction> RtgsTransactions => Set<RtgsTransaction>();
+    public DbSet<RemittanceInstrument> RemittanceInstruments => Set<RemittanceInstrument>();
+    public DbSet<SecurityStationeryInventory> SecurityStationeryInventories => Set<SecurityStationeryInventory>();
+    public DbSet<BranchOperatingDay> BranchOperatingDays => Set<BranchOperatingDay>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -83,6 +96,16 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new AiAdvisoryQueryConfiguration());
         modelBuilder.ApplyConfiguration(new TbmlSemanticAssessmentConfiguration());
         modelBuilder.ApplyConfiguration(new RegulatoryKnowledgeDocumentConfiguration());
+        modelBuilder.ApplyConfiguration(new AdcTransactionConfiguration());
+        modelBuilder.ApplyConfiguration(new AtmTerminalConfiguration());
+        modelBuilder.ApplyConfiguration(new SettlementReconciliationConfiguration());
+        modelBuilder.ApplyConfiguration(new DisputeClaimConfiguration());
+        modelBuilder.ApplyConfiguration(new ChequeClearingItemConfiguration());
+        modelBuilder.ApplyConfiguration(new BeftnBatchItemConfiguration());
+        modelBuilder.ApplyConfiguration(new RtgsTransactionConfiguration());
+        modelBuilder.ApplyConfiguration(new RemittanceInstrumentConfiguration());
+        modelBuilder.ApplyConfiguration(new SecurityStationeryConfiguration());
+        modelBuilder.ApplyConfiguration(new BranchOperatingDayConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())

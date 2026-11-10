@@ -14,6 +14,9 @@ public class BranchOperatingDay : AggregateRoot<string> // ID is BranchCode
     public DateTime? DayClosedAtUtc { get; private set; }
     public string? ClosedByUserId { get; private set; }
 
+    // Parameterless constructor for EF Core ORM materialization
+    private BranchOperatingDay() : base(string.Empty) { }
+
     public BranchOperatingDay(string branchCode, DateOnly initialBusinessDate) : base(branchCode)
     {
         if (string.IsNullOrWhiteSpace(branchCode)) throw new ArgumentException("Branch code required.", nameof(branchCode));

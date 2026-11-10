@@ -2,6 +2,8 @@ using CBS.Application.Accounts.Commands.OpenDepositAccount;
 using CBS.Application.Accounts.Commands.PostTransaction;
 using CBS.Application.Accounts.DTOs;
 using CBS.Application.Accounts.Services;
+using CBS.Application.Adc.Commands;
+using CBS.Application.Adc.DTOs;
 using CBS.Application.AiIntelligence.Commands;
 using CBS.Application.AiIntelligence.DTOs;
 using CBS.Application.BranchCash.Commands.CloseTellerDrawer;
@@ -25,6 +27,8 @@ using CBS.Application.PaymentRails.Commands.PresentCheque;
 using CBS.Application.PaymentRails.Commands.ProcessInwardCheque;
 using CBS.Application.PaymentRails.Commands.Rtgs;
 using CBS.Application.PaymentRails.DTOs;
+using CBS.Application.Reconciliation.Commands;
+using CBS.Application.Reconciliation.DTOs;
 using CBS.Application.SecurityAudit.Commands;
 using CBS.Application.SecurityAudit.DTOs;
 using CBS.Application.TradeFinance.Commands;
@@ -32,12 +36,14 @@ using CBS.Application.TradeFinance.DTOs;
 using CBS.Application.Treasury.Commands;
 using CBS.Application.Treasury.DTOs;
 using CBS.Domain.Accounts;
+using CBS.Domain.Adc;
 using CBS.Domain.BranchCash;
 using CBS.Domain.Exceptions;
 using CBS.Domain.GeneralLedger;
 using CBS.Domain.Lending;
 using CBS.Domain.AiIntelligence;
 using CBS.Domain.PaymentRails;
+using CBS.Domain.Reconciliation;
 using CBS.Domain.SecurityAudit;
 using CBS.Domain.TradeFinance;
 using CBS.Domain.Treasury;
@@ -81,12 +87,6 @@ public partial class Program
             });
         builder.Services.AddAuthorization();
         builder.Services.AddCbsPersistence(builder.Configuration);
-        builder.Services.AddSingleton<IBranchOperatingDayRepository, InMemoryBranchOperatingDayRepository>();
-        builder.Services.AddSingleton<IRemittanceInstrumentRepository, InMemoryRemittanceInstrumentRepository>();
-        builder.Services.AddSingleton<ISecurityStationeryRepository, InMemorySecurityStationeryRepository>();
-        builder.Services.AddSingleton<IChequeClearingRepository, InMemoryChequeClearingRepository>();
-        builder.Services.AddSingleton<IBeftnRepository, InMemoryBeftnRepository>();
-        builder.Services.AddSingleton<IRtgsRepository, InMemoryRtgsRepository>();
         builder.Services.AddScoped<IGeminiAiService, GeminiAiService>();
         builder.Services.AddSingleton<IElectionCommissionGateway, MockElectionCommissionGateway>();
         builder.Services.AddSingleton<ISanctionScreeningService, MockSanctionScreeningService>();
@@ -112,6 +112,8 @@ public partial class Program
         builder.Services.AddTransient<TreasuryCommandHandler>();
         builder.Services.AddTransient<SecurityAuditCommandHandler>();
         builder.Services.AddTransient<AiIntelligenceCommandHandler>();
+        builder.Services.AddTransient<AdcCommandHandler>();
+        builder.Services.AddTransient<ReconciliationCommandHandler>();
 
         builder.Services.ConfigureHttpJsonOptions(options =>
         {
@@ -2261,6 +2263,171 @@ public partial class Program
             var command = new PiiSanitizeCommand(request);
             var result = handler.HandlePiiSanitizeAsync(command);
             return Results.Ok(result.Result);
+        });
+
+        // --- ALTERNATIVE DELIVERY CHANNELS (ADC) SWITCH APIS (BRPD Circular 12/2024 Module 7) ---
+        var adcApi = app.MapGroup("/api/v1/adc");
+
+        adcApi.MapPost("/switch/iso8583/process", async (
+            ProcessIso8583Request request,
+            AdcCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new ProcessIso8583Command(request);
+                var result = await handler.HandleProcessIso8583Async(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        adcApi.MapPost("/switch/iso8583/reversal", async (
+            ProcessIso8583ReversalCommand command,
+            AdcCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleProcessIso8583ReversalAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        adcApi.MapGet("/terminals", async (
+            IAdcRepository adcRepo,
+            CancellationToken ct) =>
+        {
+            var terminals = await adcRepo.GetAllTerminalsAsync(ct);
+            var dtos = terminals.Select(t => new AtmTerminalDto(t.TerminalId, t.TerminalName, t.BranchCode, t.Location, t.CurrentCashBalance, t.MaxCapacity, t.IsActive, t.LastReplenishedAtUtc)).ToList();
+            return Results.Ok(dtos);
+        });
+
+        adcApi.MapPost("/terminals/seed", async (
+            SeedAtmTerminalRequest request,
+            AdcCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var result = await handler.HandleSeedAtmTerminalAsync(new SeedAtmTerminalCommand(request), ct);
+            return Results.Ok(result);
+        });
+
+        adcApi.MapGet("/callcenter/customer/{cifNumber}", async (
+            string cifNumber,
+            AdcCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var result = await handler.HandleGetCallCenterCustomerViewAsync(cifNumber, ct);
+            if (result is null)
+                return Results.NotFound(new { error = $"Customer with CIF '{cifNumber}' not found." });
+
+            return Results.Ok(result);
+        });
+
+        // --- AUTOMATED RECONCILIATION & DISPUTE SETTLEMENT APIS (BRPD Circular 12/2024 Module 1.4 & 7.2) ---
+        var reconApi = app.MapGroup("/api/v1/reconciliation");
+
+        reconApi.MapPost("/settlement/3-way-match", async (
+            RunReconciliationRequest request,
+            ReconciliationCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleRunReconciliationAsync(new RunReconciliationCommand(request), ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        reconApi.MapGet("/batches", async (
+            IReconciliationRepository reconRepo,
+            CancellationToken ct) =>
+        {
+            var batches = await reconRepo.GetAllBatchesAsync(ct);
+            var dtos = batches.Select(b => new SettlementReconciliationResponse(
+                b.BatchId,
+                b.ReconciliationDate,
+                b.Channel.ToString(),
+                b.TotalCoreTransactions,
+                b.TotalSwitchTransactions,
+                b.TotalNetworkTransactions,
+                b.MatchedCount,
+                b.MismatchedCount,
+                b.Status.ToString(),
+                b.UnmatchedItems.Select(u => new UnmatchedReconItemDto(u.ItemId, u.Stan, u.Rrn, u.AccountNumber, u.Amount, u.DiscrepancyType, u.AgingBucket.ToString(), u.DaysUnreconciled, u.IsRectified)).ToList()
+            )).ToList();
+            return Results.Ok(dtos);
+        });
+
+        reconApi.MapPost("/disputes/file", async (
+            FileDisputeClaimRequest request,
+            ReconciliationCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleFileDisputeAsync(new FileDisputeCommand(request), ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        reconApi.MapPost("/disputes/{claimId}/resolve", async (
+            string claimId,
+            ResolveDisputeRequest request,
+            ReconciliationCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleResolveDisputeRefundAsync(new ResolveDisputeCommand(claimId, request), ct);
+                return Results.Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        reconApi.MapGet("/disputes", async (
+            IReconciliationRepository reconRepo,
+            CancellationToken ct) =>
+        {
+            var disputes = await reconRepo.GetAllDisputesAsync(ct);
+            var dtos = disputes.Select(d => new DisputeClaimResponse(
+                d.ClaimId,
+                d.OriginalTransactionId,
+                d.OriginalStan,
+                d.OriginalRrn,
+                d.AccountNumber.Value,
+                d.DisputedAmount.Amount,
+                d.Channel.ToString(),
+                d.DisputeReason,
+                d.Status.ToString(),
+                d.RectificationVoucherNumber,
+                d.ResolvedByOfficerId,
+                d.InvestigationNotes,
+                d.CreatedAtUtc,
+                d.ResolvedAtUtc)).ToList();
+            return Results.Ok(dtos);
         });
 
         // --- GENERAL LEDGER & CHART OF ACCOUNTS APIS (BRPD Circular 12/2024 Module 1) ---

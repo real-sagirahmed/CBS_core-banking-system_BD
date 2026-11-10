@@ -24,6 +24,9 @@ public class ChequeClearingItem : AggregateRoot<Guid>
     public string? ReturnRemarks { get; private set; }
     public DateOnly? SettlementDate { get; private set; }
 
+    // Parameterless constructor for EF Core ORM materialization
+    private ChequeClearingItem() : base(Guid.Empty) { }
+
     public ChequeClearingItem(
         Guid id,
         string batchId,

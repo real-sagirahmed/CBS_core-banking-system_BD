@@ -24,6 +24,9 @@ public class RtgsTransaction : AggregateRoot<Guid>
     public DateTime InitiatedAtUtc { get; private set; }
     public DateTime? SettledAtUtc { get; private set; }
 
+    // Parameterless constructor for EF Core ORM materialization
+    private RtgsTransaction() : base(Guid.Empty) { }
+
     public RtgsTransaction(
         Guid id,
         string endToEndId,

@@ -18,6 +18,9 @@ public class SecurityStationeryInventory : AggregateRoot<Guid>
     public string CustodianUserId { get; private set; }
     public bool IsActive { get; private set; }
 
+    // Parameterless constructor for EF Core ORM materialization
+    private SecurityStationeryInventory() : base(Guid.Empty) { }
+
     public SecurityStationeryInventory(
         Guid id,
         string branchCode,

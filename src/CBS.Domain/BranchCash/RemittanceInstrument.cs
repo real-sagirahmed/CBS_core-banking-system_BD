@@ -30,6 +30,9 @@ public class RemittanceInstrument : AggregateRoot<Guid>
     public string? DuplicateInstrumentNumber { get; private set; }
     public string? IndemnityBondReference { get; private set; }
 
+    // Parameterless constructor for EF Core ORM materialization
+    private RemittanceInstrument() : base(Guid.Empty) { }
+
     public RemittanceInstrument(
         Guid id,
         string instrumentNumber,

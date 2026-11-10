@@ -25,6 +25,9 @@ public class BeftnBatchItem : AggregateRoot<Guid>
     public string? ReturnCode { get; private set; }
     public string? ReturnReason { get; private set; }
 
+    // Parameterless constructor for EF Core ORM materialization
+    private BeftnBatchItem() : base(Guid.Empty) { }
+
     public BeftnBatchItem(
         Guid id,
         string batchId,
