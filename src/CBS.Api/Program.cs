@@ -31,6 +31,7 @@ using CBS.Application.PaymentRails.Commands.Rtgs;
 using CBS.Application.PaymentRails.DTOs;
 using CBS.Application.Reconciliation.Commands;
 using CBS.Application.Reconciliation.DTOs;
+using CBS.Application.Reconciliation.Services;
 using CBS.Application.SecurityAudit.Commands;
 using CBS.Application.SecurityAudit.DTOs;
 using CBS.Application.StandingInstructions.Commands;
@@ -4905,6 +4906,183 @@ public partial class Program
             {
                 return Results.BadRequest(new { error = ex.Message });
             }
+        });
+
+        // --- PHASE 22: BANK GUARANTEE (BG) LIFECYCLE ENGINE (BRPD Circular 12 Module 5.4) ---
+        var bankGuaranteeApi = app.MapGroup("/api/v1/trade/guarantees")
+            .AddEndpointFilter<FinancialAuthorizationFilter>()
+            .WithTags("Bank Guarantees (BRPD 5.4)");
+
+        bankGuaranteeApi.MapPost("/issue", async (
+            IssueBankGuaranteeRequest request,
+            BankGuaranteeCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleIssueAsync(request, ct);
+                return Results.Created($"/api/v1/trade/guarantees/{result.BgNumber}", result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        bankGuaranteeApi.MapPost("/amend", async (
+            AmendBankGuaranteeRequest request,
+            BankGuaranteeCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleAmendAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        bankGuaranteeApi.MapPost("/invoke-claim", async (
+            InvokeGuaranteeClaimRequest request,
+            BankGuaranteeCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleInvokeClaimAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        bankGuaranteeApi.MapPost("/liquidate-claim", async (
+            LiquidateGuaranteeClaimRequest request,
+            BankGuaranteeCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleLiquidateClaimAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        bankGuaranteeApi.MapPost("/cancel-release", async (
+            CancelBankGuaranteeRequest request,
+            BankGuaranteeCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleCancelReleaseAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        bankGuaranteeApi.MapGet("/{bgNumber}", async (
+            string bgNumber,
+            BankGuaranteeCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var result = await handler.HandleGetAsync(bgNumber, ct);
+            return result is not null ? Results.Ok(result) : Results.NotFound();
+        });
+
+        // --- PHASE 22: MULTI-CHANNEL RECONCILIATION AGING & PROVISIONING ENGINE (BRPD Circular 12 Module 1.4) ---
+        var reconAgingApi = app.MapGroup("/api/v1/reconciliation/aging")
+            .WithTags("Reconciliation Aging & Statutory Provisions (BRPD 1.4)");
+
+        reconAgingApi.MapPost("/record", async (
+            RecordUnreconciledItemRequest request,
+            ReconciliationAgingService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.RecordUnreconciledItemAsync(request, ct);
+                return Results.Created($"/api/v1/reconciliation/aging/{result.Id}", result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        reconAgingApi.MapPost("/resolve", async (
+            ResolveUnreconciledItemRequest request,
+            ReconciliationAgingService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.ResolveItemAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+        });
+
+        reconAgingApi.MapGet("/summary", async (
+            DateOnly? assessmentDate,
+            string? channelType,
+            ReconciliationAgingService service,
+            CancellationToken ct) =>
+        {
+            var targetDate = assessmentDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+            var result = await service.GetAgingSummaryAsync(targetDate, channelType, ct);
+            return Results.Ok(result);
         });
 
         // --- PRODUCTION HEALTH & PROBE ENDPOINTS ---

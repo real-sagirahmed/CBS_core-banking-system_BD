@@ -13,6 +13,10 @@ using CBS.Application.Shariah;
 using CBS.Application.Shariah.Commands;
 using CBS.Application.Specialized;
 using CBS.Application.Specialized.Commands;
+using CBS.Application.TradeFinance;
+using CBS.Application.TradeFinance.Commands;
+using CBS.Application.Reconciliation;
+using CBS.Application.Reconciliation.Services;
 using CBS.Application.Training;
 using CBS.Application.Training.Commands;
 using CBS.Application.Training.Services;
@@ -98,6 +102,10 @@ public static class DependencyInjection
         services.AddScoped<DemandLoanCommandHandler>();
         services.AddScoped<ISecurityDepositReceiptRepository, EfSecurityDepositReceiptRepository>();
         services.AddScoped<SecurityDepositReceiptCommandHandler>();
+        services.AddScoped<IBankGuaranteeRepository, EfBankGuaranteeRepository>();
+        services.AddScoped<BankGuaranteeCommandHandler>();
+        services.AddScoped<IReconciliationAgingRepository, EfReconciliationAgingRepository>();
+        services.AddScoped<ReconciliationAgingService>();
         services.AddHttpClient();
 
         return services;

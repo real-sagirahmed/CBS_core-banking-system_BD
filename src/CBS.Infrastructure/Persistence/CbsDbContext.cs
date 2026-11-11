@@ -98,6 +98,8 @@ public class CbsDbContext : DbContext
     public DbSet<DemandLoanFacility> DemandLoanFacilities => Set<DemandLoanFacility>();
     public DbSet<SecurityDepositReceipt> SecurityDepositReceipts => Set<SecurityDepositReceipt>();
     public DbSet<RemittanceStopPaymentJournal> RemittanceStopPaymentJournals => Set<RemittanceStopPaymentJournal>();
+    public DbSet<BankGuarantee> BankGuarantees => Set<BankGuarantee>();
+    public DbSet<ReconciliationAgingItem> ReconciliationAgingItems => Set<ReconciliationAgingItem>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -195,6 +197,8 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new DemandLoanFacilityConfiguration());
         modelBuilder.ApplyConfiguration(new SecurityDepositReceiptConfiguration());
         modelBuilder.ApplyConfiguration(new RemittanceStopPaymentJournalConfiguration());
+        modelBuilder.ApplyConfiguration(new BankGuaranteeConfiguration());
+        modelBuilder.ApplyConfiguration(new ReconciliationAgingItemConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -243,6 +247,8 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<InterBranchPaymentInstrument>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<DemandLoanFacility>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<SecurityDepositReceipt>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<BankGuarantee>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<ReconciliationAgingItem>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -296,6 +302,8 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<InterBranchPaymentInstrument>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<DemandLoanFacility>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<SecurityDepositReceipt>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<BankGuarantee>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<ReconciliationAgingItem>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
