@@ -45,9 +45,12 @@ using CBS.Application.TradeFinance.DTOs;
 using CBS.Application.Treasury.Commands;
 using CBS.Application.Treasury.DTOs;
 using CBS.Application.Remittance;
+using CBS.Application.Reporting.Commands;
+using CBS.Application.Reporting.DTOs;
 using CBS.Application.Security.Commands;
 using CBS.Application.Security.DTOs;
 using CBS.Domain.Accounts;
+using CBS.Domain.Reporting;
 using CBS.Domain.Enums;
 using CBS.Domain.Adc;
 using CBS.Domain.BranchCash;
@@ -137,6 +140,7 @@ public partial class Program
         builder.Services.AddTransient<ForeignRemittanceCommandHandler>();
         builder.Services.AddTransient<CrmCommandHandler>();
         builder.Services.AddTransient<SystemAdminCommandHandler>();
+        builder.Services.AddTransient<MisReportingCommandHandler>();
 
         builder.Services.ConfigureHttpJsonOptions(options =>
         {
@@ -3534,6 +3538,202 @@ public partial class Program
         {
             var result = await handler.GetAuditJournalsAsync(category, fromUtc, toUtc, ct);
             return Results.Ok(result);
+        });
+
+        // -------------------------------------------------------------
+        // MODULE 11: MIS & STATUTORY REGULATORY REPORTING ENGINE
+        // (BRPD Circular 12/2024 Module 11 & Banking Companies Act 1991 §35)
+        // -------------------------------------------------------------
+        var misApi = app.MapGroup("/api/v1/mis/reports");
+
+        misApi.MapGet("/daily-clean-cash", async (
+            string? branchCode,
+            string? date,
+            MisReportingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var parsedDate = !string.IsNullOrWhiteSpace(date) && DateOnly.TryParse(date, out var d) ? d : DateOnly.FromDateTime(DateTime.UtcNow);
+            var report = await handler.GetDailyCleanCashReportAsync(branchCode, parsedDate, ct);
+            return Results.Ok(report);
+        });
+
+        misApi.MapGet("/daily-affairs", async (
+            string? branchCode,
+            string? date,
+            MisReportingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var parsedDate = !string.IsNullOrWhiteSpace(date) && DateOnly.TryParse(date, out var d) ? d : DateOnly.FromDateTime(DateTime.UtcNow);
+            var report = await handler.GetDailyAffairsReportAsync(branchCode, parsedDate, ct);
+            return Results.Ok(report);
+        });
+
+        misApi.MapGet("/deposit-analytics", async (
+            string? asOfDate,
+            MisReportingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var parsedDate = !string.IsNullOrWhiteSpace(asOfDate) && DateOnly.TryParse(asOfDate, out var d) ? d : DateOnly.FromDateTime(DateTime.UtcNow);
+            var report = await handler.GetDepositAnalyticsReportAsync(parsedDate, ct);
+            return Results.Ok(report);
+        });
+
+        misApi.MapPost("/unclaimed-deposits/scan", async (
+            string? asOfDate,
+            MisReportingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var parsedDate = !string.IsNullOrWhiteSpace(asOfDate) && DateOnly.TryParse(asOfDate, out var d) ? d : DateOnly.FromDateTime(DateTime.UtcNow);
+            var result = await handler.ScanAndRegisterUnclaimedDepositsAsync(parsedDate, ct);
+            return Results.Ok(result);
+        });
+
+        misApi.MapPost("/unclaimed-deposits/notice", async (
+            IssueNoticeRequestDto request,
+            MisReportingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                await handler.IssueUnclaimedNoticeAsync(request, ct);
+                return Results.Ok(new { message = $"Notice successfully issued for unclaimed account '{request.AccountNumber}'." });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        misApi.MapPost("/unclaimed-deposits/transfer-to-bb", async (
+            TransferUnclaimedDepositsRequestDto request,
+            MisReportingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.TransferUnclaimedDepositsToCentralBankAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        misApi.MapGet("/sbs3-classification", async (
+            string? asOfDate,
+            MisReportingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var parsedDate = !string.IsNullOrWhiteSpace(asOfDate) && DateOnly.TryParse(asOfDate, out var d) ? d : DateOnly.FromDateTime(DateTime.UtcNow);
+            var report = await handler.GetSbs3ClassificationReportAsync(parsedDate, ct);
+            return Results.Ok(report);
+        });
+
+        misApi.MapGet("/foreign-trade-summary", async (
+            string? asOfDate,
+            MisReportingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var parsedDate = !string.IsNullOrWhiteSpace(asOfDate) && DateOnly.TryParse(asOfDate, out var d) ? d : DateOnly.FromDateTime(DateTime.UtcNow);
+            var report = await handler.GetForeignTradeSummaryReportAsync(parsedDate, ct);
+            return Results.Ok(report);
+        });
+
+        misApi.MapGet("/remittance-incentives", async (
+            string? fromDate,
+            string? toDate,
+            MisReportingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var start = !string.IsNullOrWhiteSpace(fromDate) && DateOnly.TryParse(fromDate, out var s) ? s : DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(-1));
+            var end = !string.IsNullOrWhiteSpace(toDate) && DateOnly.TryParse(toDate, out var e) ? e : DateOnly.FromDateTime(DateTime.UtcNow);
+            var report = await handler.GetRemittanceIncentiveReportAsync(start, end, ct);
+            return Results.Ok(report);
+        });
+
+        misApi.MapGet("/adc-reconciliation", async (
+            string? date,
+            MisReportingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var parsedDate = !string.IsNullOrWhiteSpace(date) && DateOnly.TryParse(date, out var d) ? d : DateOnly.FromDateTime(DateTime.UtcNow);
+            var report = await handler.GetAdcReconciliationReportAsync(parsedDate, ct);
+            return Results.Ok(report);
+        });
+
+        misApi.MapPost("/archives/seal", async (
+            SealReportRequestDto request,
+            MisReportingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var summary = await handler.SealStatutoryReportAsync(request, ct);
+                return Results.Created($"/api/v1/mis/reports/archives/{summary.Id}", summary);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        misApi.MapPost("/archives/{id:guid}/submit", async (
+            Guid id,
+            SubmitReportRequestDto request,
+            MisReportingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                await handler.SubmitStatutoryReportAsync(id, request, ct);
+                return Results.Ok(new { message = $"Statutory report '{id}' submitted successfully under reference '{request.SubmissionReference}'." });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        misApi.MapGet("/archives", async (
+            RegulatoryReportType? type,
+            string? fromDate,
+            string? toDate,
+            MisReportingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            DateOnly? s = !string.IsNullOrWhiteSpace(fromDate) && DateOnly.TryParse(fromDate, out var p1) ? p1 : null;
+            DateOnly? e = !string.IsNullOrWhiteSpace(toDate) && DateOnly.TryParse(toDate, out var p2) ? p2 : null;
+            var archives = await handler.GetArchivedReportsAsync(type, s, e, ct);
+            return Results.Ok(archives);
+        });
+
+        misApi.MapGet("/archives/{id:guid}", async (
+            Guid id,
+            MisReportingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var (summary, payload) = await handler.GetArchivedReportDetailAsync(id, ct);
+                return Results.Ok(new { summary, payload });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
         });
 
         app.Services.InitializeCbsDatabase();

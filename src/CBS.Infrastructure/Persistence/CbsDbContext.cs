@@ -10,6 +10,7 @@ using CBS.Domain.Lending;
 using CBS.Domain.PaymentRails;
 using CBS.Domain.Reconciliation;
 using CBS.Domain.Remittance;
+using CBS.Domain.Reporting;
 using CBS.Domain.Security;
 using CBS.Domain.SecurityAudit;
 using CBS.Domain.StandingInstructions;
@@ -71,6 +72,8 @@ public class CbsDbContext : DbContext
     public DbSet<AdminActionProposal> AdminActionProposals => Set<AdminActionProposal>();
     public DbSet<TransactionDoaOverride> TransactionDoaOverrides => Set<TransactionDoaOverride>();
     public DbSet<AdminAuditJournal> AdminAuditJournals => Set<AdminAuditJournal>();
+    public DbSet<StatutoryReportArchive> StatutoryReportArchives => Set<StatutoryReportArchive>();
+    public DbSet<UnclaimedDepositItem> UnclaimedDepositItems => Set<UnclaimedDepositItem>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -150,6 +153,8 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new AdminActionProposalConfiguration());
         modelBuilder.ApplyConfiguration(new TransactionDoaOverrideConfiguration());
         modelBuilder.ApplyConfiguration(new AdminAuditJournalConfiguration());
+        modelBuilder.ApplyConfiguration(new StatutoryReportArchiveConfiguration());
+        modelBuilder.ApplyConfiguration(new UnclaimedDepositItemConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -182,6 +187,8 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<SystemUserProfile>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<AdminActionProposal>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<TransactionDoaOverride>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<StatutoryReportArchive>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<UnclaimedDepositItem>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -219,6 +226,8 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<SystemUserProfile>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<AdminActionProposal>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<TransactionDoaOverride>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<StatutoryReportArchive>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<UnclaimedDepositItem>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
