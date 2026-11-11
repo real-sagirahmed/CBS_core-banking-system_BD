@@ -49,9 +49,12 @@ using CBS.Application.Reporting.Commands;
 using CBS.Application.Reporting.DTOs;
 using CBS.Application.Security.Commands;
 using CBS.Application.Security.DTOs;
+using CBS.Application.Shariah.Commands;
+using CBS.Application.Shariah.DTOs;
 using CBS.Application.Training.Commands;
 using CBS.Application.Training.DTOs;
 using CBS.Application.Training.Services;
+using CBS.Domain.Shariah;
 using CBS.Domain.Training;
 using CBS.Domain.Accounts;
 using CBS.Domain.Reporting;
@@ -3930,6 +3933,297 @@ public partial class Program
         {
             var report = await complianceService.EvaluateMasterComplianceAsync(ct);
             return Results.Ok(report);
+        });
+
+        // -------------------------------------------------------------
+        // Phase 18: Islamic Banking & Shariah Compliance Engine
+        // -------------------------------------------------------------
+        var shariahApi = app.MapGroup("/api/v1/shariah").WithTags("Islamic Banking & Shariah Compliance");
+
+        // 1. Mudaraba Investment Pools
+        shariahApi.MapPost("/pools", async (
+            CreateMudarabaPoolRequestDto request,
+            ShariahCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.CreateMudarabaPoolAsync(request, ct);
+                return Results.Created($"/api/v1/shariah/pools/{result.Id}", result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        shariahApi.MapPost("/pools/{id:guid}/weightages", async (
+            Guid id,
+            ConfigureWeightageRequestDto request,
+            ShariahCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.ConfigureWeightageAsync(id, request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        shariahApi.MapPost("/pools/{id:guid}/distribute", async (
+            Guid id,
+            DistributePoolProfitRequestDto request,
+            ShariahCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.DistributePoolProfitAsync(id, request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        shariahApi.MapGet("/pools", async (
+            ShariahCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var pools = await handler.GetPoolsAsync(ct);
+            return Results.Ok(pools);
+        });
+
+        // 2. Al-Wadiah Current Accounts
+        shariahApi.MapPost("/al-wadiah/open", async (
+            OpenAlWadiahAccountRequestDto request,
+            ShariahCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.OpenAlWadiahAccountAsync(request, ct);
+                return Results.Created($"/api/v1/shariah/al-wadiah/{result.AccountNumber}", result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        shariahApi.MapGet("/al-wadiah/{accountNumber}", async (
+            string accountNumber,
+            ShariahCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.GetAlWadiahAccountAsync(accountNumber, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+        });
+
+        // 3. Bai-Murabaha Financing Facilities
+        shariahApi.MapPost("/murabaha/create", async (
+            CreateMurabahaFacilityRequestDto request,
+            ShariahCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.CreateMurabahaFacilityAsync(request, ct);
+                return Results.Created($"/api/v1/shariah/murabaha/{result.Id}", result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        shariahApi.MapPost("/murabaha/{id:guid}/inspect-goods", async (
+            Guid id,
+            InspectGoodsRequestDto request,
+            ShariahCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.InspectGoodsAsync(id, request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        shariahApi.MapPost("/murabaha/{id:guid}/disburse-vendor", async (
+            Guid id,
+            DisburseMurabahaToVendorRequestDto request,
+            ShariahCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.DisburseMurabahaToVendorAsync(id, request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        shariahApi.MapGet("/murabaha/{id:guid}", async (
+            Guid id,
+            ShariahCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.GetMurabahaFacilityAsync(id, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+        });
+
+        // 4. Quard Financing Facilities
+        shariahApi.MapPost("/quard/create", async (
+            CreateQuardFacilityRequestDto request,
+            ShariahCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.CreateQuardFacilityAsync(request, ct);
+                return Results.Created($"/api/v1/shariah/quard/{result.Id}", result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        shariahApi.MapGet("/quard/{id:guid}", async (
+            Guid id,
+            ShariahCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.GetQuardFacilityAsync(id, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+        });
+
+        // 5. Ta'widh Charity Fund
+        shariahApi.MapPost("/tawidh/accrue", async (
+            AccrueTaWidhPenaltyRequestDto request,
+            ShariahCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.AccrueTaWidhPenaltyAsync(request, ct);
+                return Results.Created($"/api/v1/shariah/tawidh/{result.Id}", result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        shariahApi.MapPost("/tawidh/{id:guid}/disburse-charity", async (
+            Guid id,
+            DisburseCharityFundRequestDto request,
+            ShariahCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.DisburseCharityFundAsync(id, request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        shariahApi.MapGet("/tawidh/summary", async (
+            ShariahCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var summary = await handler.GetTaWidhSummaryAsync(ct);
+            return Results.Ok(summary);
         });
 
         app.Services.InitializeCbsDatabase();

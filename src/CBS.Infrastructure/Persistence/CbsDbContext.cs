@@ -13,6 +13,7 @@ using CBS.Domain.Remittance;
 using CBS.Domain.Reporting;
 using CBS.Domain.Security;
 using CBS.Domain.SecurityAudit;
+using CBS.Domain.Shariah;
 using CBS.Domain.StandingInstructions;
 using CBS.Domain.TermDeposits;
 using CBS.Domain.TradeFinance;
@@ -20,6 +21,7 @@ using CBS.Domain.Training;
 using CBS.Domain.Treasury;
 using CBS.Domain.ValueObjects;
 using CBS.Infrastructure.Persistence.Configurations;
+using CBS.Infrastructure.Persistence.Configurations.Shariah;
 using Microsoft.EntityFrameworkCore;
 
 namespace CBS.Infrastructure.Persistence;
@@ -79,6 +81,11 @@ public class CbsDbContext : DbContext
     public DbSet<EmployeeTrainingCertification> EmployeeTrainingCertifications => Set<EmployeeTrainingCertification>();
     public DbSet<CustomerSecurityBroadcast> CustomerSecurityBroadcasts => Set<CustomerSecurityBroadcast>();
     public DbSet<SystemUserManualTopic> SystemUserManualTopics => Set<SystemUserManualTopic>();
+    public DbSet<MudarabaInvestmentPool> MudarabaInvestmentPools => Set<MudarabaInvestmentPool>();
+    public DbSet<AlWadiahAccount> AlWadiahAccounts => Set<AlWadiahAccount>();
+    public DbSet<MurabahaFinancingFacility> MurabahaFinancingFacilities => Set<MurabahaFinancingFacility>();
+    public DbSet<QuardFinancingFacility> QuardFinancingFacilities => Set<QuardFinancingFacility>();
+    public DbSet<ShariahTaWidhCharityFund> ShariahTaWidhCharityFunds => Set<ShariahTaWidhCharityFund>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -164,6 +171,11 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new EmployeeTrainingCertificationConfiguration());
         modelBuilder.ApplyConfiguration(new CustomerSecurityBroadcastConfiguration());
         modelBuilder.ApplyConfiguration(new SystemUserManualTopicConfiguration());
+        modelBuilder.ApplyConfiguration(new MudarabaInvestmentPoolConfiguration());
+        modelBuilder.ApplyConfiguration(new AlWadiahAccountConfiguration());
+        modelBuilder.ApplyConfiguration(new MurabahaFinancingFacilityConfiguration());
+        modelBuilder.ApplyConfiguration(new QuardFinancingFacilityConfiguration());
+        modelBuilder.ApplyConfiguration(new ShariahTaWidhCharityFundConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -201,6 +213,11 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<TrainingSimulationSession>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<EmployeeTrainingCertification>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<CustomerSecurityBroadcast>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<MudarabaInvestmentPool>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<AlWadiahAccount>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<MurabahaFinancingFacility>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<QuardFinancingFacility>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<ShariahTaWidhCharityFund>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -243,6 +260,11 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<TrainingSimulationSession>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<EmployeeTrainingCertification>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<CustomerSecurityBroadcast>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<MudarabaInvestmentPool>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<AlWadiahAccount>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<MurabahaFinancingFacility>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<QuardFinancingFacility>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<ShariahTaWidhCharityFund>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)

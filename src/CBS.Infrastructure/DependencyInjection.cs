@@ -5,6 +5,8 @@ using CBS.Application.GeneralLedger.Services;
 using CBS.Application.Remittance;
 using CBS.Application.Reporting;
 using CBS.Application.Security;
+using CBS.Application.Shariah;
+using CBS.Application.Shariah.Commands;
 using CBS.Application.Training;
 using CBS.Application.Training.Commands;
 using CBS.Application.Training.Services;
@@ -82,6 +84,8 @@ public static class DependencyInjection
         services.AddScoped<ITrainingAndAwarenessRepository, EfTrainingAndAwarenessRepository>();
         services.AddScoped<TrainingAndAwarenessCommandHandler>();
         services.AddScoped<BbrpdMasterComplianceService>();
+        services.AddScoped<IShariahComplianceRepository, EfShariahComplianceRepository>();
+        services.AddScoped<ShariahCommandHandler>();
         services.AddHttpClient();
 
         return services;
