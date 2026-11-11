@@ -20,8 +20,12 @@ using CBS.Domain.TradeFinance;
 using CBS.Domain.Training;
 using CBS.Domain.Treasury;
 using CBS.Domain.ValueObjects;
+using CBS.Domain.Lending.Agricultural;
+using CBS.Domain.Lending.Discounted;
+using CBS.Domain.Deposits.Multiplication;
 using CBS.Infrastructure.Persistence.Configurations;
 using CBS.Infrastructure.Persistence.Configurations.Shariah;
+using CBS.Infrastructure.Persistence.Configurations.Specialized;
 using Microsoft.EntityFrameworkCore;
 
 namespace CBS.Infrastructure.Persistence;
@@ -86,6 +90,10 @@ public class CbsDbContext : DbContext
     public DbSet<MurabahaFinancingFacility> MurabahaFinancingFacilities => Set<MurabahaFinancingFacility>();
     public DbSet<QuardFinancingFacility> QuardFinancingFacilities => Set<QuardFinancingFacility>();
     public DbSet<ShariahTaWidhCharityFund> ShariahTaWidhCharityFunds => Set<ShariahTaWidhCharityFund>();
+    public DbSet<AgriculturalLoanFacility> AgriculturalLoans => Set<AgriculturalLoanFacility>();
+    public DbSet<BillDiscountingFacility> DiscountedBills => Set<BillDiscountingFacility>();
+    public DbSet<DepositMultiplicationAccount> DepositMultiplicationAccounts => Set<DepositMultiplicationAccount>();
+    public DbSet<InterBranchPaymentInstrument> InterBranchPaymentInstruments => Set<InterBranchPaymentInstrument>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -176,6 +184,10 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new MurabahaFinancingFacilityConfiguration());
         modelBuilder.ApplyConfiguration(new QuardFinancingFacilityConfiguration());
         modelBuilder.ApplyConfiguration(new ShariahTaWidhCharityFundConfiguration());
+        modelBuilder.ApplyConfiguration(new AgriculturalLoanFacilityConfiguration());
+        modelBuilder.ApplyConfiguration(new BillDiscountingFacilityConfiguration());
+        modelBuilder.ApplyConfiguration(new DepositMultiplicationAccountConfiguration());
+        modelBuilder.ApplyConfiguration(new InterBranchPaymentInstrumentConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -218,6 +230,10 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<MurabahaFinancingFacility>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<QuardFinancingFacility>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<ShariahTaWidhCharityFund>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<AgriculturalLoanFacility>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<BillDiscountingFacility>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<DepositMultiplicationAccount>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<InterBranchPaymentInstrument>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -265,6 +281,10 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<MurabahaFinancingFacility>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<QuardFinancingFacility>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<ShariahTaWidhCharityFund>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<AgriculturalLoanFacility>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<BillDiscountingFacility>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<DepositMultiplicationAccount>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<InterBranchPaymentInstrument>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)

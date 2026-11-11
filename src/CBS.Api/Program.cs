@@ -51,6 +51,8 @@ using CBS.Application.Security.Commands;
 using CBS.Application.Security.DTOs;
 using CBS.Application.Shariah.Commands;
 using CBS.Application.Shariah.DTOs;
+using CBS.Application.Specialized.Commands;
+using CBS.Application.Specialized.DTOs;
 using CBS.Application.Training.Commands;
 using CBS.Application.Training.DTOs;
 using CBS.Application.Training.Services;
@@ -4224,6 +4226,357 @@ public partial class Program
         {
             var summary = await handler.GetTaWidhSummaryAsync(ct);
             return Results.Ok(summary);
+        });
+
+        // --- PHASE 20: SPECIALIZED CREDIT, AGRICULTURAL FINANCE & REMITTANCE TEST KEY ENDPOINTS ---
+        // Bangladesh Bank BRPD Circular No. 12 (13 May 2024) Modules 4.4, 4.6, 3.7, 3.12, 3.13
+
+        // 1. Agricultural Loan Endpoints (BRPD 4.4)
+        var agriApi = app.MapGroup("/api/v1/specialized-lending/agri")
+            .WithTags("Agricultural Credit (BRPD 4.4)");
+
+        agriApi.MapPost("/initiate", async (
+            InitiateAgriLoanRequest request,
+            SpecializedBankingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.InitiateAgriLoanAsync(request, ct);
+                return Results.Created($"/api/v1/specialized-lending/agri/{result.AccountNumber}", result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        agriApi.MapPost("/disburse", async (
+            DisburseAgriLoanRequest request,
+            SpecializedBankingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.DisburseAgriLoanAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        agriApi.MapPost("/repay", async (
+            RepayAgriLoanRequest request,
+            SpecializedBankingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.RepayAgriLoanAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        agriApi.MapPost("/reschedule-disaster", async (
+            RescheduleAgriLoanRequest request,
+            SpecializedBankingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.RescheduleAgriLoanAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        agriApi.MapGet("/{accountNumber}", async (
+            string accountNumber,
+            SpecializedBankingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var result = await handler.GetAgriLoanAsync(accountNumber, ct);
+            return result is not null ? Results.Ok(result) : Results.NotFound();
+        });
+
+        // 2. Bill Discounting & Inland Bill Purchase (IBP) Endpoints (BRPD 4.6)
+        var billsApi = app.MapGroup("/api/v1/specialized-lending/bills")
+            .WithTags("Bill Discounting (BRPD 4.6)");
+
+        billsApi.MapPost("/discount", async (
+            DiscountBillRequest request,
+            SpecializedBankingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.DiscountBillAsync(request, ct);
+                return Results.Created($"/api/v1/specialized-lending/bills/{result.AccountNumber}", result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        billsApi.MapPost("/amortize", async (
+            AmortizeBillDiscountRequest request,
+            SpecializedBankingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.AmortizeBillDiscountAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        billsApi.MapPost("/early-retire", async (
+            EarlyRetireBillRequest request,
+            SpecializedBankingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.EarlyRetireBillAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        billsApi.MapPost("/liquidate", async (
+            LiquidateBillRequest request,
+            SpecializedBankingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.LiquidateBillAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        billsApi.MapGet("/{accountNumber}", async (
+            string accountNumber,
+            SpecializedBankingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var result = await handler.GetDiscountedBillAsync(accountNumber, ct);
+            return result is not null ? Results.Ok(result) : Results.NotFound();
+        });
+
+        // 3. Deposit Multiplication Schemes (BRPD 3.7)
+        var multiplicationApi = app.MapGroup("/api/v1/specialized-deposits/multiplication")
+            .WithTags("Deposit Multiplication Schemes (BRPD 3.7)");
+
+        multiplicationApi.MapPost("/open", async (
+            OpenMultiplicationAccountRequest request,
+            SpecializedBankingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.OpenMultiplicationAccountAsync(request, ct);
+                return Results.Created($"/api/v1/specialized-deposits/multiplication/{result.AccountNumber}", result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        multiplicationApi.MapPost("/encash", async (
+            EncashMultiplicationAccountRequest request,
+            SpecializedBankingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.EncashMultiplicationAccountAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        multiplicationApi.MapGet("/{accountNumber}", async (
+            string accountNumber,
+            SpecializedBankingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var result = await handler.GetMultiplicationAccountAsync(accountNumber, ct);
+            return result is not null ? Results.Ok(result) : Results.NotFound();
+        });
+
+        // 4. Inter-Branch Remittance & Cryptographic Test Key Engine (BRPD 3.12, 3.13)
+        var remittanceTestKeyApi = app.MapGroup("/api/v1/inter-branch-remittance/test-key")
+            .WithTags("Inter-Branch Remittance Test Key (BRPD 3.12, 3.13)");
+
+        remittanceTestKeyApi.MapPost("/issue", async (
+            IssueInterBranchInstrumentRequest request,
+            SpecializedBankingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.IssueInstrumentAsync(request, ct);
+                return Results.Created($"/api/v1/inter-branch-remittance/test-key/{result.InstrumentNumber}", result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        remittanceTestKeyApi.MapPost("/verify-pay", async (
+            VerifyAndPayInterBranchInstrumentRequest request,
+            SpecializedBankingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.VerifyAndPayInstrumentAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        remittanceTestKeyApi.MapPost("/cancel", async (
+            CancelInterBranchInstrumentRequest request,
+            SpecializedBankingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.CancelInstrumentAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        remittanceTestKeyApi.MapGet("/{instrumentNumber}", async (
+            string instrumentNumber,
+            SpecializedBankingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var result = await handler.GetPaymentInstrumentAsync(instrumentNumber, ct);
+            return result is not null ? Results.Ok(result) : Results.NotFound();
         });
 
         // --- PRODUCTION HEALTH & PROBE ENDPOINTS ---
