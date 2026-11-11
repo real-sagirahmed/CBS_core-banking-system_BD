@@ -45,7 +45,10 @@ using CBS.Application.TradeFinance.DTOs;
 using CBS.Application.Treasury.Commands;
 using CBS.Application.Treasury.DTOs;
 using CBS.Application.Remittance;
+using CBS.Application.Security.Commands;
+using CBS.Application.Security.DTOs;
 using CBS.Domain.Accounts;
+using CBS.Domain.Enums;
 using CBS.Domain.Adc;
 using CBS.Domain.BranchCash;
 using CBS.Domain.Cheques;
@@ -133,6 +136,7 @@ public partial class Program
         builder.Services.AddTransient<DpsCommandHandler>();
         builder.Services.AddTransient<ForeignRemittanceCommandHandler>();
         builder.Services.AddTransient<CrmCommandHandler>();
+        builder.Services.AddTransient<SystemAdminCommandHandler>();
 
         builder.Services.ConfigureHttpJsonOptions(options =>
         {
@@ -3384,6 +3388,151 @@ public partial class Program
         {
             int days = daysThreshold ?? 30;
             var result = await handler.GetExpiringDocumentsAsync(days, ct);
+            return Results.Ok(result);
+        });
+
+        // --- SYSTEM ADMINISTRATION, DOA MATRIX & GOVERNANCE (BRPD Circular 12/2024 Modules 9 & 10) ---
+        var adminApi = app.MapGroup("/api/v1/admin");
+
+        adminApi.MapPost("/users/propose", async (
+            ProposeCreateUserRequest request,
+            SystemAdminCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.ProposeCreateUserAsync(request, ct);
+                return Results.Created($"/api/v1/admin/proposals/{result.Id}", result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        adminApi.MapPost("/proposals/{id:guid}/approve", async (
+            Guid id,
+            ApproveProposalRequest request,
+            SystemAdminCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.ApproveProposalAsync(id, request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        adminApi.MapPost("/proposals/{id:guid}/reject", async (
+            Guid id,
+            RejectProposalRequest request,
+            SystemAdminCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.RejectProposalAsync(id, request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        adminApi.MapPost("/auth/login", async (
+            LoginRequest request,
+            SystemAdminCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.LoginAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        adminApi.MapPost("/auth/change-password", async (
+            ChangePasswordRequest request,
+            SystemAdminCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.ChangePasswordAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        adminApi.MapPost("/doa/evaluate", async (
+            EvaluateDoaRequest request,
+            SystemAdminCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.EvaluateDoaAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        adminApi.MapPost("/doa/overrides/{id:guid}/authorize", async (
+            Guid id,
+            AuthorizeOverrideRequest request,
+            SystemAdminCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.AuthorizeOverrideAsync(id, request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        adminApi.MapGet("/users/{userId}", async (
+            string userId,
+            SystemAdminCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.GetUserAsync(userId, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException)
+            {
+                return Results.NotFound(new { error = $"User '{userId}' was not found." });
+            }
+        });
+
+        adminApi.MapGet("/audit/journals", async (
+            JournalCategory? category,
+            DateTime? fromUtc,
+            DateTime? toUtc,
+            SystemAdminCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var result = await handler.GetAuditJournalsAsync(category, fromUtc, toUtc, ct);
             return Results.Ok(result);
         });
 

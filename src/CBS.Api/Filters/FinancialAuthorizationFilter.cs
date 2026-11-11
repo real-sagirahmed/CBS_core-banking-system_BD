@@ -1,5 +1,6 @@
 using CBS.Application.Common.Interfaces;
 using CBS.Application.Common.Security;
+using CBS.Application.Security;
 using CBS.Domain.Enums;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -59,6 +60,34 @@ public class FinancialAuthorizationFilter : IEndpointFilter
                     error = $"Security Invariant Violation [BRPD 10.3.5-vii]: Super/Admin users in CBS shall not be authorized to perform any financial transactions. Role '{declaredRole}' is blocked from financial transactions.",
                     code = "BRPD_10_3_5_VII"
                 }, statusCode: StatusCodes.Status403Forbidden);
+            }
+        }
+        else if (!string.IsNullOrWhiteSpace(roleStr) &&
+                 (roleStr.Contains("Admin", StringComparison.OrdinalIgnoreCase) ||
+                  string.Equals(roleStr, "ComplianceAuditor", StringComparison.OrdinalIgnoreCase)))
+        {
+            return Results.Json(new
+            {
+                error = $"Security Invariant Violation [BRPD 10.3.5-vii]: Super/Admin users in CBS shall not be authorized to perform any financial transactions. Role '{roleStr}' is blocked from financial transactions.",
+                code = "BRPD_10_3_5_VII"
+            }, statusCode: StatusCodes.Status403Forbidden);
+        }
+
+        // Database-backed SystemUserProfile check for Administrator group (BRPD 10.3.5-vii)
+        if (!string.IsNullOrWhiteSpace(userId))
+        {
+            var adminRepo = httpContext.RequestServices.GetService<ISystemAdminRepository>();
+            if (adminRepo is not null)
+            {
+                var sysUser = await adminRepo.GetUserByIdAsync(userId);
+                if (sysUser is not null && sysUser.UserGroup == UserGroupType.Administrator)
+                {
+                    return Results.Json(new
+                    {
+                        error = $"Security Invariant Violation [BRPD 10.3.5-vii]: Super/Admin users in CBS shall not be authorized to perform or approve financial transactions. User '{userId}' belongs to Administrator group.",
+                        code = "BRPD_10_3_5_VII"
+                    }, statusCode: StatusCodes.Status403Forbidden);
+                }
             }
         }
 

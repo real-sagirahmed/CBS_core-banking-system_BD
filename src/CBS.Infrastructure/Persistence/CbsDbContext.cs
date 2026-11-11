@@ -10,6 +10,7 @@ using CBS.Domain.Lending;
 using CBS.Domain.PaymentRails;
 using CBS.Domain.Reconciliation;
 using CBS.Domain.Remittance;
+using CBS.Domain.Security;
 using CBS.Domain.SecurityAudit;
 using CBS.Domain.StandingInstructions;
 using CBS.Domain.TermDeposits;
@@ -66,6 +67,10 @@ public class CbsDbContext : DbContext
     public DbSet<CorporateCustomerEntity> CorporateCustomerEntities => Set<CorporateCustomerEntity>();
     public DbSet<CorporateGroup> CorporateGroups => Set<CorporateGroup>();
     public DbSet<CustomerDocumentRecord> CustomerDocumentRecords => Set<CustomerDocumentRecord>();
+    public DbSet<SystemUserProfile> SystemUserProfiles => Set<SystemUserProfile>();
+    public DbSet<AdminActionProposal> AdminActionProposals => Set<AdminActionProposal>();
+    public DbSet<TransactionDoaOverride> TransactionDoaOverrides => Set<TransactionDoaOverride>();
+    public DbSet<AdminAuditJournal> AdminAuditJournals => Set<AdminAuditJournal>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -141,6 +146,10 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new CorporateCustomerEntityConfiguration());
         modelBuilder.ApplyConfiguration(new CorporateGroupConfiguration());
         modelBuilder.ApplyConfiguration(new CustomerDocumentRecordConfiguration());
+        modelBuilder.ApplyConfiguration(new SystemUserProfileConfiguration());
+        modelBuilder.ApplyConfiguration(new AdminActionProposalConfiguration());
+        modelBuilder.ApplyConfiguration(new TransactionDoaOverrideConfiguration());
+        modelBuilder.ApplyConfiguration(new AdminAuditJournalConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -170,6 +179,9 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<CorporateCustomerEntity>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<CorporateGroup>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<CustomerDocumentRecord>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<SystemUserProfile>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<AdminActionProposal>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<TransactionDoaOverride>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -204,6 +216,9 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<CorporateCustomerEntity>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<CorporateGroup>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<CustomerDocumentRecord>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<SystemUserProfile>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<AdminActionProposal>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<TransactionDoaOverride>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
