@@ -37,7 +37,11 @@ public sealed record StandingInstructionResponseDto(
     string Status,
     int ConsecutiveFailureCount,
     string? PauseReason,
-    string Narrative);
+    string Narrative,
+    bool IsTemporaryHoldActive = false,
+    DateOnly? HoldUntilDate = null,
+    decimal? HoldAmount = null,
+    string? HoldReason = null);
 
 public sealed record SweepRuleResponseDto(
     string RuleId,

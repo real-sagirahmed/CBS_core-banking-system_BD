@@ -26,6 +26,10 @@ public class StandingInstruction : AggregateRoot<string>
     public StandingInstructionStatus Status { get; private set; }
     public string? PauseReason { get; private set; }
     public DateOnly? ResumeDate { get; private set; }
+    public bool IsTemporaryHoldActive { get; private set; }
+    public DateOnly? HoldUntilDate { get; private set; }
+    public decimal? HoldAmount { get; private set; }
+    public string? HoldReason { get; private set; }
     public string Narrative { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
 
@@ -117,6 +121,84 @@ public class StandingInstruction : AggregateRoot<string>
     {
         Status = StandingInstructionStatus.Cancelled;
         PauseReason = reason;
+    }
+
+    public void ApplyTemporaryHold(DateOnly holdUntilDate, decimal? holdAmount, string reason)
+    {
+        if (Status != StandingInstructionStatus.Active)
+            throw new InvalidOperationException($"Cannot apply temporary hold on Standing Instruction in '{Status}' state.");
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new ArgumentException("Hold reason is required.", nameof(reason));
+
+        IsTemporaryHoldActive = true;
+        HoldUntilDate = holdUntilDate;
+        HoldAmount = holdAmount;
+        HoldReason = reason.Trim();
+    }
+
+    public void ReleaseTemporaryHold(string approverUserId)
+    {
+        if (string.IsNullOrWhiteSpace(approverUserId))
+            throw new ArgumentException("Approver User ID is required to release temporary hold.", nameof(approverUserId));
+
+        IsTemporaryHoldActive = false;
+        HoldUntilDate = null;
+        HoldAmount = null;
+        HoldReason = null;
+    }
+
+    public bool IsUnderHoldAsOf(DateOnly asOfDate)
+    {
+        if (!IsTemporaryHoldActive) return false;
+        if (HoldUntilDate.HasValue && asOfDate >= HoldUntilDate.Value)
+        {
+            // Auto-expired hold
+            IsTemporaryHoldActive = false;
+            HoldUntilDate = null;
+            HoldAmount = null;
+            HoldReason = null;
+            return false;
+        }
+        return true;
+    }
+
+    public void ModifyInstruction(
+        Money? newTransferAmount = null,
+        ExecutionFrequency? newFrequency = null,
+        Money? newExecutionFee = null,
+        AccountNumber? newTargetAccount = null,
+        int? newSpecificDayOfMonth = null,
+        DateOnly? newEndDate = null,
+        string? modifierUserId = null)
+    {
+        if (Status == StandingInstructionStatus.Cancelled || Status == StandingInstructionStatus.Completed)
+            throw new InvalidOperationException($"Cannot modify Standing Instruction in '{Status}' state.");
+
+        if (newTransferAmount is not null)
+        {
+            if (newTransferAmount.Amount <= 0m)
+                throw new InvariantViolationException("PositiveTransferAmountInvariant", "BRPD Circular 12/2024 (1.8.1-iv)", "Transfer amount must be strictly positive.");
+            TransferAmount = newTransferAmount;
+        }
+
+        if (newFrequency.HasValue) Frequency = newFrequency.Value;
+        if (newExecutionFee is not null) ExecutionFee = newExecutionFee;
+
+        if (newTargetAccount is not null)
+        {
+            if (newTargetAccount == SourceAccountNumber)
+                throw new InvariantViolationException("SourceAndTargetAccountIdenticalInvariant", "BRPD Circular 12/2024 (1.8.1-i)", "Source and target account cannot be identical.");
+            TargetAccountNumber = newTargetAccount;
+        }
+
+        if (newSpecificDayOfMonth.HasValue)
+        {
+            if (newSpecificDayOfMonth.Value < 1 || newSpecificDayOfMonth.Value > 31)
+                throw new ArgumentOutOfRangeException(nameof(newSpecificDayOfMonth), "Specific day of month must be between 1 and 31.");
+            SpecificDayOfMonth = newSpecificDayOfMonth.Value;
+        }
+
+        if (newEndDate.HasValue) EndDate = newEndDate;
     }
 
     public void RecordExecutionSuccess(DateOnly executionDate, string voucherNumber)

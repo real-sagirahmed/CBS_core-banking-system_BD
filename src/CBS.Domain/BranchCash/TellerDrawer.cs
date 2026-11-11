@@ -14,6 +14,7 @@ public class TellerDrawer : AggregateRoot<Guid>
     public string CashierUserId { get; private set; }
     public DateOnly OperatingDate { get; private set; }
     public Money CashierPostingLimit { get; private set; }
+    public Money CashHoldingLimit { get; private set; }
     public Money CurrentBalance { get; private set; }
     public CashDenominationBundle Denominations { get; private set; }
     public TellerDrawerStatus Status { get; private set; }
@@ -30,7 +31,8 @@ public class TellerDrawer : AggregateRoot<Guid>
         string branchCode,
         string cashierUserId,
         DateOnly operatingDate,
-        Money cashierPostingLimit) : base(id)
+        Money cashierPostingLimit,
+        Money? cashHoldingLimit = null) : base(id)
     {
         if (string.IsNullOrWhiteSpace(branchCode)) throw new ArgumentException("Branch code is required.", nameof(branchCode));
         if (string.IsNullOrWhiteSpace(cashierUserId)) throw new ArgumentException("Cashier User ID is required.", nameof(cashierUserId));
@@ -40,6 +42,7 @@ public class TellerDrawer : AggregateRoot<Guid>
         CashierUserId = cashierUserId.Trim();
         OperatingDate = operatingDate;
         CashierPostingLimit = cashierPostingLimit;
+        CashHoldingLimit = cashHoldingLimit ?? Money.Bdt(Math.Max(cashierPostingLimit.Amount * 2m, 1000000m));
         CurrentBalance = Money.Zero(Currency.BDT);
         Denominations = CashDenominationBundle.Empty;
         Status = TellerDrawerStatus.Closed;
@@ -111,8 +114,46 @@ public class TellerDrawer : AggregateRoot<Guid>
                 $"Cash deposit amount ({amount}) exceeds cashier posting limit ({CashierPostingLimit}). Dual supervisor authorization is mandatory.");
         }
 
+        // Cashier drawer holding limit check (BRPD 1.7.1-ii)
+        if (CurrentBalance + amount > CashHoldingLimit && string.IsNullOrWhiteSpace(supervisorApprovalId))
+        {
+            throw new InvariantViolationException(
+                "TellerCashHoldingLimitExceededInvariant",
+                "BRPD Circular 12/2024 (1.7.1-ii)",
+                $"Cash deposit would cause drawer balance ({CurrentBalance + amount}) to exceed cashier holding limit ({CashHoldingLimit}). Escalation to supervisor approval queue is mandatory.");
+        }
+
         CurrentBalance += amount;
         Denominations = Denominations.Add(denominations);
+    }
+
+    public void SwapDenominations(
+        CashDenominationBundle givenBundle,
+        CashDenominationBundle receivedBundle,
+        string supervisorApprovalId)
+    {
+        EnsureActive();
+        ArgumentNullException.ThrowIfNull(givenBundle, nameof(givenBundle));
+        ArgumentNullException.ThrowIfNull(receivedBundle, nameof(receivedBundle));
+
+        if (string.IsNullOrWhiteSpace(supervisorApprovalId))
+        {
+            throw new InvariantViolationException(
+                "SupervisorAuthorizationRequiredInvariant",
+                "BRPD Circular 12/2024 (1.7.1-ii, 1.7.2-ii)",
+                "Inter-teller denomination swap requires verified supervisor authorization.");
+        }
+
+        if (givenBundle.TotalAmount != receivedBundle.TotalAmount)
+        {
+            throw new InvariantViolationException(
+                "DenominationSwapValueMismatchInvariant",
+                "BRPD Circular 12/2024 (1.7.2-ii)",
+                $"Given bundle sum ({givenBundle.TotalAmount}) must exactly equal received bundle sum ({receivedBundle.TotalAmount}). Net drawer cash change must be zero.");
+        }
+
+        Denominations = Denominations.Subtract(givenBundle);
+        Denominations = Denominations.Add(receivedBundle);
     }
 
     public void ProcessCashWithdrawal(

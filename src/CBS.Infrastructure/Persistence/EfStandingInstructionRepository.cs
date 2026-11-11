@@ -71,4 +71,29 @@ public class EfStandingInstructionRepository : IStandingInstructionRepository
         _dbContext.SweepAccountRules.Update(rule);
         return Task.CompletedTask;
     }
+
+    public async Task<MultiAccountSweepRule?> GetMultiSweepRuleByIdAsync(string ruleId, CancellationToken ct = default)
+    {
+        return await _dbContext.MultiAccountSweepRules
+            .FirstOrDefaultAsync(r => r.Id == ruleId, ct);
+    }
+
+    public async Task<IEnumerable<MultiAccountSweepRule>> GetMultiSweepRulesByAccountAsync(string accountNumber, CancellationToken ct = default)
+    {
+        var acc = AccountNumber.From(accountNumber);
+        return await _dbContext.MultiAccountSweepRules
+            .Where(r => r.IsActive && (r.MasterAccountNumber == acc || r.Targets.Any(t => t.TargetAccountNumber == acc)))
+            .ToListAsync(ct);
+    }
+
+    public async Task AddMultiSweepRuleAsync(MultiAccountSweepRule rule, CancellationToken ct = default)
+    {
+        await _dbContext.MultiAccountSweepRules.AddAsync(rule, ct);
+    }
+
+    public Task UpdateMultiSweepRuleAsync(MultiAccountSweepRule rule, CancellationToken ct = default)
+    {
+        _dbContext.MultiAccountSweepRules.Update(rule);
+        return Task.CompletedTask;
+    }
 }

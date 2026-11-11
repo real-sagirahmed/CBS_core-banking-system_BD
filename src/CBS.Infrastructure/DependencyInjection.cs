@@ -17,6 +17,7 @@ using CBS.Application.TradeFinance;
 using CBS.Application.TradeFinance.Commands;
 using CBS.Application.Reconciliation;
 using CBS.Application.Reconciliation.Services;
+using CBS.Application.StandingInstructions.Commands;
 using CBS.Application.Training;
 using CBS.Application.Training.Commands;
 using CBS.Application.Training.Services;
@@ -106,6 +107,9 @@ public static class DependencyInjection
         services.AddScoped<BankGuaranteeCommandHandler>();
         services.AddScoped<IReconciliationAgingRepository, EfReconciliationAgingRepository>();
         services.AddScoped<ReconciliationAgingService>();
+        services.AddScoped<IBranchVaultRepository, EfBranchVaultRepository>();
+        services.AddScoped<BranchVaultCommandHandler>();
+        services.AddScoped<MultiAccountSweepCommandHandler>();
         services.AddHttpClient();
 
         return services;

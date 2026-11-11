@@ -740,6 +740,161 @@ public partial class Program
             }
         });
 
+        tellerApi.MapPost("/drawers/swap-denominations", async (
+            InterTellerDenominationSwapRequest request,
+            BranchVaultCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.SwapTellerDenominationsAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        // --- BRANCH VAULT & DUAL-CUSTODY CASH APIS (BRPD Circular 12/2024 Module 1.7.1, 1.7.12) ---
+        var vaultApi = app.MapGroup("/api/v1/branch-vault").AddEndpointFilter<FinancialAuthorizationFilter>();
+
+        vaultApi.MapPost("/initialize", async (
+            InitializeBranchVaultRequest request,
+            BranchVaultCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.InitializeVaultAsync(request, ct);
+                return Results.Created($"/api/v1/branch-vault/{result.BranchCode}", result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        vaultApi.MapGet("/{branchCode}", async (
+            string branchCode,
+            BranchVaultCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.GetVaultByBranchAsync(branchCode, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+        });
+
+        vaultApi.MapPost("/chest-movement", async (
+            ChestCashMovementRequest request,
+            BranchVaultCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.ProcessChestMovementAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        vaultApi.MapPost("/replenish-teller", async (
+            VaultTellerTransferRequest request,
+            BranchVaultCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.ReplenishTellerAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        vaultApi.MapPost("/receive-from-teller", async (
+            VaultTellerTransferRequest request,
+            BranchVaultCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.ReceiveFromTellerAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        vaultApi.MapPost("/evening-banking/toggle", async (
+            ToggleEveningBankingRequest request,
+            BranchVaultCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.ToggleEveningBankingAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
         // --- REMITTANCE & INSTRUMENTS APIS (PHASE 3) ---
         var remittanceApi = app.MapGroup("/api/v1/remittance").AddEndpointFilter<FinancialAuthorizationFilter>();
 
@@ -2573,6 +2728,117 @@ public partial class Program
                 s.Id, s.SourceAccountNumber.Value, s.TargetAccountNumber.Value, s.Type.ToString(), s.Frequency.ToString(),
                 s.TransferAmount.Amount, s.ExecutionFee.Amount, s.StartDate, s.EndDate, s.NextExecutionDate, s.Status.ToString(),
                 s.ConsecutiveFailureCount, s.PauseReason, s.Narrative)));
+        });
+
+        siApi.MapPost("/{id}/temporary-hold", async (
+            string id,
+            ApplyTemporaryHoldRequest request,
+            StandingInstructionCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleApplyTemporaryHoldAsync(new ApplySiTemporaryHoldCommand(id, request), ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        siApi.MapPost("/{id}/release-hold", async (
+            string id,
+            ReleaseTemporaryHoldRequest request,
+            StandingInstructionCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleReleaseTemporaryHoldAsync(new ReleaseSiTemporaryHoldCommand(id, request), ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        siApi.MapPut("/{id}/modify", async (
+            string id,
+            ModifyStandingInstructionRequest request,
+            StandingInstructionCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleModifyInstructionAsync(new ModifyStandingInstructionCommand(id, request), ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        siApi.MapPost("/multi-sweeps/configure", async (
+            ConfigureMultiSweepRequest request,
+            MultiAccountSweepCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleConfigureMultiSweepAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        siApi.MapPost("/multi-sweeps/execute/{ruleId}", async (
+            string ruleId,
+            MultiAccountSweepCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleExecuteMultiSweepAsync(ruleId, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
         });
 
         // --- CHEQUE BOOK & LEAF LIFECYCLE APIS (BRPD Circular 12/2024 Module 1.5 & 3.1.14) ---

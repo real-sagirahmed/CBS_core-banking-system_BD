@@ -37,6 +37,12 @@ public class TellerDrawerConfiguration : IEntityTypeConfiguration<TellerDrawer>
             .HasPrecision(18, 2)
             .IsRequired();
 
+        builder.Property(d => d.CashHoldingLimit)
+            .HasConversion(v => v.Amount, v => Money.Bdt(v))
+            .HasColumnName("cash_holding_limit_bdt")
+            .HasPrecision(18, 2)
+            .IsRequired();
+
         builder.Property(d => d.CurrentBalance)
             .HasConversion(v => v.Amount, v => Money.Bdt(v))
             .HasColumnName("current_balance_bdt")

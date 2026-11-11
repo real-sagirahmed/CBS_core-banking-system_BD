@@ -108,6 +108,21 @@ public class StandingInstructionConfiguration : IEntityTypeConfiguration<Standin
         builder.Property(s => s.ResumeDate)
             .HasColumnName("resume_date");
 
+        builder.Property(s => s.IsTemporaryHoldActive)
+            .HasColumnName("is_temporary_hold_active")
+            .IsRequired();
+
+        builder.Property(s => s.HoldUntilDate)
+            .HasColumnName("hold_until_date");
+
+        builder.Property(s => s.HoldAmount)
+            .HasColumnName("hold_amount_bdt")
+            .HasPrecision(18, 2);
+
+        builder.Property(s => s.HoldReason)
+            .HasColumnName("hold_reason")
+            .HasMaxLength(255);
+
         builder.Property(s => s.Narrative)
             .HasColumnName("narrative")
             .HasMaxLength(200)

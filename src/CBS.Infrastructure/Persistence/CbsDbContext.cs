@@ -100,6 +100,8 @@ public class CbsDbContext : DbContext
     public DbSet<RemittanceStopPaymentJournal> RemittanceStopPaymentJournals => Set<RemittanceStopPaymentJournal>();
     public DbSet<BankGuarantee> BankGuarantees => Set<BankGuarantee>();
     public DbSet<ReconciliationAgingItem> ReconciliationAgingItems => Set<ReconciliationAgingItem>();
+    public DbSet<BranchVault> BranchVaults => Set<BranchVault>();
+    public DbSet<MultiAccountSweepRule> MultiAccountSweepRules => Set<MultiAccountSweepRule>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -199,6 +201,9 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new RemittanceStopPaymentJournalConfiguration());
         modelBuilder.ApplyConfiguration(new BankGuaranteeConfiguration());
         modelBuilder.ApplyConfiguration(new ReconciliationAgingItemConfiguration());
+        modelBuilder.Ignore<MultiAccountSweepTarget>();
+        modelBuilder.ApplyConfiguration(new BranchVaultConfiguration());
+        modelBuilder.ApplyConfiguration(new MultiAccountSweepRuleConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -249,6 +254,8 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<SecurityDepositReceipt>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<BankGuarantee>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<ReconciliationAgingItem>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<BranchVault>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<MultiAccountSweepRule>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -304,6 +311,8 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<SecurityDepositReceipt>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<BankGuarantee>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<ReconciliationAgingItem>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<BranchVault>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<MultiAccountSweepRule>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)

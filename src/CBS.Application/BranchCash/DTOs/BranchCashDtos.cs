@@ -96,3 +96,16 @@ public record StopPaymentRequest(
 public record CancelInstrumentRequest(
     string InstrumentNumber,
     string Reason);
+
+public record InterTellerDenominationSwapRequest(
+    Guid SourceDrawerId,
+    Guid TargetDrawerId,
+    Dictionary<int, int> GivenDenominations,
+    Dictionary<int, int> ReceivedDenominations,
+    string SupervisorApprovalId);
+
+public record InterTellerSwapResponseDto(
+    Guid SourceDrawerId,
+    Guid TargetDrawerId,
+    decimal SwappedAmount,
+    string StatusMessage);

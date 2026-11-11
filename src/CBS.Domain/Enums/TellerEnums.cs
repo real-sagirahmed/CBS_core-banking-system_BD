@@ -5,7 +5,10 @@ public enum CashMovementType
     VaultToTeller = 1,
     TellerToVault = 2,
     CustomerCashDeposit = 3,
-    CustomerCashWithdrawal = 4
+    CustomerCashWithdrawal = 4,
+    ChestToVault = 5,
+    VaultToChest = 6,
+    InterTellerSwap = 7
 }
 
 public enum TellerDrawerStatus

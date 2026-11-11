@@ -14,6 +14,9 @@ public sealed record ExecuteDueStandingInstructionsCommand(DateOnly AsOfDate);
 public sealed record PauseStandingInstructionCommand(string InstructionId, string Reason, DateOnly? ResumeDate = null);
 public sealed record ResumeStandingInstructionCommand(string InstructionId);
 public sealed record CancelStandingInstructionCommand(string InstructionId, string Reason);
+public sealed record ApplySiTemporaryHoldCommand(string InstructionId, ApplyTemporaryHoldRequest Request);
+public sealed record ReleaseSiTemporaryHoldCommand(string InstructionId, ReleaseTemporaryHoldRequest Request);
+public sealed record ModifyStandingInstructionCommand(string InstructionId, ModifyStandingInstructionRequest Request);
 
 public class StandingInstructionCommandHandler
 {
@@ -179,6 +182,12 @@ public class StandingInstructionCommandHandler
         {
             try
             {
+                // BRPD 1.8.1-v: If under temporary hold, skip execution without incrementing failure counter
+                if (si.IsUnderHoldAsOf(command.AsOfDate))
+                {
+                    continue;
+                }
+
                 var source = await _accountRepository.GetByAccountNumberAsync(si.SourceAccountNumber, ct);
                 var target = await _accountRepository.GetByAccountNumberAsync(si.TargetAccountNumber, ct);
 
@@ -259,6 +268,58 @@ public class StandingInstructionCommandHandler
         return MapToDto(si);
     }
 
+    public async Task<StandingInstructionResponseDto> HandleApplyTemporaryHoldAsync(ApplySiTemporaryHoldCommand command, CancellationToken ct = default)
+    {
+        var si = await _siRepository.GetByIdAsync(command.InstructionId, ct)
+            ?? throw new KeyNotFoundException($"Standing Instruction '{command.InstructionId}' not found.");
+
+        si.ApplyTemporaryHold(command.Request.HoldUntilDate, command.Request.HoldAmount, command.Request.Reason);
+        await _unitOfWork.SaveChangesAsync(ct);
+        return MapToDto(si);
+    }
+
+    public async Task<StandingInstructionResponseDto> HandleReleaseTemporaryHoldAsync(ReleaseSiTemporaryHoldCommand command, CancellationToken ct = default)
+    {
+        var si = await _siRepository.GetByIdAsync(command.InstructionId, ct)
+            ?? throw new KeyNotFoundException($"Standing Instruction '{command.InstructionId}' not found.");
+
+        si.ReleaseTemporaryHold(command.Request.ApproverUserId);
+        await _unitOfWork.SaveChangesAsync(ct);
+        return MapToDto(si);
+    }
+
+    public async Task<StandingInstructionResponseDto> HandleModifyInstructionAsync(ModifyStandingInstructionCommand command, CancellationToken ct = default)
+    {
+        var si = await _siRepository.GetByIdAsync(command.InstructionId, ct)
+            ?? throw new KeyNotFoundException($"Standing Instruction '{command.InstructionId}' not found.");
+
+        var req = command.Request;
+        AccountNumber? targetAccNo = !string.IsNullOrWhiteSpace(req.NewTargetAccountNumber)
+            ? AccountNumber.From(req.NewTargetAccountNumber)
+            : null;
+
+        if (targetAccNo is not null)
+        {
+            _ = await _accountRepository.GetByAccountNumberAsync(targetAccNo, ct)
+                ?? throw new KeyNotFoundException($"Target account '{req.NewTargetAccountNumber}' not found.");
+        }
+
+        Money? transferAmt = req.NewTransferAmount.HasValue ? Money.Bdt(req.NewTransferAmount.Value) : null;
+        Money? fee = req.NewExecutionFee.HasValue ? Money.Bdt(req.NewExecutionFee.Value) : null;
+
+        si.ModifyInstruction(
+            newTransferAmount: transferAmt,
+            newFrequency: req.NewFrequency,
+            newExecutionFee: fee,
+            newTargetAccount: targetAccNo,
+            newSpecificDayOfMonth: req.NewSpecificDayOfMonth,
+            newEndDate: req.NewEndDate,
+            modifierUserId: req.ModifierUserId);
+
+        await _unitOfWork.SaveChangesAsync(ct);
+        return MapToDto(si);
+    }
+
     private static StandingInstructionResponseDto MapToDto(StandingInstruction si) => new(
         si.Id,
         si.SourceAccountNumber.Value,
@@ -273,5 +334,9 @@ public class StandingInstructionCommandHandler
         si.Status.ToString(),
         si.ConsecutiveFailureCount,
         si.PauseReason,
-        si.Narrative);
+        si.Narrative,
+        si.IsTemporaryHoldActive,
+        si.HoldUntilDate,
+        si.HoldAmount,
+        si.HoldReason);
 }
