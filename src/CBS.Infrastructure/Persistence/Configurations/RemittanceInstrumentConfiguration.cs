@@ -110,6 +110,10 @@ public class RemittanceInstrumentConfiguration : IEntityTypeConfiguration<Remitt
             .HasColumnName("stop_reason")
             .HasMaxLength(255);
 
+        builder.Property(r => r.StopRevocationReason)
+            .HasColumnName("stop_revocation_reason")
+            .HasMaxLength(255);
+
         builder.Property(r => r.CancellationReason)
             .HasColumnName("cancellation_reason")
             .HasMaxLength(255);

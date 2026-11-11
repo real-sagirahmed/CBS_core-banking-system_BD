@@ -6,6 +6,7 @@ using CBS.Application.Adc.Commands;
 using CBS.Application.Adc.DTOs;
 using CBS.Application.AiIntelligence.Commands;
 using CBS.Application.AiIntelligence.DTOs;
+using CBS.Application.BranchCash.Commands;
 using CBS.Application.BranchCash.Commands.CloseTellerDrawer;
 using CBS.Application.BranchCash.Commands.IssueRemittanceInstrument;
 using CBS.Application.BranchCash.Commands.LiquidateRemittanceInstrument;
@@ -53,6 +54,8 @@ using CBS.Application.Shariah.Commands;
 using CBS.Application.Shariah.DTOs;
 using CBS.Application.Specialized.Commands;
 using CBS.Application.Specialized.DTOs;
+using CBS.Application.Lending.Demand.Commands;
+using CBS.Application.Lending.Demand.DTOs;
 using CBS.Application.Training.Commands;
 using CBS.Application.Training.DTOs;
 using CBS.Application.Training.Services;
@@ -4577,6 +4580,331 @@ public partial class Program
         {
             var result = await handler.GetPaymentInstrumentAsync(instrumentNumber, ct);
             return result is not null ? Results.Ok(result) : Results.NotFound();
+        });
+
+        // --- PHASE 21: DEMAND LOANS (PAD, LTR, FBP/IBP, CLEAN DEMAND LOANS, FORCED IMPORT RETIREMENT) (BRPD Circular 12 Module 4.5 & 5.1.4) ---
+        var demandLoanApi = app.MapGroup("/api/v1/demand-loans")
+            .AddEndpointFilter<FinancialAuthorizationFilter>()
+            .WithTags("Demand Loans & Trade Financing (BRPD 4.5, 5.1.4)");
+
+        demandLoanApi.MapPost("/initiate", async (
+            InitiateDemandLoanRequest request,
+            DemandLoanCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleInitiateAsync(request, ct);
+                return Results.Created($"/api/v1/demand-loans/{result.LoanAccountNumber}", result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        demandLoanApi.MapPost("/disburse", async (
+            DisburseDemandLoanRequest request,
+            DemandLoanCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleDisburseAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        demandLoanApi.MapPost("/accrue-daily", async (
+            AccrueDailyInterestRequest request,
+            DemandLoanCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleAccrueDailyAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        demandLoanApi.MapPost("/capitalize-interest", async (
+            CapitalizeInterestRequest request,
+            DemandLoanCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleCapitalizeInterestAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        demandLoanApi.MapPost("/repay", async (
+            RepayDemandLoanRequest request,
+            DemandLoanCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleRepayAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        demandLoanApi.MapPost("/forced-pad-from-import", async (
+            ForcedPadRequest request,
+            DemandLoanCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleForcedPadAsync(request, ct);
+                return Results.Created($"/api/v1/demand-loans/{result.LoanAccountNumber}", result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        demandLoanApi.MapGet("/{accountNumber}", async (
+            string accountNumber,
+            DemandLoanCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var result = await handler.HandleGetAsync(accountNumber, ct);
+            return result is not null ? Results.Ok(result) : Results.NotFound();
+        });
+
+        // --- PHASE 21: SECURITY DEPOSIT RECEIPTS (SDR) & LOCAL REMITTANCE ENGINE (BRPD Circular 12 Module 2.1) ---
+        var sdrApi = app.MapGroup("/api/v1/local-remittance/sdr")
+            .AddEndpointFilter<FinancialAuthorizationFilter>()
+            .WithTags("Security Deposit Receipts (BRPD 2.1.4)");
+
+        sdrApi.MapPost("/issue", async (
+            IssueSdrRequest request,
+            SecurityDepositReceiptCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleIssueSdrAsync(request, ct);
+                return Results.Created($"/api/v1/local-remittance/sdr/{result.SdrNumber}", result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        sdrApi.MapPost("/lien", async (
+            LienSdrRequest request,
+            SecurityDepositReceiptCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleLienSdrAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        sdrApi.MapPost("/release-refund", async (
+            ReleaseSdrRequest request,
+            SecurityDepositReceiptCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleReleaseSdrAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        sdrApi.MapPost("/forfeit-pay", async (
+            ForfeitSdrRequest request,
+            SecurityDepositReceiptCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleForfeitSdrAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        sdrApi.MapPost("/stop-payment", async (
+            StopSdrRequest request,
+            SecurityDepositReceiptCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleStopSdrAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        sdrApi.MapPost("/revoke-stop-payment", async (
+            RevokeStopSdrRequest request,
+            SecurityDepositReceiptCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleRevokeStopSdrAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        sdrApi.MapPost("/issue-duplicate", async (
+            IssueDuplicateSdrRequest request,
+            SecurityDepositReceiptCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleIssueDuplicateSdrAsync(request, ct);
+                return Results.Created($"/api/v1/local-remittance/sdr/{result.SdrNumber}", result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        sdrApi.MapGet("/{sdrNumber}", async (
+            string sdrNumber,
+            SecurityDepositReceiptCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var result = await handler.HandleGetSdrAsync(sdrNumber, ct);
+            return result is not null ? Results.Ok(result) : Results.NotFound();
+        });
+
+        // PO/DD Stop Payment Revocation (BRPD 2.1.1-ix, 2.1.2-vi)
+        var remittanceStopApi = app.MapGroup("/api/v1/local-remittance/stop-payment")
+            .AddEndpointFilter<FinancialAuthorizationFilter>()
+            .WithTags("Remittance Stop Payment Revocation (BRPD 2.1.1, 2.1.2)");
+
+        remittanceStopApi.MapPost("/revoke", async (
+            RevokeInstrumentStopPaymentRequest request,
+            SecurityDepositReceiptCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var success = await handler.HandleRevokeInstrumentStopPaymentAsync(request, ct);
+                return Results.Ok(new { success, message = $"Stop payment on instrument '{request.InstrumentNumber}' revoked successfully." });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
         });
 
         // --- PRODUCTION HEALTH & PROBE ENDPOINTS ---

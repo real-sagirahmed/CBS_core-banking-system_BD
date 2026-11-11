@@ -26,6 +26,7 @@ public class RemittanceInstrument : AggregateRoot<Guid>
     public DateOnly? LiquidatedDate { get; private set; }
     public string? LiquidatedBranchCode { get; private set; }
     public string? StopReason { get; private set; }
+    public string? StopRevocationReason { get; private set; }
     public string? CancellationReason { get; private set; }
     public string? DuplicateInstrumentNumber { get; private set; }
     public string? IndemnityBondReference { get; private set; }
@@ -157,6 +158,24 @@ public class RemittanceInstrument : AggregateRoot<Guid>
 
         Status = RemittanceInstrumentStatus.Stopped;
         StopReason = reason.Trim();
+    }
+
+    public void RevokeStopPayment(string removalReason, string supervisorUserId)
+    {
+        if (string.IsNullOrWhiteSpace(removalReason)) throw new ArgumentException("Stop payment removal reason is required.", nameof(removalReason));
+        if (string.IsNullOrWhiteSpace(supervisorUserId)) throw new ArgumentException("Supervisor User ID is required.", nameof(supervisorUserId));
+
+        if (Status != RemittanceInstrumentStatus.Stopped)
+        {
+            throw new InvariantViolationException(
+                "InvalidInstrumentStatusForStopRemovalInvariant",
+                "BRPD Circular 12/2024 (2.1.1-ix, 2.1.2-vi)",
+                $"Cannot remove stop payment on instrument '{InstrumentNumber}' with status '{Status}'. Only 'Stopped' instruments can have stop payment removed.");
+        }
+
+        Status = RemittanceInstrumentStatus.Issued;
+        StopRevocationReason = removalReason.Trim();
+        StopReason = null;
     }
 
     public Money CancelAndRefund(string reason, string supervisorUserId)

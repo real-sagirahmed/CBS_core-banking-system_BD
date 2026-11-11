@@ -23,6 +23,7 @@ using CBS.Domain.ValueObjects;
 using CBS.Domain.Lending.Agricultural;
 using CBS.Domain.Lending.Discounted;
 using CBS.Domain.Deposits.Multiplication;
+using CBS.Domain.Lending.Demand;
 using CBS.Infrastructure.Persistence.Configurations;
 using CBS.Infrastructure.Persistence.Configurations.Shariah;
 using CBS.Infrastructure.Persistence.Configurations.Specialized;
@@ -94,6 +95,9 @@ public class CbsDbContext : DbContext
     public DbSet<BillDiscountingFacility> DiscountedBills => Set<BillDiscountingFacility>();
     public DbSet<DepositMultiplicationAccount> DepositMultiplicationAccounts => Set<DepositMultiplicationAccount>();
     public DbSet<InterBranchPaymentInstrument> InterBranchPaymentInstruments => Set<InterBranchPaymentInstrument>();
+    public DbSet<DemandLoanFacility> DemandLoanFacilities => Set<DemandLoanFacility>();
+    public DbSet<SecurityDepositReceipt> SecurityDepositReceipts => Set<SecurityDepositReceipt>();
+    public DbSet<RemittanceStopPaymentJournal> RemittanceStopPaymentJournals => Set<RemittanceStopPaymentJournal>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -188,6 +192,9 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new BillDiscountingFacilityConfiguration());
         modelBuilder.ApplyConfiguration(new DepositMultiplicationAccountConfiguration());
         modelBuilder.ApplyConfiguration(new InterBranchPaymentInstrumentConfiguration());
+        modelBuilder.ApplyConfiguration(new DemandLoanFacilityConfiguration());
+        modelBuilder.ApplyConfiguration(new SecurityDepositReceiptConfiguration());
+        modelBuilder.ApplyConfiguration(new RemittanceStopPaymentJournalConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -234,6 +241,8 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<BillDiscountingFacility>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<DepositMultiplicationAccount>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<InterBranchPaymentInstrument>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<DemandLoanFacility>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<SecurityDepositReceipt>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -285,6 +294,8 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<BillDiscountingFacility>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<DepositMultiplicationAccount>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<InterBranchPaymentInstrument>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<DemandLoanFacility>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<SecurityDepositReceipt>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)

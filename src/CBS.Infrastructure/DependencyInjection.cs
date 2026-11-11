@@ -1,7 +1,11 @@
 using CBS.Application.Accounts.Services;
+using CBS.Application.BranchCash;
+using CBS.Application.BranchCash.Commands;
 using CBS.Application.Common.Interfaces;
 using CBS.Application.Customers;
 using CBS.Application.GeneralLedger.Services;
+using CBS.Application.Lending.Demand;
+using CBS.Application.Lending.Demand.Commands;
 using CBS.Application.Remittance;
 using CBS.Application.Reporting;
 using CBS.Application.Security;
@@ -90,6 +94,10 @@ public static class DependencyInjection
         services.AddScoped<ShariahCommandHandler>();
         services.AddScoped<ISpecializedBankingRepository, EfSpecializedBankingRepository>();
         services.AddScoped<SpecializedBankingCommandHandler>();
+        services.AddScoped<IDemandLoanRepository, EfDemandLoanRepository>();
+        services.AddScoped<DemandLoanCommandHandler>();
+        services.AddScoped<ISecurityDepositReceiptRepository, EfSecurityDepositReceiptRepository>();
+        services.AddScoped<SecurityDepositReceiptCommandHandler>();
         services.AddHttpClient();
 
         return services;
