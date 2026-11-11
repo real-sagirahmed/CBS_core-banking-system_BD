@@ -1,5 +1,6 @@
 using CBS.Application.Accounts.Services;
 using CBS.Application.Common.Interfaces;
+using CBS.Application.Customers;
 using CBS.Application.GeneralLedger.Services;
 using CBS.Application.Remittance;
 using CBS.Infrastructure.Accounts;
@@ -70,6 +71,7 @@ public static class DependencyInjection
         services.AddScoped<IDpsRepository, EfDpsRepository>();
         services.AddScoped<IDepositLienRepository, EfDepositLienRepository>();
         services.AddScoped<IForeignRemittanceRepository, EfForeignRemittanceRepository>();
+        services.AddScoped<ICrmRepository, EfCrmRepository>();
         services.AddHttpClient();
 
         return services;

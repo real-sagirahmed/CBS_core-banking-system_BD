@@ -61,6 +61,11 @@ public class CbsDbContext : DbContext
     public DbSet<DepositLienFacility> DepositLiens => Set<DepositLienFacility>();
     public DbSet<ForeignRemittanceTransaction> ForeignRemittanceTransactions => Set<ForeignRemittanceTransaction>();
     public DbSet<GovernmentIncentiveClaimBatch> GovernmentIncentiveClaimBatches => Set<GovernmentIncentiveClaimBatch>();
+    public DbSet<SpecimenSignature> SpecimenSignatures => Set<SpecimenSignature>();
+    public DbSet<AccountSignatoryMandate> AccountSignatoryMandates => Set<AccountSignatoryMandate>();
+    public DbSet<CorporateCustomerEntity> CorporateCustomerEntities => Set<CorporateCustomerEntity>();
+    public DbSet<CorporateGroup> CorporateGroups => Set<CorporateGroup>();
+    public DbSet<CustomerDocumentRecord> CustomerDocumentRecords => Set<CustomerDocumentRecord>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -131,6 +136,11 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new DepositLienFacilityConfiguration());
         modelBuilder.ApplyConfiguration(new ForeignRemittanceTransactionConfiguration());
         modelBuilder.ApplyConfiguration(new GovernmentIncentiveClaimBatchConfiguration());
+        modelBuilder.ApplyConfiguration(new SpecimenSignatureConfiguration());
+        modelBuilder.ApplyConfiguration(new AccountSignatoryMandateConfiguration());
+        modelBuilder.ApplyConfiguration(new CorporateCustomerEntityConfiguration());
+        modelBuilder.ApplyConfiguration(new CorporateGroupConfiguration());
+        modelBuilder.ApplyConfiguration(new CustomerDocumentRecordConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -155,6 +165,11 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<DepositLienFacility>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<ForeignRemittanceTransaction>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<GovernmentIncentiveClaimBatch>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<SpecimenSignature>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<AccountSignatoryMandate>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<CorporateCustomerEntity>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<CorporateGroup>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<CustomerDocumentRecord>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -184,6 +199,11 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<DepositLienFacility>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<ForeignRemittanceTransaction>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<GovernmentIncentiveClaimBatch>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<SpecimenSignature>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<AccountSignatoryMandate>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<CorporateCustomerEntity>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<CorporateGroup>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<CustomerDocumentRecord>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)

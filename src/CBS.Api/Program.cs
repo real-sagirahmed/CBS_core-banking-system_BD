@@ -14,6 +14,7 @@ using CBS.Application.BranchCash.Commands.OpenTellerDrawer;
 using CBS.Application.BranchCash.Commands.ProcessCashTransaction;
 using CBS.Application.BranchCash.DTOs;
 using CBS.Application.Common.Interfaces;
+using CBS.Application.Customers.Commands;
 using CBS.Application.Customers.Commands.CreateCustomerDraft;
 using CBS.Application.Customers.Commands.VerifyCustomer;
 using CBS.Application.Customers.DTOs;
@@ -131,6 +132,7 @@ public partial class Program
         builder.Services.AddTransient<TermDepositCommandHandler>();
         builder.Services.AddTransient<DpsCommandHandler>();
         builder.Services.AddTransient<ForeignRemittanceCommandHandler>();
+        builder.Services.AddTransient<CrmCommandHandler>();
 
         builder.Services.ConfigureHttpJsonOptions(options =>
         {
@@ -3173,6 +3175,215 @@ public partial class Program
             CancellationToken ct) =>
         {
             var result = await handler.GetAllClaimBatchesAsync(ct);
+            return Results.Ok(result);
+        });
+
+        // --- CUSTOMER RELATIONSHIP MANAGEMENT (CRM), SPECIMEN SIGNATURES & MANDATES (BRPD Circular 12/2024 Module 8) ---
+        var crmApi = app.MapGroup("/api/v1/crm").AddEndpointFilter<FinancialAuthorizationFilter>();
+
+        crmApi.MapPost("/signatures/register", async (
+            RegisterSpecimenSignatureRequest request,
+            CrmCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.RegisterSignatureAsync(request, ct);
+                return Results.Created($"/api/v1/crm/signatures/{result.Id}", result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapGet("/signatures/account/{accountNumber}", async (
+            string accountNumber,
+            CrmCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.GetSignaturesForAccountAsync(accountNumber, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapPost("/mandates/define", async (
+            DefineAccountMandateRequest request,
+            CrmCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.DefineMandateAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapPost("/mandates/resolve", async (
+            ResolveMandateRequest request,
+            CrmCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.ResolveMandateAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapPost("/corporate/create", async (
+            CreateCorporateCustomerRequest request,
+            CrmCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.CreateCorporateCustomerAsync(request, ct);
+                return Results.Created($"/api/v1/crm/corporate/{result.CifNumber}", result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapPost("/corporate/{cif}/stakeholders", async (
+            string cif,
+            AddCorporateStakeholderRequest request,
+            CrmCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.AddStakeholderAsync(cif, request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapPost("/corporate/{cif}/activate", async (
+            string cif,
+            ActivateCorporateCustomerRequest request,
+            CrmCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.ActivateCorporateCustomerAsync(cif, request.CheckerUserId, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapPost("/groups/create", async (
+            CreateCorporateGroupRequest request,
+            CrmCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.CreateCorporateGroupAsync(request, ct);
+                return Results.Created($"/api/v1/crm/groups/{result.Id}", result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapPost("/groups/{groupId}/link-cif", async (
+            string groupId,
+            LinkGroupMemberRequest request,
+            CrmCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.LinkCorporateGroupMemberAsync(groupId, request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapGet("/groups/{groupId}/exposure", async (
+            string groupId,
+            CrmCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.GetCorporateGroupExposureAsync(groupId, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapPost("/customers/{cif}/risk-grade", async (
+            string cif,
+            EvaluateEkycRiskRequest request,
+            CrmCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.EvaluateEkycRiskAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapPost("/documents/register", async (
+            RegisterCustomerDocumentRequest request,
+            CrmCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.RegisterDocumentAsync(request, ct);
+                return Results.Created($"/api/v1/crm/documents/{result.Id}", result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapGet("/documents/expiring", async (
+            int? daysThreshold,
+            CrmCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            int days = daysThreshold ?? 30;
+            var result = await handler.GetExpiringDocumentsAsync(days, ct);
             return Results.Ok(result);
         });
 
