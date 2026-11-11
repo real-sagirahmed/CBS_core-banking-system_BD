@@ -1,0 +1,16 @@
+# .dockerignore for CBS Core Banking System
+**/.git
+**/.gitignore
+**/.vs
+**/.vscode
+**/.idea
+**/bin
+**/obj
+**/TestResults
+tests/
+governance/
+*.md
+*.log
+.gemini/
+run_cbs.bat
+task.md

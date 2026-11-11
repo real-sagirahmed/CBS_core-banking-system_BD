@@ -4226,6 +4226,35 @@ public partial class Program
             return Results.Ok(summary);
         });
 
+        // --- PRODUCTION HEALTH & PROBE ENDPOINTS ---
+        app.MapGet("/health", () => Results.Ok(new
+        {
+            status = "Healthy",
+            timestampUtc = DateTime.UtcNow,
+            service = "CBS Bangladesh Core Banking System",
+            version = "2.0.0",
+            regulation = "Bangladesh Bank BRPD Circular No. 12 (13 May 2024)"
+        })).AllowAnonymous();
+
+        app.MapGet("/health/live", () => Results.Ok(new { status = "Live", timestampUtc = DateTime.UtcNow })).AllowAnonymous();
+
+        app.MapGet("/health/ready", async (CbsDbContext dbContext, CancellationToken ct) =>
+        {
+            try
+            {
+                var canConnect = await dbContext.Database.CanConnectAsync(ct);
+                if (canConnect)
+                {
+                    return Results.Ok(new { status = "Ready", database = "Connected", timestampUtc = DateTime.UtcNow });
+                }
+                return Results.Json(new { status = "Not Ready", database = "Cannot Connect", timestampUtc = DateTime.UtcNow }, statusCode: 503);
+            }
+            catch (Exception ex)
+            {
+                return Results.Json(new { status = "Degraded", error = ex.Message, timestampUtc = DateTime.UtcNow }, statusCode: 503);
+            }
+        }).AllowAnonymous();
+
         app.Services.InitializeCbsDatabase();
 
         return app;

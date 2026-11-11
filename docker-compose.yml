@@ -1,0 +1,125 @@
+# ==============================================================================
+# CBS Bangladesh Core Banking System - Production Docker Compose Orchestration
+# Conforming to Bangladesh Bank BRPD Circular No. 12 (13 May 2024)
+# ==============================================================================
+
+version: '3.8'
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. Primary PostgreSQL 16 Relational Engine (Financial Ledger & System Data)
+  # ----------------------------------------------------------------------------
+  cbs-db:
+    image: postgres:16-alpine
+    container_name: cbs-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-cbs_production}
+      POSTGRES_USER: ${POSTGRES_USER:-cbs_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cbs_secure_password_2026!}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - cbs_postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init-cbs-db.sql:/docker-entrypoint-initdb.d/init-cbs-db.sql:ro
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cbs_admin} -d ${POSTGRES_DB:-cbs_production}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - cbs-net
+
+  # ----------------------------------------------------------------------------
+  # 2. Redis 7 High-Throughput In-Memory Cache (Sessions, Idempotency & Rate Limit)
+  # ----------------------------------------------------------------------------
+  cbs-cache:
+    image: redis:7-alpine
+    container_name: cbs-redis
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-cbs_redis_secure_2026!}", "--appendonly", "yes"]
+    volumes:
+      - cbs_redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-cbs_redis_secure_2026!}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - cbs-net
+
+  # ----------------------------------------------------------------------------
+  # 3. Core Banking Web API Application Engine (.NET 9 ASP.NET Core)
+  # ----------------------------------------------------------------------------
+  cbs-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cbs-core-api
+    restart: unless-stopped
+    depends_on:
+      cbs-db:
+        condition: service_healthy
+      cbs-cache:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:5000
+      ConnectionStrings__PostgreSql: "Host=cbs-db;Port=5432;Database=${POSTGRES_DB:-cbs_production};Username=${POSTGRES_USER:-cbs_admin};Password=${POSTGRES_PASSWORD:-cbs_secure_password_2026!};Pooling=true;Minimum Pool Size=10;Maximum Pool Size=100;"
+      Redis__Configuration: "cbs-cache:6379,password=${REDIS_PASSWORD:-cbs_redis_secure_2026!}"
+      Jwt__Issuer: "CBS.Bangladesh.NationalBankingCore"
+      Jwt__Audience: "CBS.Branch.Clearing.Switch"
+      Logging__LogLevel__Default: Information
+      Logging__LogLevel__Microsoft.AspNetCore: Warning
+    expose:
+      - "5000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - cbs-net
+
+  # ----------------------------------------------------------------------------
+  # 4. NGINX Reverse Proxy & Security Edge Gateway
+  # ----------------------------------------------------------------------------
+  cbs-proxy:
+    image: nginx:1.27-alpine
+    container_name: cbs-nginx-proxy
+    restart: unless-stopped
+    depends_on:
+      cbs-api:
+        condition: service_healthy
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - cbs-net
+
+# ==============================================================================
+# Persistent Volumes & Private Isolated Overlay Network
+# ==============================================================================
+volumes:
+  cbs_postgres_data:
+    driver: local
+  cbs_redis_data:
+    driver: local
+
+networks:
+  cbs-net:
+    driver: bridge
+    name: cbs_internal_network
