@@ -16,6 +16,7 @@ using CBS.Domain.SecurityAudit;
 using CBS.Domain.StandingInstructions;
 using CBS.Domain.TermDeposits;
 using CBS.Domain.TradeFinance;
+using CBS.Domain.Training;
 using CBS.Domain.Treasury;
 using CBS.Domain.ValueObjects;
 using CBS.Infrastructure.Persistence.Configurations;
@@ -74,6 +75,10 @@ public class CbsDbContext : DbContext
     public DbSet<AdminAuditJournal> AdminAuditJournals => Set<AdminAuditJournal>();
     public DbSet<StatutoryReportArchive> StatutoryReportArchives => Set<StatutoryReportArchive>();
     public DbSet<UnclaimedDepositItem> UnclaimedDepositItems => Set<UnclaimedDepositItem>();
+    public DbSet<TrainingSimulationSession> TrainingSimulationSessions => Set<TrainingSimulationSession>();
+    public DbSet<EmployeeTrainingCertification> EmployeeTrainingCertifications => Set<EmployeeTrainingCertification>();
+    public DbSet<CustomerSecurityBroadcast> CustomerSecurityBroadcasts => Set<CustomerSecurityBroadcast>();
+    public DbSet<SystemUserManualTopic> SystemUserManualTopics => Set<SystemUserManualTopic>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -155,6 +160,10 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new AdminAuditJournalConfiguration());
         modelBuilder.ApplyConfiguration(new StatutoryReportArchiveConfiguration());
         modelBuilder.ApplyConfiguration(new UnclaimedDepositItemConfiguration());
+        modelBuilder.ApplyConfiguration(new TrainingSimulationSessionConfiguration());
+        modelBuilder.ApplyConfiguration(new EmployeeTrainingCertificationConfiguration());
+        modelBuilder.ApplyConfiguration(new CustomerSecurityBroadcastConfiguration());
+        modelBuilder.ApplyConfiguration(new SystemUserManualTopicConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -189,6 +198,9 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<TransactionDoaOverride>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<StatutoryReportArchive>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<UnclaimedDepositItem>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<TrainingSimulationSession>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<EmployeeTrainingCertification>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<CustomerSecurityBroadcast>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -228,6 +240,9 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<TransactionDoaOverride>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<StatutoryReportArchive>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<UnclaimedDepositItem>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<TrainingSimulationSession>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<EmployeeTrainingCertification>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<CustomerSecurityBroadcast>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)

@@ -49,6 +49,10 @@ using CBS.Application.Reporting.Commands;
 using CBS.Application.Reporting.DTOs;
 using CBS.Application.Security.Commands;
 using CBS.Application.Security.DTOs;
+using CBS.Application.Training.Commands;
+using CBS.Application.Training.DTOs;
+using CBS.Application.Training.Services;
+using CBS.Domain.Training;
 using CBS.Domain.Accounts;
 using CBS.Domain.Reporting;
 using CBS.Domain.Enums;
@@ -3734,6 +3738,198 @@ public partial class Program
             {
                 return Results.NotFound(new { error = ex.Message });
             }
+        });
+
+        // -------------------------------------------------------------
+        // Phase 17: User Training, Customer Security Awareness & Master BRPD 12/2024 Compliance Certification
+        // -------------------------------------------------------------
+        var trainingApi = app.MapGroup("/api/v1/training").WithTags("Training & BRPD 12/2024 Compliance");
+
+        // Simulation Sandbox
+        trainingApi.MapPost("/simulations/start", async (
+            StartSimulationRequestDto request,
+            TrainingAndAwarenessCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.StartSimulationAsync(request, ct);
+                return Results.Created($"/api/v1/training/simulations/{result.Id}", result);
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        trainingApi.MapPost("/simulations/{id:guid}/steps", async (
+            Guid id,
+            RecordSimulationStepRequestDto request,
+            TrainingAndAwarenessCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.RecordSimulationStepAsync(id, request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentOutOfRangeException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        trainingApi.MapPost("/simulations/{id:guid}/complete", async (
+            Guid id,
+            CompleteSimulationRequestDto request,
+            TrainingAndAwarenessCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.CompleteSimulationAsync(id, request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        trainingApi.MapGet("/simulations/user/{userId}", async (
+            string userId,
+            TrainingAndAwarenessCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var sessions = await handler.GetSimulationsByUserAsync(userId, ct);
+            return Results.Ok(sessions);
+        });
+
+        // Employee Certifications
+        trainingApi.MapPost("/certifications/grant", async (
+            GrantCertificationRequestDto request,
+            TrainingAndAwarenessCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.GrantCertificationAsync(request, ct);
+                return Results.Created($"/api/v1/training/certifications/{result.Id}", result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        trainingApi.MapGet("/certifications/employee/{employeeId}", async (
+            string employeeId,
+            TrainingAndAwarenessCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            var certs = await handler.GetCertificationsByEmployeeAsync(employeeId, ct);
+            return Results.Ok(certs);
+        });
+
+        trainingApi.MapGet("/certifications/lapsed", async (
+            string? asOfDate,
+            TrainingAndAwarenessCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            DateTime targetDate = !string.IsNullOrWhiteSpace(asOfDate) && DateTime.TryParse(asOfDate, out var dt)
+                ? dt
+                : DateTime.UtcNow;
+
+            var lapsed = await handler.GetLapsedCertificationsAsync(targetDate, ct);
+            return Results.Ok(lapsed);
+        });
+
+        // Customer Security Broadcasts
+        trainingApi.MapPost("/broadcasts/publish", async (
+            CreateBroadcastRequestDto request,
+            TrainingAndAwarenessCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.PublishBroadcastAsync(request, ct);
+                return Results.Created($"/api/v1/training/broadcasts/{result.Id}", result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        trainingApi.MapGet("/broadcasts/active", async (
+            string? asOfDate,
+            TrainingAndAwarenessCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            DateOnly targetDate = !string.IsNullOrWhiteSpace(asOfDate) && DateOnly.TryParse(asOfDate, out var d)
+                ? d
+                : DateOnly.FromDateTime(DateTime.UtcNow);
+
+            var active = await handler.GetActiveBroadcastsAsync(targetDate, ct);
+            return Results.Ok(active);
+        });
+
+        // In-App User Manuals & SOPs
+        trainingApi.MapGet("/manuals/modules/{moduleId}", async (
+            string moduleId,
+            TrainingAndAwarenessCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            if (!Enum.TryParse<BbrpdModuleId>(moduleId, true, out var parsedModule))
+            {
+                return Results.BadRequest(new { error = $"Invalid BbrpdModuleId '{moduleId}'." });
+            }
+
+            var topics = await handler.GetUserManualTopicsByModuleAsync(parsedModule, ct);
+            return Results.Ok(topics);
+        });
+
+        trainingApi.MapGet("/manuals/search", async (
+            string q,
+            TrainingAndAwarenessCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            if (string.IsNullOrWhiteSpace(q))
+            {
+                return Results.BadRequest(new { error = "Search query parameter 'q' is required." });
+            }
+
+            var results = await handler.SearchUserManualTopicsAsync(q, ct);
+            return Results.Ok(results);
+        });
+
+        // Master BRPD 12/2024 Compliance Certification & Attestation
+        trainingApi.MapGet("/compliance/master-attestation", async (
+            BbrpdMasterComplianceService complianceService,
+            CancellationToken ct) =>
+        {
+            var report = await complianceService.EvaluateMasterComplianceAsync(ct);
+            return Results.Ok(report);
         });
 
         app.Services.InitializeCbsDatabase();

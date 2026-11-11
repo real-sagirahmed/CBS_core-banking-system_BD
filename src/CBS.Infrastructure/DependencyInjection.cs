@@ -5,6 +5,9 @@ using CBS.Application.GeneralLedger.Services;
 using CBS.Application.Remittance;
 using CBS.Application.Reporting;
 using CBS.Application.Security;
+using CBS.Application.Training;
+using CBS.Application.Training.Commands;
+using CBS.Application.Training.Services;
 using CBS.Infrastructure.Accounts;
 using CBS.Infrastructure.GeneralLedger;
 using CBS.Infrastructure.Persistence;
@@ -76,6 +79,9 @@ public static class DependencyInjection
         services.AddScoped<ICrmRepository, EfCrmRepository>();
         services.AddScoped<ISystemAdminRepository, EfSystemAdminRepository>();
         services.AddScoped<IMisReportingRepository, EfMisReportingRepository>();
+        services.AddScoped<ITrainingAndAwarenessRepository, EfTrainingAndAwarenessRepository>();
+        services.AddScoped<TrainingAndAwarenessCommandHandler>();
+        services.AddScoped<BbrpdMasterComplianceService>();
         services.AddHttpClient();
 
         return services;
