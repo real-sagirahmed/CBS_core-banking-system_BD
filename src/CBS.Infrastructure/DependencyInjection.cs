@@ -6,6 +6,7 @@ using CBS.Application.Common.Interfaces;
 using CBS.Application.Corporate.Commands;
 using CBS.Application.Customers;
 using CBS.Application.GeneralLedger.Services;
+using CBS.Application.Governance.Services;
 using CBS.Application.Lending.Demand;
 using CBS.Application.Lending.Demand.Commands;
 using CBS.Application.Remittance;
@@ -151,6 +152,10 @@ public static class DependencyInjection
         services.AddScoped<ICustomerTransactionProfileRepository, EfCustomerTransactionProfileRepository>();
         services.AddScoped<IAdcReconciliationRepository, EfAdcReconciliationRepository>();
         services.AddScoped<ICrmAndAdcReconciliationService, CBS.Application.Crm.Services.CrmAndAdcReconciliationService>();
+        services.AddScoped<ITransactionAnomalyRepository, EfTransactionAnomalyRepository>();
+        services.AddScoped<IBreakGlassSessionRepository, EfBreakGlassSessionRepository>();
+        services.AddScoped<IDailyEodBalancingRepository, EfDailyEodBalancingRepository>();
+        services.AddScoped<IGovernanceAndProofingService, GovernanceAndProofingService>();
         services.AddHttpClient();
 
         return services;

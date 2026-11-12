@@ -130,6 +130,9 @@ public class CbsDbContext : DbContext
     public DbSet<InlandBillPurchased> InlandBillsPurchased => Set<InlandBillPurchased>();
     public DbSet<CustomerTransactionProfile> CustomerTransactionProfiles => Set<CustomerTransactionProfile>();
     public DbSet<AdcReconciliationBatch> AdcReconciliationBatches => Set<AdcReconciliationBatch>();
+    public DbSet<TransactionAnomalyRecord> TransactionAnomalies => Set<TransactionAnomalyRecord>();
+    public DbSet<BreakGlassEmergencySession> BreakGlassSessions => Set<BreakGlassEmergencySession>();
+    public DbSet<DailyEodBalancingSheet> DailyEodBalancingSheets => Set<DailyEodBalancingSheet>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -258,6 +261,9 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new InlandBillPurchasedConfiguration());
         modelBuilder.ApplyConfiguration(new CustomerTransactionProfileConfiguration());
         modelBuilder.ApplyConfiguration(new AdcReconciliationBatchConfiguration());
+        modelBuilder.ApplyConfiguration(new TransactionAnomalyRecordConfiguration());
+        modelBuilder.ApplyConfiguration(new BreakGlassEmergencySessionConfiguration());
+        modelBuilder.ApplyConfiguration(new DailyEodBalancingSheetConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -335,6 +341,9 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<InlandBillPurchased>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<CustomerTransactionProfile>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<AdcReconciliationBatch>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<TransactionAnomalyRecord>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<BreakGlassEmergencySession>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<DailyEodBalancingSheet>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -417,6 +426,9 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<InlandBillPurchased>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<CustomerTransactionProfile>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<AdcReconciliationBatch>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<TransactionAnomalyRecord>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<BreakGlassEmergencySession>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<DailyEodBalancingSheet>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)

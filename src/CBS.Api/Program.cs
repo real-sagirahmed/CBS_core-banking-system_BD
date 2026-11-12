@@ -24,6 +24,7 @@ using CBS.Application.Customers.Commands;
 using CBS.Application.Customers.Commands.CreateCustomerDraft;
 using CBS.Application.Customers.Commands.VerifyCustomer;
 using CBS.Application.Customers.DTOs;
+using CBS.Application.Governance.DTOs;
 using CBS.Application.GeneralBanking.Commands.RunBranchEodBatch;
 using CBS.Application.GeneralLedger.DTOs;
 using CBS.Application.GeneralLedger.Services;
@@ -7164,6 +7165,205 @@ public partial class Program
         {
             var result = await service.GetActiveAlertsAsync(ct);
             return Results.Ok(result);
+        });
+
+        // --- PHASE 32: CBS TRANSACTION GOVERNANCE, PAM BREAK-GLASS & DAILY EOD PROOFING (BRPD 12/2024 Modules 9, 10 & 11) ---
+        var governanceApi = app.MapGroup("/api/v1/governance").WithTags("CBS Governance & Anomaly Detection");
+
+        governanceApi.MapPost("/anomalies/detect", async (
+            DetectAnomalyRequest request,
+            IGovernanceAndProofingService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.ScreenAndDetectAnomalyAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        governanceApi.MapPost("/anomalies/{anomalyId}/resolve", async (
+            string anomalyId,
+            ResolveAnomalyRequest request,
+            IGovernanceAndProofingService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.ResolveAnomalyAsync(anomalyId, request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        governanceApi.MapGet("/anomalies/pending", async (
+            IGovernanceAndProofingService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetPendingAnomaliesAsync(ct);
+            return Results.Ok(result);
+        });
+
+        var securityBreakGlassApi = app.MapGroup("/api/v1/security").WithTags("CBS Security & Emergency Break-Glass");
+
+        securityBreakGlassApi.MapPost("/break-glass/request", async (
+            RequestBreakGlassSessionRequest request,
+            IGovernanceAndProofingService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.RequestBreakGlassSessionAsync(request, ct);
+                return Results.Created($"/api/v1/security/break-glass/{result.SessionId}", result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        securityBreakGlassApi.MapPost("/break-glass/{sessionId}/approve", async (
+            string sessionId,
+            ApproveBreakGlassSessionRequest request,
+            IGovernanceAndProofingService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.ApproveBreakGlassSessionAsync(sessionId, request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        securityBreakGlassApi.MapPost("/break-glass/{sessionId}/revoke", async (
+            string sessionId,
+            RevokeBreakGlassSessionRequest request,
+            IGovernanceAndProofingService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.RevokeBreakGlassSessionAsync(sessionId, request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        securityBreakGlassApi.MapGet("/break-glass/{sessionId}", async (
+            string sessionId,
+            IGovernanceAndProofingService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.GetBreakGlassSessionAsync(sessionId, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+        });
+
+        securityBreakGlassApi.MapPost("/break-glass/{sessionId}/validate", async (
+            string sessionId,
+            IGovernanceAndProofingService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var isValid = await service.ValidateActiveBreakGlassSessionAsync(sessionId, ct);
+                return Results.Ok(new { sessionId, isValid });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        var eodBalancingApi = app.MapGroup("/api/v1/eod").WithTags("CBS EOD Balancing & Multi-Rail Proofing");
+
+        eodBalancingApi.MapPost("/balancing/generate", async (
+            GenerateDailyBalancingSheetRequest request,
+            IGovernanceAndProofingService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.GenerateDailyBalancingSheetAsync(request, ct);
+                return Results.Created($"/api/v1/eod/balancing/{result.SheetId}", result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        eodBalancingApi.MapPost("/balancing/{sheetId}/verify-and-proof", async (
+            string sheetId,
+            ProofDailyBooksRequest request,
+            IGovernanceAndProofingService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.ProofDailyBooksAsync(sheetId, request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        eodBalancingApi.MapGet("/balancing/{sheetId}", async (
+            string sheetId,
+            IGovernanceAndProofingService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.GetDailyBalancingSheetAsync(sheetId, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
         });
 
         // --- PRODUCTION HEALTH & PROBE ENDPOINTS ---
