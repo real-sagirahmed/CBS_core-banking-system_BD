@@ -2751,6 +2751,152 @@ public partial class Program
             }
         });
 
+        // --- PHASE 28: TREASURY MANAGEMENT, FX BLOTTER, NOP, MTM & NOSTRO RECONCILIATION (BRPD CIRCULAR 12/2024 MODULE 6) ---
+        treasuryApi.MapGet("/blotter", async (
+            DateOnly? date,
+            ITreasuryManagementService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.GetFxBlotterAsync(date, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        treasuryApi.MapPost("/limits/profile", async (
+            ConfigureTreasuryLimitProfileCommand command,
+            ITreasuryManagementService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.ConfigureLimitProfileAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        treasuryApi.MapPost("/limits/check", async (
+            CheckTreasuryLimitCommand command,
+            ITreasuryManagementService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.CheckAndEnforceLimitAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        treasuryApi.MapPost("/revaluation/mtm-eod", async (
+            ExecuteMtmRevaluationCommand command,
+            ITreasuryManagementService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.ExecuteMtmRevaluationAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        treasuryApi.MapPost("/reserves/evaluate-crr-slr", async (
+            EvaluateStatutoryReservesCommand command,
+            ITreasuryManagementService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.EvaluateStatutoryReservesAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        treasuryApi.MapGet("/reserves/compliance-statement", async (
+            ITreasuryManagementService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.GetLatestStatutoryReserveAssessmentAsync(ct);
+                return result is null ? Results.NotFound(new { message = "No statutory reserve assessment found." }) : Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        treasuryApi.MapPost("/nostro/local-entry", async (
+            IngestLocalNostroEntryCommand command,
+            ITreasuryManagementService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                await service.IngestLocalNostroEntryAsync(command, ct);
+                return Results.Ok(new { message = "Local Nostro entry recorded successfully." });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        treasuryApi.MapPost("/nostro/reconcile-auto", async (
+            IngestNostroStatementCommand command,
+            HttpContext httpContext,
+            ITreasuryManagementService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var userId = httpContext.Request.Headers["X-User-Id"].FirstOrDefault() ?? "SYSTEM_TREASURY";
+                var result = await service.ReconcileNostroStatementsAsync(command, userId, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        treasuryApi.MapGet("/nostro/unreconciled-aging", async (
+            DateOnly? asOfDate,
+            ITreasuryManagementService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.GetNostroUnreconciledAgingReportAsync(asOfDate, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
         // --- SECURITY, AUDIT & COMPLIANCE APIS (BRPD 10.3.5, 10.3.6, 11.1, 11.2) ---
         var securityApi = app.MapGroup("/api/v1/security");
         var auditApi = app.MapGroup("/api/v1/audit");

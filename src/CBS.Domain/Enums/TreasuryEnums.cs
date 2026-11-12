@@ -60,5 +60,38 @@ public enum TreasurySecurityType
 public enum SecurityClassification
 {
     Hft = 1, // Held for Trading (daily Mark-to-Market revaluation to reserve)
-    Htm = 2  // Held to Maturity (amortized cost, exempt from daily MTM)
+    Htm = 2, // Held to Maturity (amortized cost, exempt from daily MTM)
+    Afs = 3  // Available for Sale
+}
+
+public enum NostroReconciliationStatus
+{
+    Unmatched = 1,
+    MatchedAuto = 2,
+    MatchedManual = 3,
+    Provisioned = 4,
+    Cancelled = 5
+}
+
+public enum TreasuryLimitType
+{
+    NetOpenPositionAggregate = 1,
+    NetOpenPositionSingleCurrency = 2,
+    DealerDaylight = 3,
+    DealerOvernight = 4,
+    DealerStopLoss = 5,
+    CounterpartyCreditLine = 6
+}
+
+public enum ReserveType
+{
+    CashReserveRatio_CRR = 1,
+    StatutoryLiquidityRatio_SLR = 2
+}
+
+public enum OffMarketRateStatus
+{
+    NormalMarketRate = 1,
+    OffMarketVarianceAlert = 2,
+    AuthorizedWithJustification = 3
 }

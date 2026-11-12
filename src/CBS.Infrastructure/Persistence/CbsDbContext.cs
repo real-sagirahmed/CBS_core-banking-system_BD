@@ -116,6 +116,10 @@ public class CbsDbContext : DbContext
     public DbSet<LoanRescheduleRecord> LoanReschedules => Set<LoanRescheduleRecord>();
     public DbSet<LoanWriteOffRecord> LoanWriteOffs => Set<LoanWriteOffRecord>();
     public DbSet<QualitativeJudgmentRecord> QualitativeJudgments => Set<QualitativeJudgmentRecord>();
+    public DbSet<TreasuryLimitProfile> TreasuryLimits => Set<TreasuryLimitProfile>();
+    public DbSet<MtmRevaluationBatch> MtmRevaluationBatches => Set<MtmRevaluationBatch>();
+    public DbSet<NostroMirrorReconciliationItem> NostroReconciliations => Set<NostroMirrorReconciliationItem>();
+    public DbSet<StatutoryReserveAssessment> StatutoryReserves => Set<StatutoryReserveAssessment>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -231,6 +235,10 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new LoanRescheduleRecordConfiguration());
         modelBuilder.ApplyConfiguration(new LoanWriteOffRecordConfiguration());
         modelBuilder.ApplyConfiguration(new QualitativeJudgmentRecordConfiguration());
+        modelBuilder.ApplyConfiguration(new TreasuryLimitProfileConfiguration());
+        modelBuilder.ApplyConfiguration(new MtmRevaluationBatchConfiguration());
+        modelBuilder.ApplyConfiguration(new NostroMirrorReconciliationItemConfiguration());
+        modelBuilder.ApplyConfiguration(new StatutoryReserveAssessmentConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -295,6 +303,10 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<LoanRescheduleRecord>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<LoanWriteOffRecord>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<QualitativeJudgmentRecord>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<TreasuryLimitProfile>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<MtmRevaluationBatch>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<NostroMirrorReconciliationItem>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<StatutoryReserveAssessment>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -364,6 +376,10 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<LoanRescheduleRecord>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<LoanWriteOffRecord>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<QualitativeJudgmentRecord>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<TreasuryLimitProfile>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<MtmRevaluationBatch>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<NostroMirrorReconciliationItem>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<StatutoryReserveAssessment>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)

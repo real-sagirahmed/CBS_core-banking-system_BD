@@ -134,6 +134,11 @@ public static class DependencyInjection
         services.AddScoped<ILoanWriteOffRepository, EfLoanWriteOffRepository>();
         services.AddScoped<IQualitativeJudgmentRepository, EfQualitativeJudgmentRepository>();
         services.AddScoped<ILoanClassificationService, CBS.Application.Lending.Services.LoanClassificationService>();
+        services.AddScoped<ITreasuryLimitRepository, EfTreasuryLimitRepository>();
+        services.AddScoped<IMtmRevaluationRepository, EfMtmRevaluationRepository>();
+        services.AddScoped<INostroReconciliationRepository, EfNostroReconciliationRepository>();
+        services.AddScoped<IStatutoryReserveRepository, EfStatutoryReserveRepository>();
+        services.AddScoped<ITreasuryManagementService, CBS.Application.Treasury.Services.TreasuryManagementService>();
         services.AddHttpClient();
 
         return services;
