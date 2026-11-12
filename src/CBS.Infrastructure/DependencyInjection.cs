@@ -13,6 +13,7 @@ using CBS.Application.Remittance;
 using CBS.Application.Reporting;
 using CBS.Application.Reporting.Services;
 using CBS.Application.Security;
+using CBS.Application.Security.Services;
 using CBS.Application.Shariah;
 using CBS.Application.Shariah.Commands;
 using CBS.Application.Specialized;
@@ -160,6 +161,10 @@ public static class DependencyInjection
         services.AddScoped<IRemittanceIncentiveRepository, EfRemittanceIncentiveRepository>();
         services.AddScoped<IDailyCleanCashRepository, EfDailyCleanCashRepository>();
         services.AddScoped<IEnterpriseReportingService, EnterpriseReportingService>();
+        services.AddScoped<IUserDoaProfileRepository, EfUserDoaProfileRepository>();
+        services.AddScoped<ITemporaryDelegationRepository, EfTemporaryDelegationRepository>();
+        services.AddScoped<IUserPasswordCredentialRepository, EfUserPasswordCredentialRepository>();
+        services.AddScoped<ISystemAdministrationService, SystemAdministrationService>();
         services.AddHttpClient();
 
         return services;

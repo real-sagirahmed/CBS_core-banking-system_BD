@@ -7512,6 +7512,148 @@ public partial class Program
             return Results.Ok(result);
         });
 
+        // --- PHASE 34: ENTERPRISE DELEGATION OF AUTHORITY (DOA), TEMPORARY ACTING & PASSWORD LIFECYCLE (BRPD 12/2024 Module 10) ---
+        var sysAdminApi = app.MapGroup("/api/v1/admin").WithTags("CBS System Administration & Delegation of Authority");
+
+        sysAdminApi.MapPost("/doa/profiles", async (
+            ConfigureDoaProfileRequest request,
+            ISystemAdministrationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.ConfigureDoaProfileAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        sysAdminApi.MapGet("/doa/profiles/{userId}", async (
+            string userId,
+            ISystemAdministrationService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetDoaProfileAsync(userId, ct);
+            return result != null ? Results.Ok(result) : Results.NotFound(new { error = $"DOA profile for user '{userId}' was not found." });
+        });
+
+        sysAdminApi.MapPost("/doa/validate-limit", async (
+            ValidateTransactionDoaRequest request,
+            ISystemAdministrationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.ValidateTransactionDoaAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        sysAdminApi.MapPost("/delegations/request", async (
+            CreateTemporaryDelegationRequest request,
+            ISystemAdministrationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.CreateTemporaryDelegationAsync(request, ct);
+                return Results.Created($"/api/v1/admin/delegations/{result.DelegationId}", result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        sysAdminApi.MapPost("/delegations/{delegationId}/approve", async (
+            string delegationId,
+            ApproveTemporaryDelegationRequest request,
+            ISystemAdministrationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.ApproveTemporaryDelegationAsync(delegationId, request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        sysAdminApi.MapPost("/delegations/{delegationId}/revoke", async (
+            string delegationId,
+            RevokeTemporaryDelegationRequest request,
+            ISystemAdministrationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.RevokeTemporaryDelegationAsync(delegationId, request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        sysAdminApi.MapGet("/delegations/active", async (
+            ISystemAdministrationService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetActiveDelegationsAsync(ct);
+            return Results.Ok(result);
+        });
+
+        sysAdminApi.MapPost("/security/password/change", async (
+            ChangeUserPasswordRequest request,
+            ISystemAdministrationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.ChangeUserPasswordAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        sysAdminApi.MapPost("/security/password/admin-reset", async (
+            AdminResetPasswordRequest request,
+            ISystemAdministrationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.AdminResetPasswordAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
         // --- PRODUCTION HEALTH & PROBE ENDPOINTS ---
         app.MapGet("/health", () => Results.Ok(new
         {

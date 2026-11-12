@@ -135,6 +135,9 @@ public class CbsDbContext : DbContext
     public DbSet<DailyEodBalancingSheet> DailyEodBalancingSheets => Set<DailyEodBalancingSheet>();
     public DbSet<RemittanceCashIncentiveRecord> RemittanceCashIncentives => Set<RemittanceCashIncentiveRecord>();
     public DbSet<DailyCleanCashSheet> DailyCleanCashSheets => Set<DailyCleanCashSheet>();
+    public DbSet<UserDoaProfile> UserDoaProfiles => Set<UserDoaProfile>();
+    public DbSet<TemporaryAuthorityDelegation> TemporaryAuthorityDelegations => Set<TemporaryAuthorityDelegation>();
+    public DbSet<UserPasswordCredential> UserPasswordCredentials => Set<UserPasswordCredential>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -268,6 +271,9 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new DailyEodBalancingSheetConfiguration());
         modelBuilder.ApplyConfiguration(new RemittanceCashIncentiveRecordConfiguration());
         modelBuilder.ApplyConfiguration(new DailyCleanCashSheetConfiguration());
+        modelBuilder.ApplyConfiguration(new UserDoaProfileConfiguration());
+        modelBuilder.ApplyConfiguration(new TemporaryAuthorityDelegationConfiguration());
+        modelBuilder.ApplyConfiguration(new UserPasswordCredentialConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -350,6 +356,9 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<DailyEodBalancingSheet>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<RemittanceCashIncentiveRecord>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<DailyCleanCashSheet>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<UserDoaProfile>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<TemporaryAuthorityDelegation>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<UserPasswordCredential>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -437,6 +446,9 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<DailyEodBalancingSheet>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<RemittanceCashIncentiveRecord>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<DailyCleanCashSheet>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<UserDoaProfile>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<TemporaryAuthorityDelegation>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<UserPasswordCredential>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
