@@ -7366,6 +7366,152 @@ public partial class Program
             }
         });
 
+        // --- PHASE 33: ENTERPRISE STATUTORY REPORTING, CLEAN CASH & REMITTANCE CASH INCENTIVE (BRPD 12/2024 Module 11 & FE Circular 01/2022) ---
+        var remittanceIncentiveApi = app.MapGroup("/api/v1/remittance/incentives").WithTags("Wage Earners 2.5% Remittance Cash Incentive");
+
+        remittanceIncentiveApi.MapPost("/disburse", async (
+            DisburseRemittanceIncentiveRequest request,
+            IEnterpriseReportingService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.DisburseRemittanceIncentiveAsync(request, ct);
+                return Results.Created($"/api/v1/remittance/incentives/{result.IncentiveId}", result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        remittanceIncentiveApi.MapGet("/pending-claims", async (
+            IEnterpriseReportingService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetPendingIncentiveClaimsAsync(ct);
+            return Results.Ok(result);
+        });
+
+        remittanceIncentiveApi.MapPost("/submit-claim", async (
+            SubmitRemittanceIncentiveBatchClaimRequest request,
+            IEnterpriseReportingService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.SubmitIncentiveClaimsAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        remittanceIncentiveApi.MapPost("/{incentiveId}/record-reimbursement", async (
+            string incentiveId,
+            RecordCentralBankReimbursementRequest request,
+            IEnterpriseReportingService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.RecordReimbursementAsync(incentiveId, request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        var enterpriseReportingApi = app.MapGroup("/api/v1/reporting").WithTags("Enterprise Regulatory & Management Reporting");
+
+        enterpriseReportingApi.MapPost("/clean-cash/generate", async (
+            GenerateDailyCleanCashRequest request,
+            IEnterpriseReportingService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.GenerateDailyCleanCashAsync(request, ct);
+                return Results.Created($"/api/v1/reporting/clean-cash/{result.SheetId}", result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        enterpriseReportingApi.MapPost("/clean-cash/{sheetId}/certify", async (
+            string sheetId,
+            CertifyDailyCleanCashRequest request,
+            IEnterpriseReportingService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.CertifyDailyCleanCashAsync(sheetId, request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        enterpriseReportingApi.MapGet("/clean-cash/{sheetId}", async (
+            string sheetId,
+            IEnterpriseReportingService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.GetDailyCleanCashAsync(sheetId, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+        });
+
+        enterpriseReportingApi.MapGet("/statutory/large-loans", async (
+            decimal? capitalBase,
+            IEnterpriseReportingService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                decimal capital = capitalBase ?? 10_000_000_000m;
+                var result = await service.GenerateLargeLoanExposureReportAsync(capital, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        enterpriseReportingApi.MapGet("/statutory/npl-portfolio", async (
+            DateOnly? asOfDate,
+            IEnterpriseReportingService service,
+            CancellationToken ct) =>
+        {
+            var date = asOfDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+            var result = await service.GenerateNplClassificationSummaryAsync(date, ct);
+            return Results.Ok(result);
+        });
+
         // --- PRODUCTION HEALTH & PROBE ENDPOINTS ---
         app.MapGet("/health", () => Results.Ok(new
         {

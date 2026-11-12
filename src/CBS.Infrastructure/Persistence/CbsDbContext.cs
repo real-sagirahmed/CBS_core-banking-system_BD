@@ -133,6 +133,8 @@ public class CbsDbContext : DbContext
     public DbSet<TransactionAnomalyRecord> TransactionAnomalies => Set<TransactionAnomalyRecord>();
     public DbSet<BreakGlassEmergencySession> BreakGlassSessions => Set<BreakGlassEmergencySession>();
     public DbSet<DailyEodBalancingSheet> DailyEodBalancingSheets => Set<DailyEodBalancingSheet>();
+    public DbSet<RemittanceCashIncentiveRecord> RemittanceCashIncentives => Set<RemittanceCashIncentiveRecord>();
+    public DbSet<DailyCleanCashSheet> DailyCleanCashSheets => Set<DailyCleanCashSheet>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -264,6 +266,8 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new TransactionAnomalyRecordConfiguration());
         modelBuilder.ApplyConfiguration(new BreakGlassEmergencySessionConfiguration());
         modelBuilder.ApplyConfiguration(new DailyEodBalancingSheetConfiguration());
+        modelBuilder.ApplyConfiguration(new RemittanceCashIncentiveRecordConfiguration());
+        modelBuilder.ApplyConfiguration(new DailyCleanCashSheetConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -344,6 +348,8 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<TransactionAnomalyRecord>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<BreakGlassEmergencySession>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<DailyEodBalancingSheet>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<RemittanceCashIncentiveRecord>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<DailyCleanCashSheet>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -429,6 +435,8 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<TransactionAnomalyRecord>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<BreakGlassEmergencySession>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<DailyEodBalancingSheet>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<RemittanceCashIncentiveRecord>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<DailyCleanCashSheet>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)

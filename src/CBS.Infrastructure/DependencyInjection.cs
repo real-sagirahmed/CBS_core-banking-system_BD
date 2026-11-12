@@ -11,6 +11,7 @@ using CBS.Application.Lending.Demand;
 using CBS.Application.Lending.Demand.Commands;
 using CBS.Application.Remittance;
 using CBS.Application.Reporting;
+using CBS.Application.Reporting.Services;
 using CBS.Application.Security;
 using CBS.Application.Shariah;
 using CBS.Application.Shariah.Commands;
@@ -156,6 +157,9 @@ public static class DependencyInjection
         services.AddScoped<IBreakGlassSessionRepository, EfBreakGlassSessionRepository>();
         services.AddScoped<IDailyEodBalancingRepository, EfDailyEodBalancingRepository>();
         services.AddScoped<IGovernanceAndProofingService, GovernanceAndProofingService>();
+        services.AddScoped<IRemittanceIncentiveRepository, EfRemittanceIncentiveRepository>();
+        services.AddScoped<IDailyCleanCashRepository, EfDailyCleanCashRepository>();
+        services.AddScoped<IEnterpriseReportingService, EnterpriseReportingService>();
         services.AddHttpClient();
 
         return services;
