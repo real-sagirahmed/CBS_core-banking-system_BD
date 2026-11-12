@@ -7,7 +7,9 @@ namespace CBS.Domain.Accounts;
 
 // ARCHITECTURAL INTENT: Deposit Account Lifecycle, Inactivity/Dormancy/Inoperative locks,
 // 10-Year Unclaimed Fund Transfer (BRPD 3.1.21-iv), NBR statutory tax/excise duty,
-// and Leap-Year Actual/365/366 daily interest accrual & capitalization (BRPD Circular 12/2024 Module 1.2, 1.3, 3.1, 3.2).
+// Leap-Year Actual/365/366 daily interest accrual & capitalization,
+// Account Restraints/Liens/Court Freezes (BRPD 1.6.2-v, 1.6.6, 3.1.15),
+// and Statutory Account Closure Invariant Locks (BRPD 1.6.4, 3.1.19).
 public class DepositAccount : AggregateRoot<AccountNumber>
 {
     public CifNumber Cif { get; private set; }
@@ -39,6 +41,16 @@ public class DepositAccount : AggregateRoot<AccountNumber>
     public string? ReactivationKycDocumentReference { get; private set; }
     public DateTime? ReactivationRequestedAtUtc { get; private set; }
     public bool IsReactivationPending { get; private set; }
+
+    // Account Restraints, Lien Holds & Available Balance (BRPD 1.6.2-v, 1.6.6, 3.1.15-ix, x)
+    public Money TotalActiveHoldAmount { get; private set; }
+    public Money AvailableBalance => Money.Bdt(Math.Max(0m, Balance.Amount - TotalActiveHoldAmount.Amount));
+
+    // Statutory Account Closure Audit (BRPD 1.6.4, 3.1.19-iv, v)
+    public string? ClosedByUserId { get; private set; }
+    public string? ClosedAuthorizedByUserId { get; private set; }
+    public DateOnly? ClosedDate { get; private set; }
+    public string? ClosingReason { get; private set; }
 
     #pragma warning disable CS8618
     protected DepositAccount() : base(null!) { }
@@ -92,6 +104,7 @@ public class DepositAccount : AggregateRoot<AccountNumber>
         AccruedInterestProvision = Money.Zero(currency);
         UnclaimedNoticesServedCount = 0;
         IsReactivationPending = false;
+        TotalActiveHoldAmount = Money.Zero(currency);
     }
 
     public void UpdateTinStatus(bool hasTin)
@@ -113,7 +126,12 @@ public class DepositAccount : AggregateRoot<AccountNumber>
         AnnualInterestRate = newRate;
     }
 
-    // 1. INVARIANT: Credit Operations & Hovering Charge Auto-Recovery (BRPD 3.1.19-viii)
+    public void SetOperatingStatus(AccountOperatingStatus newStatus)
+    {
+        Status = newStatus;
+    }
+
+    // 1. INVARIANT: Credit Operations & Hovering Charge Auto-Recovery (BRPD 3.1.19-viii, 1.6.2-v, 3.1.15-vii)
     public Money Credit(Money amount, string narration, bool isCustomerInduced = true, DateOnly? transactionDate = null)
     {
         ArgumentNullException.ThrowIfNull(amount, nameof(amount));
@@ -123,7 +141,7 @@ public class DepositAccount : AggregateRoot<AccountNumber>
         {
             throw new InvariantViolationException(
                 "AccountCreditBlockedInvariant",
-                "BRPD Circular 12/2024 (3.1.20, 3.1.21)",
+                "BRPD Circular 12/2024 (1.6.2-v, 3.1.15-vii, 3.1.20, 3.1.21)",
                 $"Account '{Id.Value}' is in state '{Status}'. Credit transactions prohibited.");
         }
 
@@ -160,7 +178,7 @@ public class DepositAccount : AggregateRoot<AccountNumber>
         return recoveredHovering;
     }
 
-    // 2. INVARIANT: Debit Operations & Dormancy/Inoperative Block Lock (BRPD 3.1.20, 3.1.21, 1.3.5)
+    // 2. INVARIANT: Debit Operations, Lien Holds & Dormancy/Inoperative Block Lock (BRPD 1.6.2-v, 1.6.6, 3.1.15, 3.1.20, 3.1.21, 1.3.5)
     public void Debit(Money amount, string narration, bool isCustomerInduced = true, DateOnly? transactionDate = null)
     {
         ArgumentNullException.ThrowIfNull(amount, nameof(amount));
@@ -175,12 +193,22 @@ public class DepositAccount : AggregateRoot<AccountNumber>
                 $"Account '{Id.Value}' is {Status} (Inactive since {LastCustomerTransactionDate:yyyy-MM-dd}). Debit transaction blocked until Branch Manager reactivation.");
         }
 
+        // HARD LOCK: BlockedDebit, Frozen, Closed, and Unclaimed accounts prohibit debit transactions (BRPD 1.6.2-v, 3.1.15-vi)
         if (Status is AccountOperatingStatus.BlockedDebit or AccountOperatingStatus.Frozen or AccountOperatingStatus.Closed or AccountOperatingStatus.Unclaimed10YearTransferred)
         {
             throw new InvariantViolationException(
                 "AccountDebitBlockedInvariant",
-                "BRPD Circular 12/2024 (3.1.20, 3.1.21)",
+                "BRPD Circular 12/2024 (1.6.2-v, 3.1.15-vi, 3.1.20, 3.1.21)",
                 $"Account '{Id.Value}' is in state '{Status}'. Debit transactions prohibited.");
+        }
+
+        // HARD LOCK: Available balance invariant considering active lien/court holds (BRPD 1.6.6, 3.1.15-ix, x)
+        if (TotalActiveHoldAmount.Amount > 0m && amount > AvailableBalance)
+        {
+            throw new InvariantViolationException(
+                "InsufficientAvailableBalanceAfterLienInvariant",
+                "BRPD Circular 12/2024 (1.6.6, 3.1.15-ix, x)",
+                $"Account '{Id.Value}' has ledger balance {Balance} but active holds of {TotalActiveHoldAmount}. Available balance {AvailableBalance} is insufficient for requested debit of {amount}.");
         }
 
         // HARD LOCK: Insufficient funds invariant (No unauthorized overdraft BRPD 1.3.5)
@@ -198,6 +226,113 @@ public class DepositAccount : AggregateRoot<AccountNumber>
         {
             LastCustomerTransactionDate = transactionDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
         }
+    }
+
+    // 2.1 HOLD ENGINE: Apply, Release & Realize Holds (BRPD 1.6.6, 3.1.15-ix, x)
+    public void ApplyHold(Money holdAmount)
+    {
+        ArgumentNullException.ThrowIfNull(holdAmount, nameof(holdAmount));
+        if (holdAmount.Amount <= 0m) throw new ArgumentException("Hold amount must be positive.", nameof(holdAmount));
+
+        // BRPD 3.1.15-x: "System shall have ability to block any amount irrespective of the available balance of the account."
+        TotalActiveHoldAmount += holdAmount;
+    }
+
+    public void ReleaseHold(Money releaseAmount)
+    {
+        ArgumentNullException.ThrowIfNull(releaseAmount, nameof(releaseAmount));
+        if (releaseAmount.Amount <= 0m) throw new ArgumentException("Release amount must be positive.", nameof(releaseAmount));
+
+        decimal newAmount = Math.Max(0m, TotalActiveHoldAmount.Amount - releaseAmount.Amount);
+        TotalActiveHoldAmount = Money.Bdt(newAmount);
+    }
+
+    public Money RealizeHold(Money realizeAmount)
+    {
+        ArgumentNullException.ThrowIfNull(realizeAmount, nameof(realizeAmount));
+        if (realizeAmount.Amount <= 0m) throw new ArgumentException("Realize amount must be positive.", nameof(realizeAmount));
+
+        // Realize debit from balance up to available balance or total balance
+        Money actualDebited = realizeAmount > Balance ? Balance : realizeAmount;
+        Balance -= actualDebited;
+
+        decimal newHoldAmount = Math.Max(0m, TotalActiveHoldAmount.Amount - realizeAmount.Amount);
+        TotalActiveHoldAmount = Money.Bdt(newHoldAmount);
+
+        return actualDebited;
+    }
+
+    // 2.2 CLOSING LIFECYCLE: Statutory Account Closure Invariant Locks (BRPD 1.6.4, 3.1.19-iv, v)
+    public void CloseAccount(
+        string makerUserId,
+        string checkerUserId,
+        string reason,
+        DateOnly closeDate,
+        out Money closingFee,
+        out Money vat,
+        out Money netRefund)
+    {
+        if (string.IsNullOrWhiteSpace(makerUserId)) throw new ArgumentException("Maker User ID is required.", nameof(makerUserId));
+        if (string.IsNullOrWhiteSpace(checkerUserId)) throw new ArgumentException("Checker User ID is required.", nameof(checkerUserId));
+        if (string.IsNullOrWhiteSpace(reason)) throw new ArgumentException("Closure reason is required.", nameof(reason));
+
+        if (Status == AccountOperatingStatus.Closed)
+        {
+            throw new InvalidOperationException($"Account '{Id.Value}' is already closed.");
+        }
+
+        // HARD LOCK: Dual-Control Maker-Checker segregation (BRPD 1.3.18, 10.3.5-x)
+        if (makerUserId.Trim().Equals(checkerUserId.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvariantViolationException(
+                "MakerCheckerSeparationInvariant",
+                "BRPD Circular 12/2024 (1.3.18, 10.3.5-x)",
+                $"Maker '{makerUserId}' cannot authorize account closure. Strict dual-control duty segregation required.");
+        }
+
+        // HARD LOCK: Active restraints & lien holds block closure (BRPD 1.6.2-v, 3.1.15-i)
+        if (TotalActiveHoldAmount.Amount > 0m)
+        {
+            throw new InvariantViolationException(
+                "ActiveRestraintsHoldInvariant",
+                "BRPD Circular 12/2024 (1.6.2-v, 3.1.15-i)",
+                $"Account '{Id.Value}' has active restraint holds of {TotalActiveHoldAmount}. Cannot close account under active lien or legal restraint.");
+        }
+
+        // HARD LOCK: Unapplied accrued interest in provision blocks closure (BRPD 1.6.4-iv)
+        if (AccruedInterestProvision.Amount > 0m)
+        {
+            throw new InvariantViolationException(
+                "UnappliedInterestProvisionInvariant",
+                "BRPD Circular 12/2024 (1.6.4-iv)",
+                $"Account '{Id.Value}' has unapplied accrued interest of {AccruedInterestProvision}. Accrued interest must be capitalized or adjusted before closure.");
+        }
+
+        // Statutory closing charge: BDT 300 fee + 15% NBR VAT (BDT 45) = BDT 345 (BRPD 3.1.19-iv, v)
+        decimal feeAmount = 300.00m;
+        decimal vatAmount = Math.Round(feeAmount * 0.15m, 2, MidpointRounding.AwayFromZero);
+        decimal totalDeduction = feeAmount + vatAmount; // 345.00 BDT
+
+        if (Balance.Amount >= totalDeduction)
+        {
+            closingFee = Money.Bdt(feeAmount);
+            vat = Money.Bdt(vatAmount);
+            netRefund = Balance - Money.Bdt(totalDeduction);
+        }
+        else
+        {
+            // If balance is less than statutory closing charge, deduct entire balance towards fee
+            closingFee = Balance;
+            vat = Money.Zero(Balance.Currency);
+            netRefund = Money.Zero(Balance.Currency);
+        }
+
+        Balance = Money.Zero(Balance.Currency);
+        Status = AccountOperatingStatus.Closed;
+        ClosedByUserId = makerUserId.Trim();
+        ClosedAuthorizedByUserId = checkerUserId.Trim();
+        ClosedDate = closeDate;
+        ClosingReason = reason.Trim();
     }
 
     // 3. INVARIANT: Automated Dormancy and Inoperative State Engine (BRPD 3.1.20, 3.1.21)

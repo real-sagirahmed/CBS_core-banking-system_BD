@@ -121,6 +121,27 @@ public class DepositAccountConfiguration : IEntityTypeConfiguration<DepositAccou
             .HasColumnName("is_reactivation_pending")
             .IsRequired();
 
+        builder.Property(a => a.TotalActiveHoldAmount)
+            .HasConversion(v => v.Amount, v => Money.Bdt(v))
+            .HasColumnName("total_active_hold_bdt")
+            .HasPrecision(18, 2)
+            .IsRequired();
+
+        builder.Property(a => a.ClosedByUserId)
+            .HasColumnName("closed_by_user_id")
+            .HasMaxLength(50);
+
+        builder.Property(a => a.ClosedAuthorizedByUserId)
+            .HasColumnName("closed_auth_by_user_id")
+            .HasMaxLength(50);
+
+        builder.Property(a => a.ClosedDate)
+            .HasColumnName("closed_date");
+
+        builder.Property(a => a.ClosingReason)
+            .HasColumnName("closing_reason")
+            .HasMaxLength(500);
+
         builder.Ignore(a => a.DomainEvents);
 
         builder.HasIndex(a => a.Cif).HasDatabaseName("ix_deposit_accounts_cif");

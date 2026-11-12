@@ -3,6 +3,7 @@ using CBS.Domain.Adc;
 using CBS.Domain.AiIntelligence;
 using CBS.Domain.BranchCash;
 using CBS.Domain.Cheques;
+using CBS.Domain.Corporate;
 using CBS.Domain.Customers;
 using CBS.Domain.Deposits;
 using CBS.Domain.GeneralLedger;
@@ -102,6 +103,9 @@ public class CbsDbContext : DbContext
     public DbSet<ReconciliationAgingItem> ReconciliationAgingItems => Set<ReconciliationAgingItem>();
     public DbSet<BranchVault> BranchVaults => Set<BranchVault>();
     public DbSet<MultiAccountSweepRule> MultiAccountSweepRules => Set<MultiAccountSweepRule>();
+    public DbSet<AccountRestraint> AccountRestraints => Set<AccountRestraint>();
+    public DbSet<BulkCorporateBatch> BulkCorporateBatches => Set<BulkCorporateBatch>();
+    public DbSet<BulkCorporateBatchItem> BulkCorporateBatchItems => Set<BulkCorporateBatchItem>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -204,6 +208,9 @@ public class CbsDbContext : DbContext
         modelBuilder.Ignore<MultiAccountSweepTarget>();
         modelBuilder.ApplyConfiguration(new BranchVaultConfiguration());
         modelBuilder.ApplyConfiguration(new MultiAccountSweepRuleConfiguration());
+        modelBuilder.ApplyConfiguration(new AccountRestraintConfiguration());
+        modelBuilder.ApplyConfiguration(new BulkCorporateBatchConfiguration());
+        modelBuilder.ApplyConfiguration(new BulkCorporateBatchItemConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -256,6 +263,8 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<ReconciliationAgingItem>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<BranchVault>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<MultiAccountSweepRule>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<AccountRestraint>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<BulkCorporateBatch>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -313,6 +322,8 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<ReconciliationAgingItem>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<BranchVault>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<MultiAccountSweepRule>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<AccountRestraint>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<BulkCorporateBatch>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)

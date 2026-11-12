@@ -1,7 +1,10 @@
+using CBS.Application.Accounts.Commands;
 using CBS.Application.Accounts.Commands.OpenDepositAccount;
 using CBS.Application.Accounts.Commands.PostTransaction;
 using CBS.Application.Accounts.DTOs;
 using CBS.Application.Accounts.Services;
+using CBS.Application.Corporate.Commands;
+using CBS.Application.Corporate.DTOs;
 using CBS.Application.Adc.Commands;
 using CBS.Application.Adc.DTOs;
 using CBS.Application.AiIntelligence.Commands;
@@ -572,6 +575,234 @@ public partial class Program
 
             var report = await lifecycleService.GetUnclaimedAccountsAgeingReportAsync(branchCode, date, ct);
             return Results.Ok(report);
+        });
+
+        // --- ACCOUNT RESTRAINTS, LIENS & COURT FREEZES (BRPD 1.6.2-v, 1.6.6, 3.1.15) ---
+        accountApi.MapPost("/{accountNumber}/restraints/place", async (
+            string accountNumber,
+            PlaceRestraintRequest request,
+            AccountRestraintCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandlePlaceRestraintAsync(accountNumber, request, ct);
+                return Results.Created($"/api/v1/accounts/{accountNumber}/restraints/{result.RestraintId}", result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        accountApi.MapPost("/{accountNumber}/restraints/{restraintId}/release", async (
+            string accountNumber,
+            string restraintId,
+            ReleaseRestraintRequest request,
+            AccountRestraintCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleReleaseRestraintAsync(accountNumber, restraintId, request, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        accountApi.MapPost("/{accountNumber}/restraints/{restraintId}/realize", async (
+            string accountNumber,
+            string restraintId,
+            RealizeRestraintRequest request,
+            AccountRestraintCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleRealizeRestraintAsync(accountNumber, restraintId, request, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        accountApi.MapGet("/{accountNumber}/restraints/active", async (
+            string accountNumber,
+            AccountRestraintCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleGetActiveRestraintsAsync(accountNumber, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        accountApi.MapGet("/{accountNumber}/balance-summary", async (
+            string accountNumber,
+            AccountRestraintCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleGetBalanceSummaryAsync(accountNumber, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        // --- STATUTORY ACCOUNT CLOSING LIFECYCLE (BRPD 1.6.4, 3.1.19) ---
+        accountApi.MapGet("/{accountNumber}/close/quote", async (
+            string accountNumber,
+            AccountClosingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var quote = await handler.HandleGetClosingQuoteAsync(accountNumber, ct);
+                return Results.Ok(quote);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        accountApi.MapPost("/{accountNumber}/close", async (
+            string accountNumber,
+            CloseAccountRequest request,
+            AccountClosingCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleCloseAccountAsync(accountNumber, request, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        // --- HIGH-THROUGHPUT BULK CORPORATE PAYROLL & DIVIDEND APIS (BRPD 1.6.16) ---
+        var corporateApi = app.MapGroup("/api/v1/corporate/bulk-batches").AddEndpointFilter<FinancialAuthorizationFilter>();
+
+        corporateApi.MapPost("/upload", async (
+            UploadBulkBatchRequest request,
+            BulkCorporateCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var summary = await handler.HandleUploadBatchAsync(request, ct);
+                return Results.Created($"/api/v1/corporate/bulk-batches/{summary.BatchId}", summary);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        corporateApi.MapPost("/{batchId}/execute", async (
+            string batchId,
+            ExecuteBulkBatchRequest request,
+            BulkCorporateCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await handler.HandleExecuteBatchAsync(batchId, request, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        corporateApi.MapGet("/{batchId}", async (
+            string batchId,
+            BulkCorporateCommandHandler handler,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var summary = await handler.HandleGetBatchSummaryAsync(batchId, ct);
+                return Results.Ok(summary);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
         });
 
         // --- GENERAL BANKING & EOD APIS (PHASE 2) ---

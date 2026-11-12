@@ -1,7 +1,9 @@
+using CBS.Application.Accounts.Commands;
 using CBS.Application.Accounts.Services;
 using CBS.Application.BranchCash;
 using CBS.Application.BranchCash.Commands;
 using CBS.Application.Common.Interfaces;
+using CBS.Application.Corporate.Commands;
 using CBS.Application.Customers;
 using CBS.Application.GeneralLedger.Services;
 using CBS.Application.Lending.Demand;
@@ -110,6 +112,11 @@ public static class DependencyInjection
         services.AddScoped<IBranchVaultRepository, EfBranchVaultRepository>();
         services.AddScoped<BranchVaultCommandHandler>();
         services.AddScoped<MultiAccountSweepCommandHandler>();
+        services.AddScoped<IAccountRestraintRepository, EfAccountRestraintRepository>();
+        services.AddScoped<AccountRestraintCommandHandler>();
+        services.AddScoped<AccountClosingCommandHandler>();
+        services.AddScoped<IBulkCorporateBatchRepository, EfBulkCorporateBatchRepository>();
+        services.AddScoped<BulkCorporateCommandHandler>();
         services.AddHttpClient();
 
         return services;
