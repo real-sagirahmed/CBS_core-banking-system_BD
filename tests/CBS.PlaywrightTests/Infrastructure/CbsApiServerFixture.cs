@@ -14,6 +14,7 @@ public class CbsApiServerFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
+        Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
         _app = Program.CreateWebApplication([]);
         _app.Urls.Clear();
         _app.Urls.Add("http://127.0.0.1:0"); // Dynamic free port on loopback

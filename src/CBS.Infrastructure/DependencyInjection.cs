@@ -123,6 +123,13 @@ public static class DependencyInjection
         services.AddScoped<IAccountStatementService, CBS.Application.Accounts.Services.AccountStatementService>();
         services.AddScoped<ISwiftStatementGenerator, CBS.Application.Accounts.Services.SwiftStatementGenerator>();
         services.AddScoped<ICustomerDocumentComplianceService, CBS.Application.Customers.Services.CustomerDocumentComplianceService>();
+        services.AddScoped<IMasterExportLcRepository, EfMasterExportLcRepository>();
+        services.AddScoped<ITradeTransactionProfileRepository, EfTradeTransactionProfileRepository>();
+        services.AddScoped<ITbmlPriceBenchmarkRepository, EfTbmlPriceBenchmarkRepository>();
+        services.AddScoped<ITbmlAlertRepository, EfTbmlAlertRepository>();
+        services.AddScoped<IVesselTrackingRepository, EfVesselTrackingRepository>();
+        services.AddScoped<IMasterExportLcService, CBS.Application.TradeFinance.Services.MasterExportLcService>();
+        services.AddScoped<ITbmlPreventionService, CBS.Application.TradeFinance.Services.TbmlPreventionService>();
         services.AddHttpClient();
 
         return services;
@@ -148,6 +155,27 @@ public static class DependencyInjection
             var defaultAtm = new CBS.Domain.Adc.AtmTerminal("ATM-001", "Motijheel Main Branch ATM 01", "0101", "Dhaka", 1000000m, 5000000m);
             adcRepo.AddTerminalAsync(defaultAtm).GetAwaiter().GetResult();
             var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            uow.SaveChangesAsync().GetAwaiter().GetResult();
+        }
+
+        // Seed default TBML Price Benchmarks (BRPD Circular 12 Module 5.7.6 Uniform Template)
+        var benchmarkRepo = scope.ServiceProvider.GetRequiredService<ITbmlPriceBenchmarkRepository>();
+        var cotton = benchmarkRepo.GetByHsCodeAsync("5201.00").GetAwaiter().GetResult();
+        if (cotton is null)
+        {
+            var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            benchmarkRepo.AddAsync(new CBS.Domain.TradeFinance.TbmlPriceBenchmark(
+                Guid.NewGuid(), "5201.00", "Raw Cotton", "KG", 2.00m, 2.50m,
+                CBS.Domain.ValueObjects.Currency.USD, new DateOnly(2026, 1, 1), "ICAC Monthly Cotton Price Index")).GetAwaiter().GetResult();
+
+            benchmarkRepo.AddAsync(new CBS.Domain.TradeFinance.TbmlPriceBenchmark(
+                Guid.NewGuid(), "5205.12", "Cotton Yarn Single Combed", "KG", 3.00m, 4.50m,
+                CBS.Domain.ValueObjects.Currency.USD, new DateOnly(2026, 1, 1), "BTMA Price Benchmark")).GetAwaiter().GetResult();
+
+            benchmarkRepo.AddAsync(new CBS.Domain.TradeFinance.TbmlPriceBenchmark(
+                Guid.NewGuid(), "6109.10", "Men's Cotton T-Shirts", "PC", 4.00m, 8.00m,
+                CBS.Domain.ValueObjects.Currency.USD, new DateOnly(2026, 1, 1), "BGMEA Minimum Export Benchmark")).GetAwaiter().GetResult();
+
             uow.SaveChangesAsync().GetAwaiter().GetResult();
         }
     }

@@ -53,3 +53,46 @@ public enum TbmlRiskRating
     High = 3,
     ExtremeHit = 4
 }
+
+public enum MasterContractType
+{
+    ExportLetterOfCredit = 1,
+    SalesContract = 2
+}
+
+public enum MasterLcStatus
+{
+    Draft = 1,
+    Active = 2,
+    Suspended = 3,
+    Closed = 4,
+    Replaced = 5
+}
+
+public enum TbmlAlertType
+{
+    PriceVarianceOverInvoicing = 1,
+    PriceVarianceUnderInvoicing = 2,
+    TaxHavenOrHighRiskJurisdiction = 3,
+    LandLockedUnusualRoute = 4,
+    RoundFigureHighValueAnomaly = 5,
+    DualUseGoodsAnomaly = 6,
+    UnscrSanctionHit = 7,
+    TtpVolumeBreach = 8
+}
+
+public enum TbmlSeverity
+{
+    Low = 1,
+    Medium = 2,
+    High = 3,
+    Critical = 4
+}
+
+public enum TbmlAlertStatus
+{
+    Active = 1,
+    UnderInvestigation = 2,
+    EscalatedToCamlco = 3,
+    ClearedWithJustification = 4
+}

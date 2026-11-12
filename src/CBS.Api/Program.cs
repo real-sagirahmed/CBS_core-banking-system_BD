@@ -5763,6 +5763,270 @@ public partial class Program
             return Results.Ok(result);
         });
 
+        // --- PHASE 26: MASTER EXPORT LC & B2B IMPORT LC ENGINE (BRPD Circular 12 Modules 5.5 & 5.6) ---
+        var masterExportLcApi = app.MapGroup("/api/v1/trade/master-lcs")
+            .AddEndpointFilter<FinancialAuthorizationFilter>()
+            .WithTags("Master Export LC & B2B Engine (BRPD 5.5, 5.6)");
+
+        masterExportLcApi.MapPost("/register", async (
+            RegisterMasterExportLcRequest request,
+            IMasterExportLcService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.RegisterMasterExportLcAsync(request, ct);
+                return Results.Created($"/api/v1/trade/master-lcs/{result.MasterLcNumber}", result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        masterExportLcApi.MapPost("/{lcNumber}/authorize", async (
+            string lcNumber,
+            AuthorizeMasterExportLcRequest request,
+            IMasterExportLcService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.AuthorizeMasterExportLcAsync(lcNumber, request, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        masterExportLcApi.MapGet("/{lcNumber}", async (
+            string lcNumber,
+            IMasterExportLcService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.GetMasterExportLcAsync(lcNumber, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+        });
+
+        masterExportLcApi.MapPost("/{lcNumber}/b2b-lcs", async (
+            string lcNumber,
+            OpenB2bLcUnderMasterRequest request,
+            IMasterExportLcService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.IssueB2bLcUnderMasterAsync(lcNumber, request, ct);
+                return Results.Created($"/api/v1/trade/master-lcs/{lcNumber}/b2b-lcs/{result.B2bLcNumber}", result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        masterExportLcApi.MapPost("/{lcNumber}/amend", async (
+            string lcNumber,
+            AmendMasterLcRequest request,
+            IMasterExportLcService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.AmendMasterExportLcAsync(lcNumber, request, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        masterExportLcApi.MapPost("/{lcNumber}/close", async (
+            string lcNumber,
+            CloseMasterLcRequest request,
+            IMasterExportLcService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.CloseMasterExportLcAsync(lcNumber, request, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        masterExportLcApi.MapGet("/{lcNumber}/history", async (
+            string lcNumber,
+            IMasterExportLcService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.GetMasterLcHistoryReportAsync(lcNumber, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+        });
+
+        // --- PHASE 26: TRADE BASED MONEY LAUNDERING (TBML) PREVENTION ENGINE (BRPD Circular 12 Module 5.7 & 5.0) ---
+        var tbmlApi = app.MapGroup("/api/v1/trade/tbml")
+            .AddEndpointFilter<FinancialAuthorizationFilter>()
+            .WithTags("TBML Prevention & Price Verification (BRPD 5.7, 5.0)");
+
+        tbmlApi.MapPost("/ttp", async (
+            CreateOrUpdateTtpRequest request,
+            ITbmlPreventionService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.CreateOrUpdateTtpAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        tbmlApi.MapGet("/ttp/{customerCif}", async (
+            string customerCif,
+            ITbmlPreventionService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetTtpByCifAsync(customerCif, ct);
+            return result is not null ? Results.Ok(result) : Results.NotFound();
+        });
+
+        tbmlApi.MapPost("/verify-price", async (
+            VerifyPriceRequest request,
+            ITbmlPreventionService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.VerifyPriceAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        tbmlApi.MapPost("/screen-transaction", async (
+            ScreenTbmlRequest request,
+            ITbmlPreventionService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.ScreenTradeTransactionAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, stack = ex.ToString() });
+            }
+        });
+
+        tbmlApi.MapPost("/vessels/track", async (
+            TrackVesselRequest request,
+            ITbmlPreventionService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.TrackVesselAsync(request, ct);
+                return Results.Created($"/api/v1/trade/tbml/vessels/{result.Id}", result);
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        tbmlApi.MapPost("/alerts/{alertId:guid}/escalate-str", async (
+            Guid alertId,
+            EscalateTbmlAlertRequest request,
+            ITbmlPreventionService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.EscalateAlertToCamlcoAsync(alertId, request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        tbmlApi.MapGet("/alerts/active", async (
+            ITbmlPreventionService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetActiveAlertsAsync(ct);
+            return Results.Ok(result);
+        });
+
         // --- PRODUCTION HEALTH & PROBE ENDPOINTS ---
         app.MapGet("/health", () => Results.Ok(new
         {
