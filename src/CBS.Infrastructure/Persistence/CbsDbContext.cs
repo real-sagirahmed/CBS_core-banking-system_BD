@@ -113,6 +113,9 @@ public class CbsDbContext : DbContext
     public DbSet<TbmlPriceBenchmark> TbmlPriceBenchmarks => Set<TbmlPriceBenchmark>();
     public DbSet<TbmlAlertRecord> TbmlAlertRecords => Set<TbmlAlertRecord>();
     public DbSet<VesselTrackingRecord> VesselTrackingRecords => Set<VesselTrackingRecord>();
+    public DbSet<LoanRescheduleRecord> LoanReschedules => Set<LoanRescheduleRecord>();
+    public DbSet<LoanWriteOffRecord> LoanWriteOffs => Set<LoanWriteOffRecord>();
+    public DbSet<QualitativeJudgmentRecord> QualitativeJudgments => Set<QualitativeJudgmentRecord>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -225,6 +228,9 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new TbmlPriceBenchmarkConfiguration());
         modelBuilder.ApplyConfiguration(new TbmlAlertRecordConfiguration());
         modelBuilder.ApplyConfiguration(new VesselTrackingRecordConfiguration());
+        modelBuilder.ApplyConfiguration(new LoanRescheduleRecordConfiguration());
+        modelBuilder.ApplyConfiguration(new LoanWriteOffRecordConfiguration());
+        modelBuilder.ApplyConfiguration(new QualitativeJudgmentRecordConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -286,6 +292,9 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<TbmlPriceBenchmark>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<TbmlAlertRecord>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<VesselTrackingRecord>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<LoanRescheduleRecord>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<LoanWriteOffRecord>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<QualitativeJudgmentRecord>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -352,6 +361,9 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<TbmlPriceBenchmark>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<TbmlAlertRecord>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<VesselTrackingRecord>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<LoanRescheduleRecord>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<LoanWriteOffRecord>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<QualitativeJudgmentRecord>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)

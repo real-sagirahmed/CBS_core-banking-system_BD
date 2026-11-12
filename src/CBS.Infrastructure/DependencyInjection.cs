@@ -130,6 +130,10 @@ public static class DependencyInjection
         services.AddScoped<IVesselTrackingRepository, EfVesselTrackingRepository>();
         services.AddScoped<IMasterExportLcService, CBS.Application.TradeFinance.Services.MasterExportLcService>();
         services.AddScoped<ITbmlPreventionService, CBS.Application.TradeFinance.Services.TbmlPreventionService>();
+        services.AddScoped<ILoanRescheduleRepository, EfLoanRescheduleRepository>();
+        services.AddScoped<ILoanWriteOffRepository, EfLoanWriteOffRepository>();
+        services.AddScoped<IQualitativeJudgmentRepository, EfQualitativeJudgmentRepository>();
+        services.AddScoped<ILoanClassificationService, CBS.Application.Lending.Services.LoanClassificationService>();
         services.AddHttpClient();
 
         return services;

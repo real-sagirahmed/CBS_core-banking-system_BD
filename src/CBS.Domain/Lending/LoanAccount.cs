@@ -33,6 +33,16 @@ public class LoanAccount : AggregateRoot<AccountNumber>
     public LoanClassificationGrade Classification { get; private set; }
     public int DaysPastDue { get; private set; }
     public bool IsShariahCompliant { get; private set; }
+    public Money EligibleCollateralFsv { get; private set; }
+    public Money RequiredGeneralProvision { get; private set; }
+    public Money RequiredSpecificProvision { get; private set; }
+    public int RescheduleCount { get; private set; }
+    public bool IsWrittenOff { get; private set; }
+    public LoanAccountStatus LoanStatus { get; private set; }
+    public bool HasQualitativeJudgment { get; private set; }
+    public LoanClassificationGrade? QualitativeJudgmentGrade { get; private set; }
+    public string? QualitativeJudgmentReason { get; private set; }
+    public string? RescheduledFromLoanAccountNumber { get; private set; }
 
     #pragma warning disable CS8618
     protected LoanAccount() : base(null!) { }
@@ -48,7 +58,8 @@ public class LoanAccount : AggregateRoot<AccountNumber>
         decimal interestRate,
         DateOnly sanctionDate,
         DateOnly maturityDate,
-        string? sanctionApprovedByUserId = null) : base(accountNumber)
+        string? sanctionApprovedByUserId = null,
+        string? rescheduledFromLoanAccountNumber = null) : base(accountNumber)
     {
         ArgumentNullException.ThrowIfNull(accountNumber, nameof(accountNumber));
         ArgumentNullException.ThrowIfNull(cif, nameof(cif));
@@ -92,12 +103,22 @@ public class LoanAccount : AggregateRoot<AccountNumber>
         PenalInterest = Money.Zero(Currency.BDT);
         AccruedCharges = Money.Zero(Currency.BDT);
         InterestSuspense = Money.Zero(Currency.BDT);
+        EligibleCollateralFsv = Money.Zero(Currency.BDT);
+        RequiredGeneralProvision = Money.Zero(Currency.BDT);
+        RequiredSpecificProvision = Money.Zero(Currency.BDT);
         InterestRate = interestRate;
         SanctionDate = sanctionDate;
         MaturityDate = maturityDate;
         Classification = LoanClassificationGrade.Standard;
         DaysPastDue = 0;
+        RescheduleCount = 0;
+        IsWrittenOff = false;
+        LoanStatus = LoanAccountStatus.Active;
+        HasQualitativeJudgment = false;
+        QualitativeJudgmentGrade = null;
+        QualitativeJudgmentReason = null;
         SanctionApprovedByUserId = sanctionApprovedByUserId?.Trim();
+        RescheduledFromLoanAccountNumber = rescheduledFromLoanAccountNumber?.Trim();
         IsCadVetted = false;
         IsShariahCompliant = facilityType is LoanFacilityType.Islamic_BaiMurabaha or LoanFacilityType.Islamic_Quard;
     }
@@ -268,7 +289,7 @@ public class LoanAccount : AggregateRoot<AccountNumber>
         DaysPastDue = Math.Max(0, daysPastDue);
         var previousGrade = Classification;
 
-        Classification = DaysPastDue switch
+        var objectiveGrade = DaysPastDue switch
         {
             < 60 => LoanClassificationGrade.Standard,
             < 180 => LoanClassificationGrade.SpecialMentionAccount_SMA,
@@ -277,11 +298,305 @@ public class LoanAccount : AggregateRoot<AccountNumber>
             _ => LoanClassificationGrade.BadLoss_BL
         };
 
+        // Qualitative Judgment (QJ) Override Lock (BRPD 4.1.11-iii, 4.2.27-iii, Rule 5.2):
+        // An account downgraded via QJ cannot be auto-upgraded by EOD DPD aging alone without explicit committee approval.
+        if (HasQualitativeJudgment && QualitativeJudgmentGrade.HasValue)
+        {
+            Classification = (LoanClassificationGrade)Math.Max((int)objectiveGrade, (int)QualitativeJudgmentGrade.Value);
+        }
+        else
+        {
+            Classification = objectiveGrade;
+        }
+
         // When account becomes classified (SS or worse), transfer uncollected regular interest to Interest Suspense (BRPD 4.1.11-iii)
         if (Classification >= LoanClassificationGrade.SubStandard_SS && previousGrade < LoanClassificationGrade.SubStandard_SS)
         {
             InterestSuspense += RegularAccruedInterest;
             RegularAccruedInterest = Money.Zero(Currency.BDT);
+        }
+    }
+
+    public void SetEligibleCollateralFsv(Money collateralFsv)
+    {
+        ArgumentNullException.ThrowIfNull(collateralFsv, nameof(collateralFsv));
+        EligibleCollateralFsv = collateralFsv;
+    }
+
+    public Money CalculateProvisionBase()
+    {
+        // Base for Provision = Max(0, OutstandingPrincipal - EligibleCollateralFsv - InterestSuspense)
+        decimal baseAmount = Math.Max(0m, OutstandingPrincipal.Amount - EligibleCollateralFsv.Amount - InterestSuspense.Amount);
+        return Money.Bdt(baseAmount);
+    }
+
+    public void CalculateProvisionRequirement(decimal generalProvisionRate, decimal specificProvisionRate)
+    {
+        var provisionBase = CalculateProvisionBase();
+
+        if (Classification is LoanClassificationGrade.Standard or LoanClassificationGrade.SpecialMentionAccount_SMA)
+        {
+            // General provision is calculated on total outstanding
+            decimal genProv = Math.Round(OutstandingPrincipal.Amount * (generalProvisionRate / 100m), 2, MidpointRounding.AwayFromZero);
+            RequiredGeneralProvision = Money.Bdt(genProv);
+            RequiredSpecificProvision = Money.Zero(Currency.BDT);
+        }
+        else
+        {
+            // Specific provision is calculated on Base for Provision (net of eligible collateral & suspense)
+            decimal specProv = Math.Round(provisionBase.Amount * (specificProvisionRate / 100m), 2, MidpointRounding.AwayFromZero);
+            RequiredGeneralProvision = Money.Zero(Currency.BDT);
+            RequiredSpecificProvision = Money.Bdt(specProv);
+        }
+    }
+
+    public void ApplyQualitativeJudgment(
+        LoanClassificationGrade grade,
+        QualitativeJudgmentReason reason,
+        string justification,
+        string inspectorId,
+        string checkerId)
+    {
+        if (string.IsNullOrWhiteSpace(inspectorId))
+            throw new ArgumentException("Inspector user ID is required.", nameof(inspectorId));
+        if (string.IsNullOrWhiteSpace(checkerId))
+            throw new ArgumentException("Checker user ID is required.", nameof(checkerId));
+        if (string.IsNullOrWhiteSpace(justification))
+            throw new ArgumentException("Qualitative judgment justification is required.", nameof(justification));
+
+        if (string.Equals(inspectorId.Trim(), checkerId.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvariantViolationException(
+                "MakerCheckerSeparationInvariant",
+                "BRPD Circular 12/2024 (1.3.18, 10.3.5-x)",
+                "Inspector cannot act as Checker to authorize Qualitative Judgment override.");
+        }
+
+        if (grade < LoanClassificationGrade.SubStandard_SS)
+        {
+            throw new InvariantViolationException(
+                "QualitativeJudgmentDowngradeOnlyInvariant",
+                "BRPD Circular 12/2024 (4.1.11-iii, 4.2.27-iii)",
+                "Qualitative Judgment (QJ) can only be applied for non-performing classification (SS, DF, BL).");
+        }
+
+        if (grade < Classification)
+        {
+            throw new InvariantViolationException(
+                "QualitativeJudgmentCannotUpgradeInvariant",
+                "BRPD Circular 12/2024 (4.2.27-iii, Rule 5.2)",
+                $"Qualitative Judgment cannot upgrade an account from '{Classification}' to '{grade}'. QJ is strictly for adverse classification.");
+        }
+
+        var previousGrade = Classification;
+        HasQualitativeJudgment = true;
+        QualitativeJudgmentGrade = grade;
+        QualitativeJudgmentReason = reason.ToString();
+        Classification = grade;
+
+        if (Classification >= LoanClassificationGrade.SubStandard_SS && previousGrade < LoanClassificationGrade.SubStandard_SS)
+        {
+            InterestSuspense += RegularAccruedInterest;
+            RegularAccruedInterest = Money.Zero(Currency.BDT);
+        }
+    }
+
+    public void RevokeQualitativeJudgment(string justification, string inspectorId, string checkerId)
+    {
+        if (string.IsNullOrWhiteSpace(inspectorId))
+            throw new ArgumentException("Inspector user ID is required.", nameof(inspectorId));
+        if (string.IsNullOrWhiteSpace(checkerId))
+            throw new ArgumentException("Checker user ID is required.", nameof(checkerId));
+        if (string.IsNullOrWhiteSpace(justification))
+            throw new ArgumentException("Revocation justification is required.", nameof(justification));
+
+        if (string.Equals(inspectorId.Trim(), checkerId.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvariantViolationException(
+                "MakerCheckerSeparationInvariant",
+                "BRPD Circular 12/2024 (1.3.18, 10.3.5-x)",
+                "Inspector cannot act as Checker to revoke Qualitative Judgment override.");
+        }
+
+        if (!HasQualitativeJudgment)
+        {
+            throw new InvalidOperationException("Loan account does not have an active Qualitative Judgment override.");
+        }
+
+        HasQualitativeJudgment = false;
+        QualitativeJudgmentGrade = null;
+        QualitativeJudgmentReason = null;
+
+        // Re-evaluate objective classification based on actual DaysPastDue
+        EvaluateClassification(DaysPastDue);
+    }
+
+    public void Reschedule(
+        int newRescheduleIteration,
+        Money downPaymentPaid,
+        Money requiredDownPayment,
+        DateOnly newMaturityDate,
+        decimal newInterestRate,
+        string boardResolutionRef,
+        DateOnly boardApprovalDate,
+        Money? interestWaiver,
+        string makerUserId,
+        string checkerUserId)
+    {
+        ArgumentNullException.ThrowIfNull(downPaymentPaid, nameof(downPaymentPaid));
+        ArgumentNullException.ThrowIfNull(requiredDownPayment, nameof(requiredDownPayment));
+        if (string.IsNullOrWhiteSpace(makerUserId)) throw new ArgumentException("Maker user ID is required.", nameof(makerUserId));
+        if (string.IsNullOrWhiteSpace(checkerUserId)) throw new ArgumentException("Checker user ID is required.", nameof(checkerUserId));
+
+        if (string.Equals(makerUserId.Trim(), checkerUserId.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvariantViolationException(
+                "MakerCheckerSeparationInvariant",
+                "BRPD Circular 12/2024 (1.3.18, 10.3.5-x)",
+                "Maker cannot act as Checker to approve loan rescheduling.");
+        }
+
+        if (newRescheduleIteration > 3)
+        {
+            throw new InvariantViolationException(
+                "RescheduleMaxLimitExceededInvariant",
+                "BRPD Circular 16/2020 & 04/2023 (Rule 5.3)",
+                $"Loan facility '{Id.Value}' has reached the maximum permitted 3 reschedulings. 4th rescheduling is strictly prohibited without explicit Bangladesh Bank NOC.");
+        }
+
+        if (downPaymentPaid < requiredDownPayment)
+        {
+            throw new InvariantViolationException(
+                "RescheduleDownPaymentInsufficientInvariant",
+                "BRPD Circular 16/2020 & 04/2023",
+                $"Down payment of {downPaymentPaid} BDT is less than statutory mandatory down payment of {requiredDownPayment} BDT.");
+        }
+
+        if (newRescheduleIteration >= 2 && string.IsNullOrWhiteSpace(boardResolutionRef))
+        {
+            throw new InvariantViolationException(
+                "RescheduleBoardApprovalMandatoryInvariant",
+                "BRPD Circular 16/2020 (Rule 5.3)",
+                $"Rescheduling iteration #{newRescheduleIteration} requires mandatory Board of Directors approval resolution reference.");
+        }
+
+        if (newMaturityDate <= MaturityDate)
+        {
+            throw new InvariantViolationException(
+                "RescheduleNewMaturityDateInvariant",
+                "BRPD Circular 12/2024 (4.1.12)",
+                "New maturity date must extend beyond the existing maturity date.");
+        }
+
+        // Apply interest suspense de-accrual treatment (BRPD 4.1.12-ii, 4.2.28-ii)
+        InterestSuspense += RegularAccruedInterest;
+        RegularAccruedInterest = Money.Zero(Currency.BDT);
+
+        // Deduct interest waiver if approved by Board
+        if (interestWaiver is not null && interestWaiver.Amount > 0)
+        {
+            decimal waiverAmount = Math.Min(interestWaiver.Amount, InterestSuspense.Amount);
+            InterestSuspense -= Money.Bdt(waiverAmount);
+        }
+
+        // Deduct down payment from outstanding principal
+        decimal principalReduction = Math.Min(downPaymentPaid.Amount, OutstandingPrincipal.Amount);
+        OutstandingPrincipal -= Money.Bdt(principalReduction);
+
+        // Update terms
+        RescheduleCount = newRescheduleIteration;
+        MaturityDate = newMaturityDate;
+        InterestRate = newInterestRate;
+        LoanStatus = LoanAccountStatus.Rescheduled;
+
+        // Reset DPD and unclassified grade upon successful formal rescheduling
+        DaysPastDue = 0;
+        Classification = LoanClassificationGrade.Standard;
+        HasQualitativeJudgment = false;
+        QualitativeJudgmentGrade = null;
+        QualitativeJudgmentReason = null;
+    }
+
+    public void WriteOff(
+        Money specificProvisionAvailable,
+        string? arthaRinCaseNumber,
+        DateOnly? arthaRinFilingDate,
+        string boardResolutionNumber,
+        DateOnly boardApprovalDate,
+        string makerUserId,
+        string checkerUserId)
+    {
+        ArgumentNullException.ThrowIfNull(specificProvisionAvailable, nameof(specificProvisionAvailable));
+        if (string.IsNullOrWhiteSpace(makerUserId)) throw new ArgumentException("Maker user ID is required.", nameof(makerUserId));
+        if (string.IsNullOrWhiteSpace(checkerUserId)) throw new ArgumentException("Checker user ID is required.", nameof(checkerUserId));
+        if (string.IsNullOrWhiteSpace(boardResolutionNumber)) throw new ArgumentException("Board resolution number is required.", nameof(boardResolutionNumber));
+
+        if (string.Equals(makerUserId.Trim(), checkerUserId.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvariantViolationException(
+                "MakerCheckerSeparationInvariant",
+                "BRPD Circular 12/2024 (1.3.18, 10.3.5-x)",
+                "Maker cannot act as Checker to approve loan write-off.");
+        }
+
+        if (Classification != LoanClassificationGrade.BadLoss_BL)
+        {
+            throw new InvariantViolationException(
+                "WriteOffNotBadLossInvariant",
+                "BRPD Circular 01/2013 & 08/2023",
+                $"Cannot write off loan facility '{Id.Value}' in status '{Classification}'. Facility must be classified as Bad/Loss (BL).");
+        }
+
+        if (specificProvisionAvailable.Amount < OutstandingPrincipal.Amount)
+        {
+            throw new InvariantViolationException(
+                "WriteOffProvisionInsufficientInvariant",
+                "BRPD Circular 01/2013 & 08/2023",
+                $"Cannot write off loan facility '{Id.Value}'. 100% specific provision required ({OutstandingPrincipal} BDT), but only {specificProvisionAvailable} BDT is available.");
+        }
+
+        if (OutstandingPrincipal.Amount > 500_000m && string.IsNullOrWhiteSpace(arthaRinCaseNumber))
+        {
+            throw new InvariantViolationException(
+                "ArthaRinSuitFilingMandatoryInvariant",
+                "Artha Rin Adalat Ain 2003 & BRPD 01/2013",
+                $"Cannot write off loan exceeding 500,000 BDT ({OutstandingPrincipal} BDT) without filing suit in Artha Rin Adalat.");
+        }
+
+        IsWrittenOff = true;
+        LoanStatus = LoanAccountStatus.WrittenOff;
+    }
+
+    public void RecoverWrittenOff(
+        Money recoveredAmount,
+        out Money allocatedToPrincipal,
+        out Money allocatedToInterest)
+    {
+        ArgumentNullException.ThrowIfNull(recoveredAmount, nameof(recoveredAmount));
+        if (recoveredAmount.Amount <= 0)
+        {
+            throw new ArgumentException("Recovered amount must be positive.", nameof(recoveredAmount));
+        }
+
+        if (!IsWrittenOff)
+        {
+            throw new InvalidOperationException($"Loan account '{Id.Value}' is not written off. Use regular repayment waterfall.");
+        }
+
+        // Post-writeoff recovery waterfall:
+        // 1. Recover Principal (credited to P&L Other Operating Income - Recovery of Written-off Loans)
+        // 2. Recover Interest (credited to P&L Interest Income)
+        decimal principalAlloc = Math.Min(recoveredAmount.Amount, OutstandingPrincipal.Amount);
+        decimal interestAlloc = Math.Max(0m, recoveredAmount.Amount - principalAlloc);
+
+        OutstandingPrincipal -= Money.Bdt(principalAlloc);
+
+        allocatedToPrincipal = Money.Bdt(principalAlloc);
+        allocatedToInterest = Money.Bdt(interestAlloc);
+
+        if (OutstandingPrincipal.Amount == 0m)
+        {
+            LoanStatus = LoanAccountStatus.Closed;
         }
     }
 }

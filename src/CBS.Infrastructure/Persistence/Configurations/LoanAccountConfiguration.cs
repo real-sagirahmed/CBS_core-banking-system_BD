@@ -137,6 +137,55 @@ public class LoanAccountConfiguration : IEntityTypeConfiguration<LoanAccount>
             .HasColumnName("is_shariah_compliant")
             .IsRequired();
 
+        builder.Property(a => a.EligibleCollateralFsv)
+            .HasConversion(v => v.Amount, v => Money.Bdt(v))
+            .HasColumnName("eligible_collateral_fsv_bdt")
+            .HasPrecision(18, 2)
+            .IsRequired();
+
+        builder.Property(a => a.RequiredGeneralProvision)
+            .HasConversion(v => v.Amount, v => Money.Bdt(v))
+            .HasColumnName("required_general_provision_bdt")
+            .HasPrecision(18, 2)
+            .IsRequired();
+
+        builder.Property(a => a.RequiredSpecificProvision)
+            .HasConversion(v => v.Amount, v => Money.Bdt(v))
+            .HasColumnName("required_specific_provision_bdt")
+            .HasPrecision(18, 2)
+            .IsRequired();
+
+        builder.Property(a => a.RescheduleCount)
+            .HasColumnName("reschedule_count")
+            .IsRequired();
+
+        builder.Property(a => a.IsWrittenOff)
+            .HasColumnName("is_written_off")
+            .IsRequired();
+
+        builder.Property(a => a.LoanStatus)
+            .HasConversion<string>()
+            .HasColumnName("loan_status")
+            .HasMaxLength(30)
+            .IsRequired();
+
+        builder.Property(a => a.HasQualitativeJudgment)
+            .HasColumnName("has_qualitative_judgment")
+            .IsRequired();
+
+        builder.Property(a => a.QualitativeJudgmentGrade)
+            .HasConversion<string>()
+            .HasColumnName("qualitative_judgment_grade")
+            .HasMaxLength(30);
+
+        builder.Property(a => a.QualitativeJudgmentReason)
+            .HasColumnName("qualitative_judgment_reason")
+            .HasMaxLength(200);
+
+        builder.Property(a => a.RescheduledFromLoanAccountNumber)
+            .HasColumnName("rescheduled_from_account_number")
+            .HasMaxLength(20);
+
         builder.Ignore(a => a.DomainEvents);
 
         builder.HasIndex(a => a.Cif).HasDatabaseName("ix_loan_accounts_cif");

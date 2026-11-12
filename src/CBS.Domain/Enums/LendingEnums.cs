@@ -34,3 +34,57 @@ public enum CollateralType
     HypothecationOfGoods = 3,
     CorporateGuarantee = 4
 }
+
+public enum RescheduleApprovalAuthority
+{
+    BranchManager = 1,
+    ManagingDirector = 2,
+    ExecutiveCommittee = 3,
+    BoardOfDirectors = 4,
+    CentralBankApproval = 5
+}
+
+public enum RescheduleStatus
+{
+    Requested = 1,
+    Approved = 2,
+    Rejected = 3,
+    Active = 4,
+    Defaulted = 5
+}
+
+public enum WriteOffStatus
+{
+    Proposed = 1,
+    ApprovedByBoard = 2,
+    WrittenOff = 3,
+    PartiallyRecovered = 4,
+    FullyRecovered = 5
+}
+
+public enum LegalCaseType
+{
+    ArthaRinAdalatAin2003 = 1,
+    BankruptcyAct1997 = 2,
+    NegotiableInstrumentsAct138 = 3,
+    ExemptedUnder500k = 4
+}
+
+public enum QualitativeJudgmentReason
+{
+    FraudOrForgery = 1,
+    BusinessSuspensionOrClosure = 2,
+    BorrowerDeceasedNoGuarantor = 3,
+    LitigationAdverseCourtOrder = 4,
+    ProjectAbandonment = 5,
+    CentralBankInspectionFinding = 6
+}
+
+public enum LoanAccountStatus
+{
+    Active = 1,
+    Matured = 2,
+    Rescheduled = 3,
+    WrittenOff = 4,
+    Closed = 5
+}

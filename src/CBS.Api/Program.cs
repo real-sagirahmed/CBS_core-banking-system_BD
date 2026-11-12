@@ -1902,6 +1902,231 @@ public partial class Program
             return Results.Ok(report);
         });
 
+        // --- PHASE 27: LOAN ASSET CLASSIFICATION, QUALITATIVE JUDGMENT, RESCHEDULING & WRITE-OFF ENGINE (BRPD CIRCULAR 12/2024) ---
+        lendingApi.MapPost("/classification/evaluate-eod", async (
+            EvaluateClassificationEodRequest request,
+            ILoanClassificationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.EvaluatePortfolioClassificationAsync(
+                    request.BranchCode,
+                    request.EvaluationDate ?? DateTime.UtcNow,
+                    ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        lendingApi.MapGet("/classification/portfolio-report", async (
+            string? branchCode,
+            ILoanClassificationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.GetPortfolioClassificationReportAsync(branchCode, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        lendingApi.MapPost("/loans/{accountNumber}/qualitative-judgment", async (
+            string accountNumber,
+            ApplyQualitativeJudgmentApiRequest request,
+            ILoanClassificationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new ApplyQualitativeJudgmentCommand(
+                    accountNumber,
+                    request.Grade,
+                    request.Reason,
+                    request.JustificationNotes,
+                    request.InspectionReportReference,
+                    request.InspectorUserId,
+                    request.CheckerUserId);
+
+                var result = await service.ApplyQualitativeJudgmentAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        lendingApi.MapPost("/loans/{accountNumber}/qualitative-judgment/revoke", async (
+            string accountNumber,
+            RevokeQualitativeJudgmentApiRequest request,
+            ILoanClassificationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new RevokeQualitativeJudgmentCommand(
+                    accountNumber,
+                    request.InspectorUserId,
+                    request.CheckerUserId,
+                    request.RevocationReason);
+
+                var result = await service.RevokeQualitativeJudgmentAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        lendingApi.MapPost("/loans/{accountNumber}/reschedule", async (
+            string accountNumber,
+            RescheduleLoanApiRequest request,
+            ILoanClassificationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new RescheduleLoanCommand(
+                    accountNumber,
+                    request.RescheduleIteration,
+                    request.DownPaymentPaid,
+                    request.RequiredDownPayment,
+                    request.NewMaturityDate,
+                    request.NewInterestRate,
+                    request.ApprovalAuthority,
+                    request.BoardResolutionReference,
+                    request.BoardApprovalDate,
+                    request.InterestWaiver,
+                    request.RestructuringNotes,
+                    request.MakerUserId,
+                    request.CheckerUserId);
+
+                var result = await service.RescheduleLoanAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        lendingApi.MapPost("/loans/{accountNumber}/write-off", async (
+            string accountNumber,
+            WriteOffLoanApiRequest request,
+            ILoanClassificationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new WriteOffLoanCommand(
+                    accountNumber,
+                    request.SpecificProvisionAvailable,
+                    request.BoardResolutionNumber,
+                    request.BoardApprovalDate,
+                    request.LegalCaseType,
+                    request.ArthaRinCaseNumber,
+                    request.ArthaRinFilingDate,
+                    request.MakerUserId,
+                    request.CheckerUserId,
+                    request.JustificationNotes);
+
+                var result = await service.WriteOffLoanAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        lendingApi.MapPost("/loans/{accountNumber}/write-off-recovery", async (
+            string accountNumber,
+            RecordWriteOffRecoveryApiRequest request,
+            ILoanClassificationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var command = new RecordWriteOffRecoveryCommand(
+                    accountNumber,
+                    request.Amount,
+                    request.RecoverySource,
+                    request.ReferenceNumber,
+                    request.ReceivedByUserId);
+
+                var result = await service.RecordWriteOffRecoveryAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        lendingApi.MapGet("/written-off-register", async (
+            ILoanClassificationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.GetWrittenOffRegisterAsync(ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
         // --- TRADE FINANCE & TBML APIS (BRPD Circular 12 Module 5) ---
         var tradeApi = app.MapGroup("/api/v1/trade").AddEndpointFilter<FinancialAuthorizationFilter>();
 
@@ -6073,3 +6298,49 @@ public record SeedStationeryRequest(
     long EndLeaf,
     string ManagerUserId,
     string CustodianUserId);
+
+public sealed record EvaluateClassificationEodRequest(string BranchCode, DateTime? EvaluationDate);
+public sealed record ApplyQualitativeJudgmentApiRequest(
+    CBS.Domain.Enums.LoanClassificationGrade Grade,
+    CBS.Domain.Enums.QualitativeJudgmentReason Reason,
+    string JustificationNotes,
+    string? InspectionReportReference,
+    string InspectorUserId,
+    string CheckerUserId
+);
+public sealed record RevokeQualitativeJudgmentApiRequest(
+    string InspectorUserId,
+    string CheckerUserId,
+    string RevocationReason
+);
+public sealed record RescheduleLoanApiRequest(
+    int RescheduleIteration,
+    decimal DownPaymentPaid,
+    decimal RequiredDownPayment,
+    DateOnly NewMaturityDate,
+    decimal NewInterestRate,
+    CBS.Domain.Enums.RescheduleApprovalAuthority ApprovalAuthority,
+    string? BoardResolutionReference,
+    DateOnly? BoardApprovalDate,
+    decimal? InterestWaiver,
+    string RestructuringNotes,
+    string MakerUserId,
+    string CheckerUserId
+);
+public sealed record WriteOffLoanApiRequest(
+    decimal SpecificProvisionAvailable,
+    string BoardResolutionNumber,
+    DateOnly BoardApprovalDate,
+    CBS.Domain.Enums.LegalCaseType LegalCaseType,
+    string? ArthaRinCaseNumber,
+    DateOnly? ArthaRinFilingDate,
+    string MakerUserId,
+    string CheckerUserId,
+    string JustificationNotes
+);
+public sealed record RecordWriteOffRecoveryApiRequest(
+    decimal Amount,
+    string RecoverySource,
+    string ReferenceNumber,
+    string ReceivedByUserId
+);

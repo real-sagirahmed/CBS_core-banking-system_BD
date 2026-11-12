@@ -10,15 +10,18 @@ public class RunBranchEodBatchCommandHandler
     private readonly IBranchOperatingDayRepository _operatingDayRepository;
     private readonly IAccountRepository _accountRepository;
     private readonly IDepositLifecycleService? _depositLifecycleService;
+    private readonly ILoanClassificationService? _loanClassificationService;
 
     public RunBranchEodBatchCommandHandler(
         IBranchOperatingDayRepository operatingDayRepository,
         IAccountRepository accountRepository,
-        IDepositLifecycleService? depositLifecycleService = null)
+        IDepositLifecycleService? depositLifecycleService = null,
+        ILoanClassificationService? loanClassificationService = null)
     {
         _operatingDayRepository = operatingDayRepository ?? throw new ArgumentNullException(nameof(operatingDayRepository));
         _accountRepository = accountRepository ?? throw new ArgumentNullException(nameof(accountRepository));
         _depositLifecycleService = depositLifecycleService;
+        _loanClassificationService = loanClassificationService;
     }
 
     public async Task<EodBatchResponseDto> HandleAsync(RunBranchEodBatchCommand command, CancellationToken cancellationToken = default)
@@ -65,7 +68,17 @@ public class RunBranchEodBatchCommandHandler
             }
         }
 
-        // 3. Complete Day Close
+        // 3. Automated Loan Asset Classification (CL) & Statutory Provisioning Batch (BRPD 4.1.11, 4.2.27)
+        if (_loanClassificationService is not null)
+        {
+            var clResult = await _loanClassificationService.EvaluatePortfolioClassificationAsync(
+                command.BranchCode,
+                opDay.CurrentBusinessDate.ToDateTime(TimeOnly.MinValue),
+                cancellationToken);
+            extraDetails += $" CL Evaluated: {clResult.TotalAccountsEvaluated} loans (Downgraded: {clResult.DowngradesCount}, Provision: {clResult.TotalGeneralProvisionRequired + clResult.TotalSpecificProvisionRequired:F2} BDT).";
+        }
+
+        // 4. Complete Day Close
         opDay.CompleteDayClose(command.UserId);
         await _operatingDayRepository.UpdateAsync(opDay, cancellationToken);
 
