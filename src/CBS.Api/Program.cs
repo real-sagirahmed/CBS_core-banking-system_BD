@@ -4,6 +4,7 @@ using CBS.Application.Accounts.Commands.PostTransaction;
 using CBS.Application.Accounts.DTOs;
 using CBS.Application.Accounts.Services;
 using CBS.Application.Clearing.DTOs;
+using CBS.Application.Crm.DTOs;
 using CBS.Application.Corporate.Commands;
 using CBS.Application.Corporate.DTOs;
 using CBS.Application.Adc.Commands;
@@ -3310,6 +3311,90 @@ public partial class Program
             return Results.Ok(result);
         });
 
+        // --- PHASE 31: ADC MULTI-CHANNEL CENTRAL RECONCILIATION & RECTIFICATION (BRPD 12/2024 Module 7.2) ---
+        adcApi.MapPost("/reconciliation/batches", async (
+            CreateReconciliationBatchRequest request,
+            ICrmAndAdcReconciliationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.CreateReconciliationBatchAsync(request, ct);
+                return Results.Created($"/api/v1/adc/reconciliation/batches/{result.BatchId}", result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        adcApi.MapPost("/reconciliation/batches/{batchId}/ingest", async (
+            string batchId,
+            IngestSwitchRecordRequest request,
+            ICrmAndAdcReconciliationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.IngestSwitchRecordAsync(batchId, request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        adcApi.MapPost("/reconciliation/batches/{batchId}/rectify", async (
+            string batchId,
+            GenerateRectificationVoucherRequest request,
+            ICrmAndAdcReconciliationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.GenerateRectificationVoucherAsync(batchId, request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        adcApi.MapGet("/reconciliation/batches/{batchId}", async (
+            string batchId,
+            ICrmAndAdcReconciliationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.GetReconciliationBatchAsync(batchId, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        adcApi.MapPost("/reconciliation/batches/{batchId}/close", async (
+            string batchId,
+            CloseReconciliationBatchRequest request,
+            ICrmAndAdcReconciliationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.CloseReconciliationBatchAsync(batchId, request.ClosedByUserId, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
         // --- AUTOMATED RECONCILIATION & DISPUTE SETTLEMENT APIS (BRPD Circular 12/2024 Module 1.4 & 7.2) ---
         var reconApi = app.MapGroup("/api/v1/reconciliation");
 
@@ -4693,6 +4778,140 @@ public partial class Program
                 return Results.Ok(new { message = $"Borrower '{cif}' is eligible for credit sanction under BRPD 03/2019." });
             }
             catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        // --- PHASE 31: CORPORATE GROUP UBO HIERARCHY & TRANSACTION PROFILE (TP) VARIANCE (BRPD 12/2024 Modules 7 & 8) ---
+        crmApi.MapPost("/groups/{groupId}/member-details", async (
+            string groupId,
+            AddGroupMemberDetailRequest request,
+            ICrmAndAdcReconciliationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.AddGroupMemberDetailAsync(groupId, request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapPost("/groups/{groupId}/ubos", async (
+            string groupId,
+            RegisterBeneficialOwnerRequest request,
+            ICrmAndAdcReconciliationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.RegisterBeneficialOwnerAsync(groupId, request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapGet("/groups/{groupId}/hierarchy", async (
+            string groupId,
+            ICrmAndAdcReconciliationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.GetGroupHierarchyAsync(groupId, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapPost("/groups/{groupId}/validate-exposure", async (
+            string groupId,
+            ValidateGroupExposureRequest request,
+            ICrmAndAdcReconciliationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.ValidateGroupExposureLimitAsync(groupId, request, ct);
+                return Results.Ok(new { isValid = result, message = "Proposed credit facility is within statutory group exposure limit." });
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapPost("/tp", async (
+            CreateTransactionProfileRequest request,
+            ICrmAndAdcReconciliationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.CreateOrUpdateTpAsync(request, ct);
+                return Results.Created($"/api/v1/crm/tp/{result.CifNumber}", result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapPost("/tp/{cif}/record", async (
+            string cif,
+            RecordTpTransactionRequest request,
+            ICrmAndAdcReconciliationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.RecordTpTransactionAsync(cif, request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapGet("/tp/{cif}", async (
+            string cif,
+            ICrmAndAdcReconciliationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.GetTpByCifAsync(cif, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapPost("/tp/{cif}/clear-breach", async (
+            string cif,
+            ClearTpBreachRequest request,
+            ICrmAndAdcReconciliationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.ClearTpBreachAsync(cif, request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or KeyNotFoundException)
             {
                 return Results.BadRequest(new { error = ex.Message });
             }

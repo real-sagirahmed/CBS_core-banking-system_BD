@@ -148,6 +148,9 @@ public static class DependencyInjection
         services.AddScoped<IBillForCollectionRepository, EfBillForCollectionRepository>();
         services.AddScoped<IInlandBillPurchasedRepository, EfInlandBillPurchasedRepository>();
         services.AddScoped<IClearingAndBillsService, CBS.Application.Clearing.Services.ClearingAndBillsService>();
+        services.AddScoped<ICustomerTransactionProfileRepository, EfCustomerTransactionProfileRepository>();
+        services.AddScoped<IAdcReconciliationRepository, EfAdcReconciliationRepository>();
+        services.AddScoped<ICrmAndAdcReconciliationService, CBS.Application.Crm.Services.CrmAndAdcReconciliationService>();
         services.AddHttpClient();
 
         return services;

@@ -128,6 +128,8 @@ public class CbsDbContext : DbContext
     public DbSet<ChequeDishonourRecord> ChequeDishonourRecords => Set<ChequeDishonourRecord>();
     public DbSet<BillForCollection> BillsForCollection => Set<BillForCollection>();
     public DbSet<InlandBillPurchased> InlandBillsPurchased => Set<InlandBillPurchased>();
+    public DbSet<CustomerTransactionProfile> CustomerTransactionProfiles => Set<CustomerTransactionProfile>();
+    public DbSet<AdcReconciliationBatch> AdcReconciliationBatches => Set<AdcReconciliationBatch>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -254,6 +256,8 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new ChequeDishonourRecordConfiguration());
         modelBuilder.ApplyConfiguration(new BillForCollectionConfiguration());
         modelBuilder.ApplyConfiguration(new InlandBillPurchasedConfiguration());
+        modelBuilder.ApplyConfiguration(new CustomerTransactionProfileConfiguration());
+        modelBuilder.ApplyConfiguration(new AdcReconciliationBatchConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -329,6 +333,8 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<ChequeDishonourRecord>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<BillForCollection>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<InlandBillPurchased>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<CustomerTransactionProfile>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<AdcReconciliationBatch>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -409,6 +415,8 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<ChequeDishonourRecord>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<BillForCollection>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<InlandBillPurchased>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<CustomerTransactionProfile>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<AdcReconciliationBatch>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
