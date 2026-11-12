@@ -120,6 +120,10 @@ public class CbsDbContext : DbContext
     public DbSet<MtmRevaluationBatch> MtmRevaluationBatches => Set<MtmRevaluationBatch>();
     public DbSet<NostroMirrorReconciliationItem> NostroReconciliations => Set<NostroMirrorReconciliationItem>();
     public DbSet<StatutoryReserveAssessment> StatutoryReserves => Set<StatutoryReserveAssessment>();
+    public DbSet<CustomerRiskAssessment> CustomerRiskAssessments => Set<CustomerRiskAssessment>();
+    public DbSet<SanctionScreeningRecord> SanctionScreeningRecords => Set<SanctionScreeningRecord>();
+    public DbSet<FatcaComplianceProfile> FatcaComplianceProfiles => Set<FatcaComplianceProfile>();
+    public DbSet<BorrowerIcrrAssessment> BorrowerIcrrAssessments => Set<BorrowerIcrrAssessment>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -239,6 +243,10 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new MtmRevaluationBatchConfiguration());
         modelBuilder.ApplyConfiguration(new NostroMirrorReconciliationItemConfiguration());
         modelBuilder.ApplyConfiguration(new StatutoryReserveAssessmentConfiguration());
+        modelBuilder.ApplyConfiguration(new CustomerRiskAssessmentConfiguration());
+        modelBuilder.ApplyConfiguration(new SanctionScreeningRecordConfiguration());
+        modelBuilder.ApplyConfiguration(new FatcaComplianceProfileConfiguration());
+        modelBuilder.ApplyConfiguration(new BorrowerIcrrAssessmentConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -307,6 +315,10 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<MtmRevaluationBatch>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<NostroMirrorReconciliationItem>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<StatutoryReserveAssessment>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<CustomerRiskAssessment>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<SanctionScreeningRecord>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<FatcaComplianceProfile>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<BorrowerIcrrAssessment>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -380,6 +392,10 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<MtmRevaluationBatch>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<NostroMirrorReconciliationItem>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<StatutoryReserveAssessment>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<CustomerRiskAssessment>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<SanctionScreeningRecord>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<FatcaComplianceProfile>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<BorrowerIcrrAssessment>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)

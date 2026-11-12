@@ -50,7 +50,10 @@ public enum FatcaClassification
     UsCitizen = 1,
     UsGreenCardHolder = 2,
     UsResident = 3,
-    UsEntity = 4
+    UsEntity = 4,
+    UsPersonCompliant = 5,
+    RecalcitrantAccountHolder = 6,
+    ExemptEntity = 7
 }
 
 public enum SanctionStatus

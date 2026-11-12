@@ -61,3 +61,43 @@ public enum DocumentExpiryStatus
     ExpiringSoon = 2,
     Expired = 3
 }
+
+public enum CustomerRiskGrade
+{
+    Low = 1,
+    Medium = 2,
+    High = 3
+}
+
+public enum SanctionMatchStatus
+{
+    Clear = 1,
+    PotentialMatch = 2,
+    ConfirmedMatch = 3,
+    FalsePositive = 4
+}
+
+public enum SanctionWatchlistType
+{
+    Unscr1267 = 1,
+    Unscr1373 = 2,
+    OfacSdn = 3,
+    EuSanctions = 4,
+    BfiuDomestic = 5
+}
+
+public enum IcrrGrade
+{
+    Excellent = 1,
+    Good = 2,
+    Marginal = 3,
+    Unacceptable = 4
+}
+
+public enum OnboardingChannel
+{
+    BiometricEkyc = 1,
+    DigitalApp = 2,
+    BranchPhysical = 3,
+    AgentBanking = 4
+}

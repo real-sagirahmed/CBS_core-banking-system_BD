@@ -4457,6 +4457,246 @@ public partial class Program
             return Results.Ok(result);
         });
 
+        // --- PHASE 29: CRM REGULATORY COMPLIANCE SUITE (CRG, SANCTIONS, FATCA & BORROWER ICRR) ---
+        crmApi.MapPost("/compliance/risk/evaluate", async (
+            EvaluateCustomerRiskCommand command,
+            ICrmComplianceService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.EvaluateCustomerRiskAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapPost("/compliance/risk/approve-senior-mgmt", async (
+            ApproveSeniorManagementCommand command,
+            ICrmComplianceService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.ApproveSeniorManagementAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapGet("/compliance/risk/{cif}", async (
+            string cif,
+            ICrmComplianceService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.GetCustomerRiskAssessmentAsync(cif, ct);
+                return result is null ? Results.NotFound(new { message = $"No risk assessment found for CIF '{cif}'." }) : Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapPost("/compliance/sanctions/screen", async (
+            ScreenSanctionCommand command,
+            ICrmComplianceService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.ScreenSanctionAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapPost("/compliance/sanctions/investigate", async (
+            InvestigateSanctionCommand command,
+            ICrmComplianceService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.InvestigateSanctionAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapPost("/compliance/sanctions/resolve", async (
+            ResolveSanctionCheckerCommand command,
+            ICrmComplianceService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.ResolveSanctionCheckerAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapGet("/compliance/sanctions/pending", async (
+            ICrmComplianceService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.GetPendingSanctionsAsync(ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapPost("/compliance/fatca/evaluate", async (
+            EvaluateFatcaIndiciaCommand command,
+            ICrmComplianceService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.EvaluateFatcaIndiciaAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapPost("/compliance/fatca/w9", async (
+            SubmitFatcaW9Command command,
+            ICrmComplianceService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.SubmitFatcaW9Async(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapPost("/compliance/fatca/w8ben", async (
+            SubmitFatcaW8BenCommand command,
+            ICrmComplianceService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.SubmitFatcaW8BenAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapGet("/compliance/fatca/{cif}", async (
+            string cif,
+            ICrmComplianceService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.GetFatcaProfileAsync(cif, ct);
+                return result is null ? Results.NotFound(new { message = $"No FATCA profile found for CIF '{cif}'." }) : Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapPost("/compliance/icrr/evaluate", async (
+            EvaluateBorrowerIcrrCommand command,
+            ICrmComplianceService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.EvaluateBorrowerIcrrAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapPost("/compliance/icrr/approve-board", async (
+            ApproveIcrrByBoardCommand command,
+            ICrmComplianceService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.ApproveIcrrByBoardAsync(command, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapGet("/compliance/icrr/{cif}", async (
+            string cif,
+            ICrmComplianceService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.GetLatestBorrowerIcrrAsync(cif, ct);
+                return result is null ? Results.NotFound(new { message = $"No ICRR assessment found for CIF '{cif}'." }) : Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        crmApi.MapGet("/compliance/icrr/{cif}/verify-sanction", async (
+            string cif,
+            ICrmComplianceService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                await service.VerifyBorrowerSanctionEligibilityAsync(cif, ct);
+                return Results.Ok(new { message = $"Borrower '{cif}' is eligible for credit sanction under BRPD 03/2019." });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
         // --- SYSTEM ADMINISTRATION, DOA MATRIX & GOVERNANCE (BRPD Circular 12/2024 Modules 9 & 10) ---
         var adminApi = app.MapGroup("/api/v1/admin");
 

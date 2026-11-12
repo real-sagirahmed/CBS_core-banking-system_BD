@@ -139,6 +139,11 @@ public static class DependencyInjection
         services.AddScoped<INostroReconciliationRepository, EfNostroReconciliationRepository>();
         services.AddScoped<IStatutoryReserveRepository, EfStatutoryReserveRepository>();
         services.AddScoped<ITreasuryManagementService, CBS.Application.Treasury.Services.TreasuryManagementService>();
+        services.AddScoped<ICustomerRiskAssessmentRepository, EfCustomerRiskAssessmentRepository>();
+        services.AddScoped<ISanctionScreeningRepository, EfSanctionScreeningRepository>();
+        services.AddScoped<IFatcaComplianceRepository, EfFatcaComplianceRepository>();
+        services.AddScoped<IBorrowerIcrrRepository, EfBorrowerIcrrRepository>();
+        services.AddScoped<ICrmComplianceService, CBS.Application.Customers.Services.CrmComplianceService>();
         services.AddHttpClient();
 
         return services;
