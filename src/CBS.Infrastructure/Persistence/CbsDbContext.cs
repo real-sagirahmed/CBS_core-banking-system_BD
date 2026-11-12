@@ -138,6 +138,9 @@ public class CbsDbContext : DbContext
     public DbSet<UserDoaProfile> UserDoaProfiles => Set<UserDoaProfile>();
     public DbSet<TemporaryAuthorityDelegation> TemporaryAuthorityDelegations => Set<TemporaryAuthorityDelegation>();
     public DbSet<UserPasswordCredential> UserPasswordCredentials => Set<UserPasswordCredential>();
+    public DbSet<UserActiveSession> UserActiveSessions => Set<UserActiveSession>();
+    public DbSet<AdminChangeRequest> AdminChangeRequests => Set<AdminChangeRequest>();
+    public DbSet<BankGlobalParameters> BankGlobalParameters => Set<BankGlobalParameters>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -274,6 +277,9 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new UserDoaProfileConfiguration());
         modelBuilder.ApplyConfiguration(new TemporaryAuthorityDelegationConfiguration());
         modelBuilder.ApplyConfiguration(new UserPasswordCredentialConfiguration());
+        modelBuilder.ApplyConfiguration(new UserActiveSessionConfiguration());
+        modelBuilder.ApplyConfiguration(new AdminChangeRequestConfiguration());
+        modelBuilder.ApplyConfiguration(new BankGlobalParametersConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -359,6 +365,9 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<UserDoaProfile>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<TemporaryAuthorityDelegation>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<UserPasswordCredential>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<UserActiveSession>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<AdminChangeRequest>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<BankGlobalParameters>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -449,6 +458,9 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<UserDoaProfile>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<TemporaryAuthorityDelegation>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<UserPasswordCredential>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<UserActiveSession>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<AdminChangeRequest>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<BankGlobalParameters>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)

@@ -165,6 +165,10 @@ public static class DependencyInjection
         services.AddScoped<ITemporaryDelegationRepository, EfTemporaryDelegationRepository>();
         services.AddScoped<IUserPasswordCredentialRepository, EfUserPasswordCredentialRepository>();
         services.AddScoped<ISystemAdministrationService, SystemAdministrationService>();
+        services.AddScoped<IUserActiveSessionRepository, EfUserActiveSessionRepository>();
+        services.AddScoped<IAdminChangeRequestRepository, EfAdminChangeRequestRepository>();
+        services.AddScoped<IBankGlobalParametersRepository, EfBankGlobalParametersRepository>();
+        services.AddScoped<IEnterpriseAdministrationService, EnterpriseAdministrationService>();
         services.AddHttpClient();
 
         return services;

@@ -7654,6 +7654,142 @@ public partial class Program
             }
         });
 
+        // --- PHASE 35: APPLICATION ADMINISTRATION, CONCURRENT SESSIONS & DUAL CONTROL (BRPD 12/2024 Module 10.3) ---
+        sysAdminApi.MapPost("/sessions/authenticate", async (
+            LoginWithSessionControlRequest request,
+            IEnterpriseAdministrationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.AuthenticateSessionAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        sysAdminApi.MapPost("/sessions/{sessionId}/terminate", async (
+            string sessionId,
+            TerminateSessionRequest request,
+            IEnterpriseAdministrationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.TerminateSessionAsync(sessionId, request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        sysAdminApi.MapGet("/sessions/active", async (
+            IEnterpriseAdministrationService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetActiveSessionsAsync(ct);
+            return Results.Ok(result);
+        });
+
+        sysAdminApi.MapPost("/dual-control/requests", async (
+            CreateAdminChangeRequestDto request,
+            IEnterpriseAdministrationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.SubmitAdminChangeRequestAsync(request, ct);
+                return Results.Created($"/api/v1/admin/dual-control/requests/{result.RequestId}", result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        sysAdminApi.MapPost("/dual-control/requests/{requestId}/approve", async (
+            string requestId,
+            ApproveAdminChangeRequestDto request,
+            IEnterpriseAdministrationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.ApproveAdminChangeRequestAsync(requestId, request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        sysAdminApi.MapPost("/dual-control/requests/{requestId}/reject", async (
+            string requestId,
+            RejectAdminChangeRequestDto request,
+            IEnterpriseAdministrationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.RejectAdminChangeRequestAsync(requestId, request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        sysAdminApi.MapGet("/dual-control/pending", async (
+            IEnterpriseAdministrationService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetPendingAdminChangeRequestsAsync(ct);
+            return Results.Ok(result);
+        });
+
+        sysAdminApi.MapGet("/parameters", async (
+            IEnterpriseAdministrationService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetBankParametersAsync(ct);
+            return Results.Ok(result);
+        });
+
+        sysAdminApi.MapPut("/parameters", async (
+            UpdateBankGlobalParametersRequest request,
+            IEnterpriseAdministrationService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.UpdateBankParametersDirectAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
         // --- PRODUCTION HEALTH & PROBE ENDPOINTS ---
         app.MapGet("/health", () => Results.Ok(new
         {

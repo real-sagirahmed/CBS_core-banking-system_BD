@@ -22,3 +22,32 @@ public enum DelegationStatus
     Revoked = 4,
     Rejected = 5
 }
+
+public enum ConcurrentSessionPolicy
+{
+    BlockNewSession = 1,
+    TerminatePriorSession = 2
+}
+
+public enum SessionTerminationReason
+{
+    UserLogout = 1,
+    SupersededByNewLogin = 2,
+    SessionTimeout = 3,
+    AdminRevocation = 4
+}
+
+public enum AdminChangeStatus
+{
+    PendingCheckerApproval = 1,
+    Approved = 2,
+    Rejected = 3
+}
+
+public enum AdminChangeCategory
+{
+    BankGlobalParameters = 1,
+    HolidaySchedule = 2,
+    UserEntitlementUpdate = 3,
+    SystemOperationalFlag = 4
+}

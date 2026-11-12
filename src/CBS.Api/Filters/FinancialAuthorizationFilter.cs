@@ -57,18 +57,22 @@ public class FinancialAuthorizationFilter : IEndpointFilter
             {
                 return Results.Json(new
                 {
-                    error = $"Security Invariant Violation [BRPD 10.3.5-vii]: Super/Admin users in CBS shall not be authorized to perform any financial transactions. Role '{declaredRole}' is blocked from financial transactions.",
+                    error = $"[INVARIANT VIOLATION: AdminFinancialTransactionProhibitedInvariant] (BRPD Circular 12/2024 (10.3.5-vii)): Super/Admin users in CBS shall not be authorized to perform any financial transactions. Role '{declaredRole}' is blocked from financial transactions.",
+                    invariant = "AdminFinancialTransactionProhibitedInvariant",
+                    regulatoryRef = "BRPD Circular 12/2024 (10.3.5-vii)",
                     code = "BRPD_10_3_5_VII"
                 }, statusCode: StatusCodes.Status403Forbidden);
             }
         }
         else if (!string.IsNullOrWhiteSpace(roleStr) &&
-                 (roleStr.Contains("Admin", StringComparison.OrdinalIgnoreCase) ||
+                 (CBS.Domain.Security.AdminFinancialRestrictionPolicy.IsAdminRole(roleStr) ||
                   string.Equals(roleStr, "ComplianceAuditor", StringComparison.OrdinalIgnoreCase)))
         {
             return Results.Json(new
             {
-                error = $"Security Invariant Violation [BRPD 10.3.5-vii]: Super/Admin users in CBS shall not be authorized to perform any financial transactions. Role '{roleStr}' is blocked from financial transactions.",
+                error = $"[INVARIANT VIOLATION: AdminFinancialTransactionProhibitedInvariant] (BRPD Circular 12/2024 (10.3.5-vii)): Super/Admin users in CBS shall not be authorized to perform any financial transactions. Role '{roleStr}' is blocked from financial transactions.",
+                invariant = "AdminFinancialTransactionProhibitedInvariant",
+                regulatoryRef = "BRPD Circular 12/2024 (10.3.5-vii)",
                 code = "BRPD_10_3_5_VII"
             }, statusCode: StatusCodes.Status403Forbidden);
         }
