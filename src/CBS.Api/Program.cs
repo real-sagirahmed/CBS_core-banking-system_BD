@@ -3,6 +3,7 @@ using CBS.Application.Accounts.Commands.OpenDepositAccount;
 using CBS.Application.Accounts.Commands.PostTransaction;
 using CBS.Application.Accounts.DTOs;
 using CBS.Application.Accounts.Services;
+using CBS.Application.Clearing.DTOs;
 using CBS.Application.Corporate.Commands;
 using CBS.Application.Corporate.DTOs;
 using CBS.Application.Adc.Commands;
@@ -4695,6 +4696,314 @@ public partial class Program
             {
                 return Results.BadRequest(new { error = ex.Message });
             }
+        });
+
+        // --- BACPS CHEQUE CLEARING DISHONOUR, RETURN MEMOS, BILLS FOR COLLECTION & IBP (BRPD Circular 12 Modules 1, 2 & 4) ---
+        var clearingApi = app.MapGroup("/api/v1/clearing");
+
+        clearingApi.MapPost("/cheques/dishonour-memo", async (
+            IssueChequeDishonourMemoCommand command,
+            IClearingAndBillsService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.IssueDishonourMemoAsync(command, ct);
+                return Results.Created($"/api/v1/clearing/cheques/{result.Id}", result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        clearingApi.MapPost("/cheques/{id:guid}/legal-notice", async (
+            Guid id,
+            ServeSection138NoticeCommand command,
+            IClearingAndBillsService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var cmdWithId = command with { DishonourRecordId = id };
+                var result = await service.ServeSection138NoticeAsync(cmdWithId, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        clearingApi.MapPost("/cheques/{id:guid}/cure", async (
+            Guid id,
+            RecordCurePaymentCommand command,
+            IClearingAndBillsService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var cmdWithId = command with { DishonourRecordId = id };
+                var result = await service.RecordCurePaymentAsync(cmdWithId, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        clearingApi.MapPost("/cheques/{id:guid}/lawsuit", async (
+            Guid id,
+            FileSection138SuitCommand command,
+            IClearingAndBillsService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var cmdWithId = command with { DishonourRecordId = id };
+                var result = await service.FileSection138SuitAsync(cmdWithId, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        clearingApi.MapGet("/cheques/{id:guid}", async (
+            Guid id,
+            IClearingAndBillsService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetDishonourRecordByIdAsync(id, ct);
+            return result is not null ? Results.Ok(result) : Results.NotFound();
+        });
+
+        clearingApi.MapGet("/cheques/{id:guid}/return-memo", async (
+            Guid id,
+            IClearingAndBillsService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.GetDishonourAdvicePrintAsync(id, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+        });
+
+        clearingApi.MapPost("/bills/obc/lodge", async (
+            LodgeBillForCollectionCommand command,
+            IClearingAndBillsService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var cmd = command with { CollectionType = CBS.Domain.Enums.BillCollectionType.OutwardCleanCollection_OBC };
+                var result = await service.LodgeBillForCollectionAsync(cmd, ct);
+                return Results.Created($"/api/v1/clearing/bills/{result.Id}", result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        clearingApi.MapPost("/bills/ibc/lodge", async (
+            LodgeBillForCollectionCommand command,
+            IClearingAndBillsService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var cmd = command with { CollectionType = CBS.Domain.Enums.BillCollectionType.InwardCleanCollection_IBC };
+                var result = await service.LodgeBillForCollectionAsync(cmd, ct);
+                return Results.Created($"/api/v1/clearing/bills/{result.Id}", result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        clearingApi.MapPost("/bills/{id:guid}/dispatch", async (
+            Guid id,
+            DispatchBillScheduleCommand command,
+            IClearingAndBillsService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var cmdWithId = command with { BillId = id };
+                var result = await service.DispatchBillScheduleAsync(cmdWithId, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        clearingApi.MapPost("/bills/{id:guid}/realize", async (
+            Guid id,
+            RealizeBillForCollectionCommand command,
+            IClearingAndBillsService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var cmdWithId = command with { BillId = id };
+                var result = await service.RealizeBillForCollectionAsync(cmdWithId, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        clearingApi.MapPost("/bills/{id:guid}/dishonour", async (
+            Guid id,
+            DishonourBillForCollectionCommand command,
+            IClearingAndBillsService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var cmdWithId = command with { BillId = id };
+                var result = await service.DishonourBillForCollectionAsync(cmdWithId, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        clearingApi.MapGet("/bills/{id:guid}", async (
+            Guid id,
+            IClearingAndBillsService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetBillByIdAsync(id, ct);
+            return result is not null ? Results.Ok(result) : Results.NotFound();
+        });
+
+        clearingApi.MapPost("/ibp/purchase", async (
+            PurchaseInlandBillCommand command,
+            IClearingAndBillsService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.PurchaseInlandBillAsync(command, ct);
+                return Results.Created($"/api/v1/clearing/ibp/{result.Id}", result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        clearingApi.MapPost("/ibp/{id:guid}/settle", async (
+            Guid id,
+            SettleInlandBillCommand command,
+            IClearingAndBillsService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var cmdWithId = command with { IbpId = id };
+                var result = await service.SettleInlandBillAsync(cmdWithId, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        clearingApi.MapPost("/ibp/{id:guid}/crystallize-forced-loan", async (
+            Guid id,
+            CrystallizeForcedLoanCommand command,
+            IClearingAndBillsService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var cmdWithId = command with { IbpId = id };
+                var result = await service.CrystallizeForcedLoanAsync(cmdWithId, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        clearingApi.MapGet("/ibp/{id:guid}", async (
+            Guid id,
+            IClearingAndBillsService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetIbpByIdAsync(id, ct);
+            return result is not null ? Results.Ok(result) : Results.NotFound();
         });
 
         // --- SYSTEM ADMINISTRATION, DOA MATRIX & GOVERNANCE (BRPD Circular 12/2024 Modules 9 & 10) ---

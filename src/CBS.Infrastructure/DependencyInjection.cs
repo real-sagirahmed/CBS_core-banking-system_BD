@@ -144,6 +144,10 @@ public static class DependencyInjection
         services.AddScoped<IFatcaComplianceRepository, EfFatcaComplianceRepository>();
         services.AddScoped<IBorrowerIcrrRepository, EfBorrowerIcrrRepository>();
         services.AddScoped<ICrmComplianceService, CBS.Application.Customers.Services.CrmComplianceService>();
+        services.AddScoped<IChequeDishonourRepository, EfChequeDishonourRepository>();
+        services.AddScoped<IBillForCollectionRepository, EfBillForCollectionRepository>();
+        services.AddScoped<IInlandBillPurchasedRepository, EfInlandBillPurchasedRepository>();
+        services.AddScoped<IClearingAndBillsService, CBS.Application.Clearing.Services.ClearingAndBillsService>();
         services.AddHttpClient();
 
         return services;

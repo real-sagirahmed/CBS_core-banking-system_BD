@@ -3,6 +3,7 @@ using CBS.Domain.Adc;
 using CBS.Domain.AiIntelligence;
 using CBS.Domain.BranchCash;
 using CBS.Domain.Cheques;
+using CBS.Domain.Clearing;
 using CBS.Domain.Corporate;
 using CBS.Domain.Customers;
 using CBS.Domain.Deposits;
@@ -124,6 +125,9 @@ public class CbsDbContext : DbContext
     public DbSet<SanctionScreeningRecord> SanctionScreeningRecords => Set<SanctionScreeningRecord>();
     public DbSet<FatcaComplianceProfile> FatcaComplianceProfiles => Set<FatcaComplianceProfile>();
     public DbSet<BorrowerIcrrAssessment> BorrowerIcrrAssessments => Set<BorrowerIcrrAssessment>();
+    public DbSet<ChequeDishonourRecord> ChequeDishonourRecords => Set<ChequeDishonourRecord>();
+    public DbSet<BillForCollection> BillsForCollection => Set<BillForCollection>();
+    public DbSet<InlandBillPurchased> InlandBillsPurchased => Set<InlandBillPurchased>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -247,6 +251,9 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new SanctionScreeningRecordConfiguration());
         modelBuilder.ApplyConfiguration(new FatcaComplianceProfileConfiguration());
         modelBuilder.ApplyConfiguration(new BorrowerIcrrAssessmentConfiguration());
+        modelBuilder.ApplyConfiguration(new ChequeDishonourRecordConfiguration());
+        modelBuilder.ApplyConfiguration(new BillForCollectionConfiguration());
+        modelBuilder.ApplyConfiguration(new InlandBillPurchasedConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -319,6 +326,9 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<SanctionScreeningRecord>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<FatcaComplianceProfile>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<BorrowerIcrrAssessment>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<ChequeDishonourRecord>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<BillForCollection>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<InlandBillPurchased>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -396,6 +406,9 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<SanctionScreeningRecord>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<FatcaComplianceProfile>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<BorrowerIcrrAssessment>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<ChequeDishonourRecord>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<BillForCollection>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<InlandBillPurchased>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
