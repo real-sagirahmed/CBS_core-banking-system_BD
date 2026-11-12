@@ -12,7 +12,8 @@ public enum RestraintType
     SecurityDepositLien = 5,
     LoanCollateralPledge = 6,
     InternalInvestigation = 7,
-    DeceasedEstateRestraint = 8
+    DeceasedEstateRestraint = 8,
+    StatutoryDocumentExpired = 9
 }
 
 public enum RestraintScope

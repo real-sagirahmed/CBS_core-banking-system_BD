@@ -18,6 +18,8 @@ public class CustomerDocumentRecord : AggregateRoot<Guid>
     public string? VerifiedByUserId { get; private set; }
     public DateTime? VerifiedAtUtc { get; private set; }
     public DateTime UploadedAtUtc { get; private set; }
+    public bool IsMandatoryComplianceDocument { get; private set; }
+    public int GracePeriodDays { get; private set; } = 30;
 
     #pragma warning disable CS8618
     protected CustomerDocumentRecord() : base(Guid.Empty) { }
@@ -31,7 +33,9 @@ public class CustomerDocumentRecord : AggregateRoot<Guid>
         DateOnly issueDate,
         DateOnly? expiryDate,
         string issuingAuthority,
-        DateTime uploadedAtUtc) : base(id)
+        DateTime uploadedAtUtc,
+        bool isMandatoryComplianceDocument = false,
+        int gracePeriodDays = 30) : base(id)
     {
         ArgumentNullException.ThrowIfNull(customerCif, nameof(customerCif));
         if (string.IsNullOrWhiteSpace(documentNumber))
@@ -45,6 +49,8 @@ public class CustomerDocumentRecord : AggregateRoot<Guid>
         IssuingAuthority = string.IsNullOrWhiteSpace(issuingAuthority) ? "Government Authority" : issuingAuthority.Trim();
         UploadedAtUtc = uploadedAtUtc;
         IsVerified = false;
+        IsMandatoryComplianceDocument = isMandatoryComplianceDocument;
+        GracePeriodDays = gracePeriodDays > 0 ? gracePeriodDays : 30;
     }
 
     public DocumentExpiryStatus CheckExpiryStatus(DateOnly asOfDate)
@@ -55,10 +61,40 @@ public class CustomerDocumentRecord : AggregateRoot<Guid>
         if (ExpiryDate.Value < asOfDate)
             return DocumentExpiryStatus.Expired;
 
-        if (ExpiryDate.Value <= asOfDate.AddDays(30))
+        if (ExpiryDate.Value <= asOfDate.AddDays(GracePeriodDays))
             return DocumentExpiryStatus.ExpiringSoon;
 
         return DocumentExpiryStatus.Valid;
+    }
+
+    // ARCHITECTURAL INTENT: Statutory documents exceeding the 30-day grace period trigger automated account debit block (BRPD 8.1.8-d, 1.6.6).
+    public bool IsBeyondGracePeriod(DateOnly asOfDate)
+    {
+        if (!ExpiryDate.HasValue)
+            return false;
+
+        return asOfDate > ExpiryDate.Value.AddDays(GracePeriodDays);
+    }
+
+    public void MarkMandatory(bool isMandatory, int gracePeriodDays = 30)
+    {
+        IsMandatoryComplianceDocument = isMandatory;
+        GracePeriodDays = gracePeriodDays > 0 ? gracePeriodDays : 30;
+    }
+
+    public void RenewDocument(string newDocumentNumber, DateOnly newIssueDate, DateOnly newExpiryDate, string makerUserId)
+    {
+        if (string.IsNullOrWhiteSpace(newDocumentNumber))
+            throw new ArgumentException("New document number is required.", nameof(newDocumentNumber));
+        if (string.IsNullOrWhiteSpace(makerUserId))
+            throw new ArgumentException("Maker user ID is required.", nameof(makerUserId));
+
+        DocumentNumber = newDocumentNumber.Trim().ToUpperInvariant();
+        IssueDate = newIssueDate;
+        ExpiryDate = newExpiryDate;
+        IsVerified = false;
+        VerifiedByUserId = null;
+        VerifiedAtUtc = null;
     }
 
     public void Verify(string checkerUserId, DateTime verifiedAtUtc)

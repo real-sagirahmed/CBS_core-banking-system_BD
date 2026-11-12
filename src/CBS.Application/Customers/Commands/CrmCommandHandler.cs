@@ -333,6 +333,9 @@ public class CrmCommandHandler
         ArgumentNullException.ThrowIfNull(request, nameof(request));
 
         var cif = new CifNumber(request.CustomerCif);
+        bool isMandatory = request.Category is CrmDocumentCategory.TradeLicense
+                                            or CrmDocumentCategory.TaxReturnAcknowledgementReceipt;
+
         var doc = new CustomerDocumentRecord(
             Guid.NewGuid(),
             cif,
@@ -341,7 +344,9 @@ public class CrmCommandHandler
             request.IssueDate,
             request.ExpiryDate,
             request.IssuingAuthority,
-            DateTime.UtcNow);
+            DateTime.UtcNow,
+            isMandatoryComplianceDocument: isMandatory,
+            gracePeriodDays: 30);
 
         await _crmRepository.AddDocumentAsync(doc, ct);
         await _unitOfWork.SaveChangesAsync(ct);

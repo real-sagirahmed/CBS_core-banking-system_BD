@@ -606,6 +606,48 @@ public class DepositAccount : AggregateRoot<AccountNumber>
         HoveringCharges += chargeAmount;
     }
 
+    // ARCHITECTURAL INTENT: Statutory Service Fee & 15% NBR VAT Deduction for Statements and Certificates (BRPD 3.1.17-i, 3.1.19-iv, 3.1.23-i)
+    public void DeductServiceChargeWithVat(
+        decimal feeAmount,
+        decimal vatRate,
+        string narration,
+        out Money feeDebited,
+        out Money vatDebited)
+    {
+        if (Status == AccountOperatingStatus.Frozen || Status == AccountOperatingStatus.BlockedDebit)
+        {
+            throw new InvariantViolationException(
+                "AccountDebitBlockedInvariant",
+                "BRPD Circular 12/2024 (1.6.2-v, 3.1.15-vi)",
+                $"Service charge deduction prohibited on frozen/debit-blocked account {Id.Value}.");
+        }
+
+        if (Status != AccountOperatingStatus.Active)
+        {
+            throw new InvariantViolationException(
+                "AccountNotActiveInvariant",
+                "BRPD Circular 12/2024 (1.6.4, 3.1.9)",
+                $"Service fee cannot be deducted from inactive or closed account {Id.Value}.");
+        }
+
+        decimal calculatedVat = Math.Round(feeAmount * vatRate, 2, MidpointRounding.AwayFromZero);
+        decimal totalAmount = feeAmount + calculatedVat;
+        var requiredMoney = Money.Bdt(totalAmount);
+
+        if (AvailableBalance < requiredMoney)
+        {
+            // BRPD 3.1.19-viii: Hovering option when balance is insufficient
+            AddHoveringCharge(requiredMoney);
+            feeDebited = Money.Zero(Balance.Currency);
+            vatDebited = Money.Zero(Balance.Currency);
+            return;
+        }
+
+        feeDebited = Money.Bdt(feeAmount);
+        vatDebited = Money.Bdt(calculatedVat);
+        Balance -= requiredMoney;
+    }
+
     private static int CalculateMonthsDifference(DateOnly fromDate, DateOnly toDate)
     {
         if (toDate <= fromDate) return 0;

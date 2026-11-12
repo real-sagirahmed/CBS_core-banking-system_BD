@@ -51,7 +51,8 @@ public enum CrmDocumentCategory
     IncorporationCertificate = 5,
     MemorandumArticles = 6,
     BoardResolution = 7,
-    WorkPermit = 8
+    WorkPermit = 8,
+    TaxReturnAcknowledgementReceipt = 9
 }
 
 public enum DocumentExpiryStatus

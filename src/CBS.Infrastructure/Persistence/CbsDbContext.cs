@@ -106,6 +106,8 @@ public class CbsDbContext : DbContext
     public DbSet<AccountRestraint> AccountRestraints => Set<AccountRestraint>();
     public DbSet<BulkCorporateBatch> BulkCorporateBatches => Set<BulkCorporateBatch>();
     public DbSet<BulkCorporateBatchItem> BulkCorporateBatchItems => Set<BulkCorporateBatchItem>();
+    public DbSet<AccountLedgerEntry> AccountLedgerEntries => Set<AccountLedgerEntry>();
+    public DbSet<StatutoryCertificateRecord> StatutoryCertificateRecords => Set<StatutoryCertificateRecord>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -211,6 +213,8 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new AccountRestraintConfiguration());
         modelBuilder.ApplyConfiguration(new BulkCorporateBatchConfiguration());
         modelBuilder.ApplyConfiguration(new BulkCorporateBatchItemConfiguration());
+        modelBuilder.ApplyConfiguration(new AccountLedgerEntryConfiguration());
+        modelBuilder.ApplyConfiguration(new StatutoryCertificateRecordConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -265,6 +269,8 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<MultiAccountSweepRule>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<AccountRestraint>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<BulkCorporateBatch>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<AccountLedgerEntry>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<StatutoryCertificateRecord>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -324,6 +330,8 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<MultiAccountSweepRule>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<AccountRestraint>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<BulkCorporateBatch>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<AccountLedgerEntry>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<StatutoryCertificateRecord>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)

@@ -62,5 +62,15 @@ public class CustomerDocumentRecordConfiguration : IEntityTypeConfiguration<Cust
         builder.Property(d => d.UploadedAtUtc)
             .HasColumnName("uploaded_at_utc")
             .IsRequired();
+
+        builder.Property(d => d.IsMandatoryComplianceDocument)
+            .HasColumnName("is_mandatory_compliance_document")
+            .HasDefaultValue(false)
+            .IsRequired();
+
+        builder.Property(d => d.GracePeriodDays)
+            .HasColumnName("grace_period_days")
+            .HasDefaultValue(30)
+            .IsRequired();
     }
 }

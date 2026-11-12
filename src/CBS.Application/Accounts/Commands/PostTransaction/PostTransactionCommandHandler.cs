@@ -11,15 +11,18 @@ public class PostTransactionCommandHandler
     private readonly IAccountRepository _accountRepository;
     private readonly IGeneralLedgerService _glService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAccountLedgerRepository? _ledgerRepository;
 
     public PostTransactionCommandHandler(
         IAccountRepository accountRepository,
         IGeneralLedgerService glService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IAccountLedgerRepository? ledgerRepository = null)
     {
         _accountRepository = accountRepository ?? throw new ArgumentNullException(nameof(accountRepository));
         _glService = glService ?? throw new ArgumentNullException(nameof(glService));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _ledgerRepository = ledgerRepository;
     }
 
     public async Task<TransactionResponseDto> HandleAsync(PostTransactionCommand command, CancellationToken cancellationToken = default)
@@ -39,29 +42,49 @@ public class PostTransactionCommandHandler
 
         decimal previousBalance = account.Balance.Amount;
         decimal recoveredHovering = 0m;
+        string voucherNo;
 
         if (req.Type == DebitCredit.Credit)
         {
             var recovered = account.Credit(Money.Bdt(req.Amount), req.Narration, req.IsCustomerInduced);
             recoveredHovering = recovered.Amount;
-            await _glService.PostCashDepositAsync(
+            var v = await _glService.PostCashDepositAsync(
                 account.BranchCode,
                 account.Id.Value,
                 req.Amount,
                 command.UserId,
                 null,
                 cancellationToken);
+            voucherNo = v.VoucherNumber;
         }
         else
         {
             account.Debit(Money.Bdt(req.Amount), req.Narration, req.IsCustomerInduced);
-            await _glService.PostCashWithdrawalAsync(
+            var v = await _glService.PostCashWithdrawalAsync(
                 account.BranchCode,
                 account.Id.Value,
                 req.Amount,
                 command.UserId,
                 null,
                 cancellationToken);
+            voucherNo = v.VoucherNumber;
+        }
+
+        if (_ledgerRepository is not null)
+        {
+            var entry = new CBS.Domain.Accounts.AccountLedgerEntry(
+                id: Guid.NewGuid(),
+                accountNumber: account.Id.Value,
+                valueDate: DateOnly.FromDateTime(DateTime.UtcNow),
+                bookingTimeUtc: DateTime.UtcNow,
+                voucherNumber: voucherNo,
+                type: req.Type,
+                amount: Money.Bdt(req.Amount),
+                balanceAfter: account.Balance,
+                narration: req.Narration,
+                referenceNumber: $"TXN-{DateTime.UtcNow:yyyyMMddHHmmss}-{account.Id.Value}");
+
+            await _ledgerRepository.AddAsync(entry, cancellationToken);
         }
 
         await _accountRepository.UpdateAsync(account, cancellationToken);

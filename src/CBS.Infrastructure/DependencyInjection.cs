@@ -117,6 +117,12 @@ public static class DependencyInjection
         services.AddScoped<AccountClosingCommandHandler>();
         services.AddScoped<IBulkCorporateBatchRepository, EfBulkCorporateBatchRepository>();
         services.AddScoped<BulkCorporateCommandHandler>();
+        services.AddScoped<IAccountLedgerRepository, EfAccountLedgerRepository>();
+        services.AddScoped<IStatutoryCertificateRepository, EfStatutoryCertificateRepository>();
+        services.AddScoped<ICustomerDocumentRecordRepository, EfCustomerDocumentRecordRepository>();
+        services.AddScoped<IAccountStatementService, CBS.Application.Accounts.Services.AccountStatementService>();
+        services.AddScoped<ISwiftStatementGenerator, CBS.Application.Accounts.Services.SwiftStatementGenerator>();
+        services.AddScoped<ICustomerDocumentComplianceService, CBS.Application.Customers.Services.CustomerDocumentComplianceService>();
         services.AddHttpClient();
 
         return services;

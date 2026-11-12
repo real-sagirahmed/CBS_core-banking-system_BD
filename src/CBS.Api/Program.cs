@@ -273,6 +273,64 @@ public partial class Program
             return Results.Ok(result);
         });
 
+        // --- STATUTORY COMPLIANCE & DOCUMENT EXPIRATION APIS (BRPD 8.1.8-d, 8.1.15) ---
+        customerApi.MapPost("/compliance/documents/scan-expired", async (
+            ScanExpiredDocumentsRequest request,
+            ICustomerDocumentComplianceService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var summary = await service.ScanAndApplyExpiredDocumentRestraintsAsync(request, ct);
+                return Results.Ok(summary);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        customerApi.MapPost("/compliance/documents/{docId:guid}/renew", async (
+            Guid docId,
+            RenewDocumentRequest request,
+            ICustomerDocumentComplianceService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.RenewDocumentAndReleaseRestraintsAsync(docId, request, ct);
+                return Results.Ok(result);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        customerApi.MapPost("/compliance/fatca-assessment", async (
+            FatcaComplianceEvaluationRequest request,
+            ICustomerDocumentComplianceService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.EvaluateFatcaComplianceAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
         // --- ACCOUNT APIS (PHASE 2) ---
         var accountApi = app.MapGroup("/api/v1/accounts").AddEndpointFilter<FinancialAuthorizationFilter>();
 
@@ -726,6 +784,129 @@ public partial class Program
             catch (InvariantViolationException ex)
             {
                 return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        // --- ACCOUNT STATEMENTS, TAX CERTIFICATES & SWIFT MT940/MT942 APIS (BRPD 3.1.17, 3.1.19, 3.1.23) ---
+        accountApi.MapPost("/{accountNumber}/statements/generate", async (
+            string accountNumber,
+            GenerateStatementRequest request,
+            IAccountStatementService statementService,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var reqWithAcc = request with { AccountNumber = accountNumber };
+                var stmt = await statementService.GenerateStatementAsync(reqWithAcc, ct);
+                return Results.Ok(stmt);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        accountApi.MapPost("/{accountNumber}/statements/balance-certificate", async (
+            string accountNumber,
+            GenerateBalanceCertificateRequest request,
+            IAccountStatementService statementService,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var reqWithAcc = request with { AccountNumber = accountNumber };
+                var cert = await statementService.GenerateBalanceCertificateAsync(reqWithAcc, ct);
+                return Results.Ok(cert);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        accountApi.MapPost("/{accountNumber}/statements/tax-certificate", async (
+            string accountNumber,
+            GenerateTaxCertificateRequest request,
+            IAccountStatementService statementService,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var reqWithAcc = request with { AccountNumber = accountNumber };
+                var cert = await statementService.GenerateTaxCertificateAsync(reqWithAcc, ct);
+                return Results.Ok(cert);
+            }
+            catch (InvariantViolationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message, invariant = ex.InvariantName, regulatoryRef = ex.RegulatoryReference });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        accountApi.MapPost("/{accountNumber}/statements/swift-mt940", async (
+            string accountNumber,
+            GenerateSwiftStatementRequest request,
+            ISwiftStatementGenerator swiftGenerator,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var reqWithAcc = request with { AccountNumber = accountNumber, StatementType = CBS.Domain.Enums.SwiftStatementType.MT940_CustomerStatement };
+                var result = await swiftGenerator.GenerateSwiftStatementAsync(reqWithAcc, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        accountApi.MapPost("/{accountNumber}/statements/swift-mt942", async (
+            string accountNumber,
+            GenerateSwiftStatementRequest request,
+            ISwiftStatementGenerator swiftGenerator,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var reqWithAcc = request with { AccountNumber = accountNumber, StatementType = CBS.Domain.Enums.SwiftStatementType.MT942_InterimTransactionReport };
+                var result = await swiftGenerator.GenerateSwiftStatementAsync(reqWithAcc, ct);
+                return Results.Ok(result);
             }
             catch (KeyNotFoundException ex)
             {
