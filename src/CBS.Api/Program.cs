@@ -176,7 +176,7 @@ public partial class Program
         var app = builder.Build();
         app.UseDeveloperExceptionPage();
 
-        if (!app.Environment.IsDevelopment())
+        if (!app.Environment.IsDevelopment() && builder.Configuration.GetValue<bool>("Security:EnableHttpsRedirection", false))
         {
             app.UseHttpsRedirection();
         }
