@@ -92,6 +92,8 @@ using CBS.Infrastructure.Gateways;
 using CBS.Infrastructure.Persistence;
 using CBS.Infrastructure.Security;
 using CBS.Application.Common.Security;
+using CBS.Application.BackValue.DTOs;
+using CBS.Domain.BackValue;
 using CBS.Api.Filters;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -7788,6 +7790,116 @@ public partial class Program
             {
                 return Results.BadRequest(new { error = ex.Message });
             }
+        });
+
+        // --- PHASE 36: BACK-VALUE DATED TRANSACTION GOVERNANCE, RETROACTIVE INTEREST & CASCADE REVERSAL (BRPD 1.3.4, 1.3.6) ---
+        var backValueApi = app.MapGroup("/api/v1/back-value").WithTags("CBS Back-Value & Cascade Reversal Governance (BRPD 1.3.4, 1.3.6)");
+
+        backValueApi.MapPost("/requests", async (
+            SubmitBackValueTransactionRequest request,
+            IBackValueGovernanceService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.SubmitBackValueRequestAsync(request, ct);
+                return Results.Created($"/api/v1/back-value/requests/{result.RequestId}", result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        backValueApi.MapPost("/requests/{requestId}/approve", async (
+            string requestId,
+            ApproveBackValueTransactionRequest request,
+            IBackValueGovernanceService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.ApproveAndExecuteBackValueAsync(requestId, request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        backValueApi.MapPost("/requests/{requestId}/reject", async (
+            string requestId,
+            RejectBackValueTransactionRequest request,
+            IBackValueGovernanceService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.RejectBackValueRequestAsync(requestId, request, ct);
+                return Results.Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        backValueApi.MapGet("/requests/pending", async (
+            IBackValueGovernanceService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetPendingBackValueRequestsAsync(ct);
+            return Results.Ok(result);
+        });
+
+        backValueApi.MapPost("/interest/simulate-retro", (
+            SimulateRetroactiveInterestRequest request,
+            IBackValueGovernanceService service) =>
+        {
+            try
+            {
+                var result = service.SimulateRetroactiveInterest(request);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        backValueApi.MapPost("/reversals/cascade", async (
+            ReverseTransactionCascadeRequest request,
+            IBackValueGovernanceService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.ExecuteCascadeReversalAsync(request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        backValueApi.MapGet("/reports/eod-journal", async (
+            DateOnly operatingDate,
+            string? branchCode,
+            IBackValueGovernanceService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetEodBackValueJournalReportAsync(operatingDate, branchCode, ct);
+            return Results.Ok(result);
         });
 
         // --- PRODUCTION HEALTH & PROBE ENDPOINTS ---

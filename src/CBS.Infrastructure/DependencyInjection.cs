@@ -169,6 +169,10 @@ public static class DependencyInjection
         services.AddScoped<IAdminChangeRequestRepository, EfAdminChangeRequestRepository>();
         services.AddScoped<IBankGlobalParametersRepository, EfBankGlobalParametersRepository>();
         services.AddScoped<IEnterpriseAdministrationService, EnterpriseAdministrationService>();
+        services.AddScoped<IBackValueTransactionRepository, EfBackValueTransactionRepository>();
+        services.AddScoped<IBackValueAuditJournalRepository, EfBackValueAuditJournalRepository>();
+        services.AddScoped<ILinkedReversalRepository, EfLinkedReversalRepository>();
+        services.AddScoped<IBackValueGovernanceService, CBS.Application.BackValue.Services.BackValueGovernanceService>();
         services.AddHttpClient();
 
         return services;

@@ -61,7 +61,7 @@ public class SwiftStatementTests
         var result = await _generator.GenerateSwiftStatementAsync(req);
 
         // Assert: Standard MT940 tags present
-        result.SwiftMessageBlock.Should().Contain(":20:STMT20261112015");
+        result.SwiftMessageBlock.Should().Contain($":20:STMT{DateTime.UtcNow:yyyyMMdd}015");
         result.SwiftMessageBlock.Should().Contain($":25:{accNum.Value}");
         result.SwiftMessageBlock.Should().Contain(":28C:00015/1");
         result.SwiftMessageBlock.Should().Contain(":60F:C261101BDT100000,00"); // Opening Balance
@@ -110,7 +110,7 @@ public class SwiftStatementTests
         var result = await _generator.GenerateSwiftStatementAsync(req);
 
         // Assert: Standard MT942 interim tags
-        result.SwiftMessageBlock.Should().Contain(":20:ITR20261112003");
+        result.SwiftMessageBlock.Should().Contain($":20:ITR{DateTime.UtcNow:yyyyMMdd}003");
         result.SwiftMessageBlock.Should().Contain(":34F:BDT0,00");
         result.SwiftMessageBlock.Should().Contain(":90D:2BDT20000,00"); // 2 debits totaling 20,000
         result.SwiftMessageBlock.Should().Contain(":90C:1BDT45000,00"); // 1 credit totaling 45,000

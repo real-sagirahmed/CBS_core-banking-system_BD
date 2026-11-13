@@ -105,7 +105,7 @@ public class AccountStatementsAndCompliancePlaywrightTests : IClassFixture<CbsAp
         var stmtReq = new GenerateStatementRequest(
             AccountNumber: accNo,
             FromDate: new DateOnly(2026, 1, 1),
-            ToDate: new DateOnly(2026, 11, 12),
+            ToDate: DateOnly.FromDateTime(DateTime.UtcNow),
             StatementType: AccountStatementType.AdHocDemand,
             WaiveFee: false);
 
@@ -328,7 +328,7 @@ public class AccountStatementsAndCompliancePlaywrightTests : IClassFixture<CbsAp
         var mt940Req = new GenerateSwiftStatementRequest(
             AccountNumber: accNo,
             FromDate: new DateOnly(2026, 1, 1),
-            ToDate: new DateOnly(2026, 11, 12),
+            ToDate: DateOnly.FromDateTime(DateTime.UtcNow),
             StatementType: SwiftStatementType.MT940_CustomerStatement,
             StatementSequenceNumber: 10);
 
@@ -341,7 +341,7 @@ public class AccountStatementsAndCompliancePlaywrightTests : IClassFixture<CbsAp
         var mt940 = (await mt940Res.JsonAsync())?.Deserialize<SwiftStatementResponseDto>(JsonOptions)!;
 
         mt940.StatementType.Should().Be(SwiftStatementType.MT940_CustomerStatement.ToString());
-        mt940.SwiftMessageBlock.Should().Contain(":20:STMT20261112010");
+        mt940.SwiftMessageBlock.Should().Contain($":20:STMT{DateTime.UtcNow:yyyyMMdd}010");
         mt940.SwiftMessageBlock.Should().Contain($":25:{accNo}");
         mt940.SwiftMessageBlock.Should().Contain(":28C:00010/1");
         mt940.SwiftMessageBlock.Should().Contain(":60F:");
@@ -351,8 +351,8 @@ public class AccountStatementsAndCompliancePlaywrightTests : IClassFixture<CbsAp
         // Generate SWIFT MT942 Interim Transaction Report
         var mt942Req = new GenerateSwiftStatementRequest(
             AccountNumber: accNo,
-            FromDate: new DateOnly(2026, 11, 12),
-            ToDate: new DateOnly(2026, 11, 12),
+            FromDate: DateOnly.FromDateTime(DateTime.UtcNow),
+            ToDate: DateOnly.FromDateTime(DateTime.UtcNow),
             StatementType: SwiftStatementType.MT942_InterimTransactionReport,
             StatementSequenceNumber: 2);
 
@@ -365,7 +365,7 @@ public class AccountStatementsAndCompliancePlaywrightTests : IClassFixture<CbsAp
         var mt942 = (await mt942Res.JsonAsync())?.Deserialize<SwiftStatementResponseDto>(JsonOptions)!;
 
         mt942.StatementType.Should().Be(SwiftStatementType.MT942_InterimTransactionReport.ToString());
-        mt942.SwiftMessageBlock.Should().Contain(":20:ITR20261112002");
+        mt942.SwiftMessageBlock.Should().Contain($":20:ITR{DateTime.UtcNow:yyyyMMdd}002");
         mt942.SwiftMessageBlock.Should().Contain(":34F:");
         mt942.SwiftMessageBlock.Should().EndWith("-}");
     }
