@@ -10,6 +10,7 @@ using CBS.Domain.Customers;
 using CBS.Domain.Deposits;
 using CBS.Domain.GeneralLedger;
 using CBS.Domain.Lending;
+using CBS.Domain.Lending.Continuous;
 using CBS.Domain.PaymentInstruments;
 using CBS.Domain.PaymentRails;
 using CBS.Domain.Reconciliation;
@@ -150,6 +151,11 @@ public class CbsDbContext : DbContext
     public DbSet<PaymentInstrument> PaymentInstruments => Set<PaymentInstrument>();
     public DbSet<PaymentInstrumentStockBook> PaymentInstrumentStockBooks => Set<PaymentInstrumentStockBook>();
     public DbSet<TelegraphicTransfer> TelegraphicTransfers => Set<TelegraphicTransfer>();
+    public DbSet<ContinuousLoanFacility> ContinuousLoanFacilities => Set<ContinuousLoanFacility>();
+    public DbSet<ContinuousLoanStockStatement> ContinuousLoanStockStatements => Set<ContinuousLoanStockStatement>();
+    public DbSet<ContinuousLoanGodownInspection> ContinuousLoanGodownInspections => Set<ContinuousLoanGodownInspection>();
+    public DbSet<TemporaryOverdraftRecord> ContinuousLoanTodRecords => Set<TemporaryOverdraftRecord>();
+    public DbSet<ContinuousLoanRenewalRecord> ContinuousLoanRenewalRecords => Set<ContinuousLoanRenewalRecord>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -295,6 +301,11 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new PaymentInstrumentConfiguration());
         modelBuilder.ApplyConfiguration(new PaymentInstrumentStockBookConfiguration());
         modelBuilder.ApplyConfiguration(new TelegraphicTransferConfiguration());
+        modelBuilder.ApplyConfiguration(new ContinuousLoanFacilityConfiguration());
+        modelBuilder.ApplyConfiguration(new ContinuousLoanStockStatementConfiguration());
+        modelBuilder.ApplyConfiguration(new ContinuousLoanGodownInspectionConfiguration());
+        modelBuilder.ApplyConfiguration(new TemporaryOverdraftRecordConfiguration());
+        modelBuilder.ApplyConfiguration(new ContinuousLoanRenewalRecordConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -389,6 +400,7 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<PaymentInstrument>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<PaymentInstrumentStockBook>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<TelegraphicTransfer>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<ContinuousLoanFacility>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -488,6 +500,7 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<PaymentInstrument>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<PaymentInstrumentStockBook>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<TelegraphicTransfer>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<ContinuousLoanFacility>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)

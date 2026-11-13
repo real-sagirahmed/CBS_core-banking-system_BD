@@ -95,9 +95,11 @@ using CBS.Application.Common.Security;
 using CBS.Application.BackValue.DTOs;
 using CBS.Application.PaymentInstruments.DTOs;
 using CBS.Application.TelegraphicTransfers.DTOs;
+using CBS.Application.Lending.Continuous.DTOs;
 using CBS.Domain.BackValue;
 using CBS.Domain.PaymentInstruments;
 using CBS.Domain.TelegraphicTransfers;
+using CBS.Domain.Lending.Continuous;
 using CBS.Api.Filters;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -8176,6 +8178,188 @@ public partial class Program
             CancellationToken ct) =>
         {
             var result = await service.GetUnrespondedTtAgingReportAsync(branchCode, asOfDate, ct);
+            return Results.Ok(result);
+        });
+
+        // =========================================================================
+        // BANGLADESH BANK BRPD CIRCULAR NO. 12 (4.1, 3.9)
+        // CONTINUOUS LOAN (CC/OD) DRAWING POWER, STOCK VALUATION & RENEWAL GOVERNANCE
+        // =========================================================================
+        var continuousLoansApi = app.MapGroup("/api/v1/continuous-loans")
+            .WithTags("Continuous Loans (CC & OD)");
+
+        continuousLoansApi.MapPost("/open", async (
+            OpenContinuousLoanRequest request,
+            IContinuousLoanService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.OpenFacilityAsync(request, ct);
+                return Results.Created($"/api/v1/continuous-loans/{result.AccountNumber}", result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        continuousLoansApi.MapPost("/{accountNumber}/stock-statement", async (
+            string accountNumber,
+            SubmitStockStatementRequest request,
+            IContinuousLoanService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.SubmitStockStatementAsync(accountNumber, request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        continuousLoansApi.MapPost("/{accountNumber}/godown-inspection", async (
+            string accountNumber,
+            RecordGodownInspectionRequest request,
+            IContinuousLoanService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.RecordGodownInspectionAsync(accountNumber, request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        continuousLoansApi.MapPost("/{accountNumber}/temporary-overdraft", async (
+            string accountNumber,
+            GrantTemporaryOverdraftRequest request,
+            IContinuousLoanService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.GrantTemporaryOverdraftAsync(accountNumber, request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        continuousLoansApi.MapPost("/{accountNumber}/withdraw", async (
+            string accountNumber,
+            ContinuousLoanWithdrawalRequest request,
+            IContinuousLoanService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.WithdrawAsync(accountNumber, request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        continuousLoansApi.MapPost("/{accountNumber}/deposit", async (
+            string accountNumber,
+            ContinuousLoanDepositRequest request,
+            IContinuousLoanService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.DepositAsync(accountNumber, request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        continuousLoansApi.MapPost("/{accountNumber}/capitalize-interest", async (
+            string accountNumber,
+            QuarterlyCapitalizationRequest request,
+            IContinuousLoanService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.CapitalizeInterestAsync(accountNumber, request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        continuousLoansApi.MapPost("/{accountNumber}/renew", async (
+            string accountNumber,
+            RenewContinuousLoanRequest request,
+            IContinuousLoanService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.RenewFacilityAsync(accountNumber, request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        continuousLoansApi.MapGet("/{accountNumber}", async (
+            string accountNumber,
+            IContinuousLoanService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetByAccountNumberAsync(accountNumber, ct);
+            return result is not null ? Results.Ok(result) : Results.NotFound(new { error = $"Continuous loan '{accountNumber}' not found." });
+        });
+
+        continuousLoansApi.MapGet("/reports/dp-variance", async (
+            DateOnly asOfDate,
+            string? branchCode,
+            IContinuousLoanService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetDrawingPowerVarianceReportAsync(asOfDate, branchCode, ct);
+            return Results.Ok(result);
+        });
+
+        continuousLoansApi.MapGet("/reports/expired-unrenewed", async (
+            DateOnly asOfDate,
+            string? branchCode,
+            IContinuousLoanService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetExpiredUnrenewedReportAsync(asOfDate, branchCode, ct);
+            return Results.Ok(result);
+        });
+
+        continuousLoansApi.MapGet("/reports/overdue-stock-statements", async (
+            DateOnly asOfDate,
+            int? thresholdDays,
+            string? branchCode,
+            IContinuousLoanService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetOverdueStockStatementsReportAsync(asOfDate, thresholdDays ?? 30, branchCode, ct);
             return Results.Ok(result);
         });
 
