@@ -94,8 +94,10 @@ using CBS.Infrastructure.Security;
 using CBS.Application.Common.Security;
 using CBS.Application.BackValue.DTOs;
 using CBS.Application.PaymentInstruments.DTOs;
+using CBS.Application.TelegraphicTransfers.DTOs;
 using CBS.Domain.BackValue;
 using CBS.Domain.PaymentInstruments;
+using CBS.Domain.TelegraphicTransfers;
 using CBS.Api.Filters;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -8046,6 +8048,134 @@ public partial class Program
             CancellationToken ct) =>
         {
             var result = await service.GetUnpresentedAgingReportAsync(branchCode, asOfDate, ct);
+            return Results.Ok(result);
+        });
+
+        // =========================================================================
+        // BANGLADESH BANK BRPD CIRCULAR NO. 12 (1.6.5, 3.13)
+        // TELEGRAPHIC TRANSFER (TT) LIFECYCLE, CRYPTOGRAPHIC TEST KEY & RESPONDING ADVICE
+        // =========================================================================
+        var telegraphicTransfersApi = app.MapGroup("/api/v1/telegraphic-transfers")
+            .WithTags("Telegraphic Transfers (TT)");
+
+        telegraphicTransfersApi.MapPost("/issue", async (
+            IssueTtRequest request,
+            ITelegraphicTransferService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.IssueTtAsync(request, ct);
+                return Results.Created($"/api/v1/telegraphic-transfers/{result.TtId}", result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        telegraphicTransfersApi.MapPost("/{id}/transmit-advice", async (
+            string id,
+            TransmitTtAdviceRequest request,
+            ITelegraphicTransferService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.TransmitAdviceAsync(id, request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        telegraphicTransfersApi.MapPost("/{id}/log-telephonic-callback", async (
+            string id,
+            LogTelephonicCallbackRequest request,
+            ITelegraphicTransferService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.LogTelephonicCallbackAsync(id, request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        telegraphicTransfersApi.MapPost("/{id}/respond-and-pay", async (
+            string id,
+            RespondAndPayTtRequest request,
+            ITelegraphicTransferService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.RespondAndPayTtAsync(id, request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        telegraphicTransfersApi.MapPost("/{id}/cancel", async (
+            string id,
+            CancelTtRequest request,
+            ITelegraphicTransferService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.CancelTtAsync(id, request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        telegraphicTransfersApi.MapGet("/{id}", async (
+            string id,
+            ITelegraphicTransferService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetByIdAsync(id, ct);
+            return result is not null ? Results.Ok(result) : Results.NotFound(new { error = $"Telegraphic transfer '{id}' not found." });
+        });
+
+        telegraphicTransfersApi.MapGet("/by-number/{ttNumber}", async (
+            string ttNumber,
+            ITelegraphicTransferService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetByTtNumberAsync(ttNumber, ct);
+            return result is not null ? Results.Ok(result) : Results.NotFound(new { error = $"Telegraphic transfer '{ttNumber}' not found." });
+        });
+
+        telegraphicTransfersApi.MapGet("/outstanding", async (
+            string? branchCode,
+            ITelegraphicTransferService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetOutstandingTtAsync(branchCode, ct);
+            return Results.Ok(result);
+        });
+
+        telegraphicTransfersApi.MapGet("/reports/unresponded-aging", async (
+            DateOnly asOfDate,
+            string? branchCode,
+            ITelegraphicTransferService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetUnrespondedTtAgingReportAsync(branchCode, asOfDate, ct);
             return Results.Ok(result);
         });
 

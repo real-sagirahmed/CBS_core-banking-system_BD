@@ -19,6 +19,7 @@ using CBS.Domain.Security;
 using CBS.Domain.SecurityAudit;
 using CBS.Domain.Shariah;
 using CBS.Domain.StandingInstructions;
+using CBS.Domain.TelegraphicTransfers;
 using CBS.Domain.TermDeposits;
 using CBS.Domain.TradeFinance;
 using CBS.Domain.Training;
@@ -148,6 +149,7 @@ public class CbsDbContext : DbContext
     public DbSet<LinkedTransactionReversalRecord> LinkedTransactionReversalRecords => Set<LinkedTransactionReversalRecord>();
     public DbSet<PaymentInstrument> PaymentInstruments => Set<PaymentInstrument>();
     public DbSet<PaymentInstrumentStockBook> PaymentInstrumentStockBooks => Set<PaymentInstrumentStockBook>();
+    public DbSet<TelegraphicTransfer> TelegraphicTransfers => Set<TelegraphicTransfer>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -292,6 +294,7 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new LinkedTransactionReversalRecordConfiguration());
         modelBuilder.ApplyConfiguration(new PaymentInstrumentConfiguration());
         modelBuilder.ApplyConfiguration(new PaymentInstrumentStockBookConfiguration());
+        modelBuilder.ApplyConfiguration(new TelegraphicTransferConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -385,6 +388,7 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<LinkedTransactionReversalRecord>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<PaymentInstrument>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<PaymentInstrumentStockBook>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<TelegraphicTransfer>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -483,6 +487,7 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<LinkedTransactionReversalRecord>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<PaymentInstrument>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<PaymentInstrumentStockBook>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<TelegraphicTransfer>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)

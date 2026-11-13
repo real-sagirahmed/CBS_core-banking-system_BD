@@ -176,6 +176,8 @@ public static class DependencyInjection
         services.AddScoped<IPaymentInstrumentRepository, EfPaymentInstrumentRepository>();
         services.AddScoped<IPaymentInstrumentStockRepository, EfPaymentInstrumentStockRepository>();
         services.AddScoped<IPaymentInstrumentService, CBS.Application.PaymentInstruments.Services.PaymentInstrumentService>();
+        services.AddScoped<ITelegraphicTransferRepository, EfTelegraphicTransferRepository>();
+        services.AddScoped<ITelegraphicTransferService, CBS.Application.TelegraphicTransfers.Services.TelegraphicTransferService>();
         services.AddHttpClient();
 
         return services;
