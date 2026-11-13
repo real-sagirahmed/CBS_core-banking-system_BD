@@ -10,6 +10,7 @@ using CBS.Domain.Customers;
 using CBS.Domain.Deposits;
 using CBS.Domain.GeneralLedger;
 using CBS.Domain.Lending;
+using CBS.Domain.PaymentInstruments;
 using CBS.Domain.PaymentRails;
 using CBS.Domain.Reconciliation;
 using CBS.Domain.Remittance;
@@ -145,6 +146,8 @@ public class CbsDbContext : DbContext
     public DbSet<BackValueTransactionRequest> BackValueTransactionRequests => Set<BackValueTransactionRequest>();
     public DbSet<BackValueAuditJournalEntry> BackValueAuditJournalEntries => Set<BackValueAuditJournalEntry>();
     public DbSet<LinkedTransactionReversalRecord> LinkedTransactionReversalRecords => Set<LinkedTransactionReversalRecord>();
+    public DbSet<PaymentInstrument> PaymentInstruments => Set<PaymentInstrument>();
+    public DbSet<PaymentInstrumentStockBook> PaymentInstrumentStockBooks => Set<PaymentInstrumentStockBook>();
 
     public CbsDbContext(DbContextOptions<CbsDbContext> options) : base(options)
     {
@@ -287,6 +290,8 @@ public class CbsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new BackValueTransactionRequestConfiguration());
         modelBuilder.ApplyConfiguration(new BackValueAuditJournalEntryConfiguration());
         modelBuilder.ApplyConfiguration(new LinkedTransactionReversalRecordConfiguration());
+        modelBuilder.ApplyConfiguration(new PaymentInstrumentConfiguration());
+        modelBuilder.ApplyConfiguration(new PaymentInstrumentStockBookConfiguration());
 
         // Concurrency token and partial index enforcement
         if (Database.IsNpgsql())
@@ -378,6 +383,8 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<BackValueTransactionRequest>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<BackValueAuditJournalEntry>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
             modelBuilder.Entity<LinkedTransactionReversalRecord>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<PaymentInstrument>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+            modelBuilder.Entity<PaymentInstrumentStockBook>().Property<uint>("xmin").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)
@@ -474,6 +481,8 @@ public class CbsDbContext : DbContext
             modelBuilder.Entity<BackValueTransactionRequest>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<BackValueAuditJournalEntry>().Property<byte[]>("RowVersion").IsConcurrencyToken();
             modelBuilder.Entity<LinkedTransactionReversalRecord>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<PaymentInstrument>().Property<byte[]>("RowVersion").IsConcurrencyToken();
+            modelBuilder.Entity<PaymentInstrumentStockBook>().Property<byte[]>("RowVersion").IsConcurrencyToken();
 
             modelBuilder.Entity<UserSession>()
                 .HasIndex(s => s.UserId)

@@ -93,7 +93,9 @@ using CBS.Infrastructure.Persistence;
 using CBS.Infrastructure.Security;
 using CBS.Application.Common.Security;
 using CBS.Application.BackValue.DTOs;
+using CBS.Application.PaymentInstruments.DTOs;
 using CBS.Domain.BackValue;
+using CBS.Domain.PaymentInstruments;
 using CBS.Api.Filters;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -7899,6 +7901,151 @@ public partial class Program
             CancellationToken ct) =>
         {
             var result = await service.GetEodBackValueJournalReportAsync(operatingDate, branchCode, ct);
+            return Results.Ok(result);
+        });
+
+        // =========================================================================
+        // BANGLADESH BANK BRPD CIRCULAR NO. 12 (1.5.6, 3.11, 3.12)
+        // PAYMENT ORDER & DEMAND DRAFT LIFECYCLE, JOINT-CUSTODY STOCK & BFIU KYC
+        // =========================================================================
+        var paymentInstrumentsApi = app.MapGroup("/api/v1/payment-instruments")
+            .WithTags("Payment Instruments (PO & DD)");
+
+        paymentInstrumentsApi.MapPost("/stock/allocate", async (
+            AllocateStockBookRequest request,
+            IPaymentInstrumentService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.AllocateStockBookAsync(request, ct);
+                return Results.Created($"/api/v1/payment-instruments/stock/{result.BookId}", result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        paymentInstrumentsApi.MapPost("/pay-orders/issue", async (
+            IssuePayOrderRequest request,
+            IPaymentInstrumentService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.IssuePayOrderAsync(request, ct);
+                return Results.Created($"/api/v1/payment-instruments/{result.InstrumentId}", result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        paymentInstrumentsApi.MapPost("/demand-drafts/issue", async (
+            IssueDemandDraftRequest request,
+            IPaymentInstrumentService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.IssueDemandDraftAsync(request, ct);
+                return Results.Created($"/api/v1/payment-instruments/{result.InstrumentId}", result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        paymentInstrumentsApi.MapPost("/{id}/encash", async (
+            string id,
+            EncashPaymentInstrumentRequest request,
+            IPaymentInstrumentService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.EncashInstrumentAsync(id, request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        paymentInstrumentsApi.MapPost("/{id}/cancel", async (
+            string id,
+            CancelPaymentInstrumentRequest request,
+            IPaymentInstrumentService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await service.CancelInstrumentAsync(id, request, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        paymentInstrumentsApi.MapPost("/{id}/duplicate", async (
+            string id,
+            IssueDuplicateInstrumentRequest request,
+            IPaymentInstrumentService service,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var effectiveRequest = request with { OriginalInstrumentId = id };
+                var result = await service.IssueDuplicateAsync(effectiveRequest, ct);
+                return Results.Created($"/api/v1/payment-instruments/{result.InstrumentId}", result);
+            }
+            catch (Exception ex) when (ex is InvariantViolationException or ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        paymentInstrumentsApi.MapGet("/{id}", async (
+            string id,
+            IPaymentInstrumentService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetInstrumentByIdAsync(id, ct);
+            return result is not null ? Results.Ok(result) : Results.NotFound(new { error = $"Instrument '{id}' not found." });
+        });
+
+        paymentInstrumentsApi.MapGet("/by-number/{instrumentNumber}", async (
+            string instrumentNumber,
+            IPaymentInstrumentService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetInstrumentByNumberAsync(instrumentNumber, ct);
+            return result is not null ? Results.Ok(result) : Results.NotFound(new { error = $"Instrument '{instrumentNumber}' not found." });
+        });
+
+        paymentInstrumentsApi.MapGet("/outstanding", async (
+            string? branchCode,
+            PaymentInstrumentType? type,
+            IPaymentInstrumentService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetOutstandingInstrumentsAsync(branchCode, type, ct);
+            return Results.Ok(result);
+        });
+
+        paymentInstrumentsApi.MapGet("/reports/unpresented-aging", async (
+            DateOnly asOfDate,
+            string? branchCode,
+            IPaymentInstrumentService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetUnpresentedAgingReportAsync(branchCode, asOfDate, ct);
             return Results.Ok(result);
         });
 

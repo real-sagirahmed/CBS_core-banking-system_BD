@@ -173,6 +173,9 @@ public static class DependencyInjection
         services.AddScoped<IBackValueAuditJournalRepository, EfBackValueAuditJournalRepository>();
         services.AddScoped<ILinkedReversalRepository, EfLinkedReversalRepository>();
         services.AddScoped<IBackValueGovernanceService, CBS.Application.BackValue.Services.BackValueGovernanceService>();
+        services.AddScoped<IPaymentInstrumentRepository, EfPaymentInstrumentRepository>();
+        services.AddScoped<IPaymentInstrumentStockRepository, EfPaymentInstrumentStockRepository>();
+        services.AddScoped<IPaymentInstrumentService, CBS.Application.PaymentInstruments.Services.PaymentInstrumentService>();
         services.AddHttpClient();
 
         return services;
